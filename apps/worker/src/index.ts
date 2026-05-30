@@ -1,0 +1,23 @@
+/**
+ * AgenticMind worker — Postgres-only, no broker. The single background task is
+ * the Tier-4 compounding sweep, scheduled daily via a Postgres advisory lock
+ * (see jobs/knowledge-feedback/worker.ts). The community jobs (embeddings, exa,
+ * notifications, intros, analytics) and Redis/BullMQ were removed in the
+ * extraction — the flagship runs on Postgres + pgvector alone.
+ */
+
+import { startKnowledgeFeedbackScheduler } from "@/jobs/knowledge-feedback/worker"
+
+const scheduler = startKnowledgeFeedbackScheduler()
+
+const shutdown = (): void => {
+  console.log(`[WORKER] ${new Date().toISOString()}: shutting down…`)
+  scheduler.stop()
+  process.exit(0)
+}
+process.on("SIGINT", shutdown)
+process.on("SIGTERM", shutdown)
+
+console.log(
+  `[WORKER] ${new Date().toISOString()}: AgenticMind worker ready (Postgres-scheduled feedback sweep).`,
+)

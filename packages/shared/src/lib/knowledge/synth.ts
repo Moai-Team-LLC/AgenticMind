@@ -1,0 +1,261 @@
+/**
+ * Answer synthesis — pure core ported from
+ * services/knowledge/internal/synth/synth.go. Types, the grounded-answer
+ * system prompt (verbatim, bilingual RU/EN), prompt building, member-context
+ * enrichment, citation parsing, and served_by classification. The DB/LLM
+ * pipeline (ask) and the answer cache live in sibling files.
+ */
+
+/** Chunks fed into the prompt as context. */
+export const DEFAULT_TOP_K = 8
+/** Max runes of each cited body returned in the response envelope. */
+export const MAX_SNIPPET_RUNES = 240
+/** Max knowledge cards prepended ahead of chunk sources. */
+export const MAX_CARD_SOURCES = 3
+/** Max graph-context rows folded into the prompt prelude. */
+export const MAX_GRAPH_CONTEXT_ROWS = 5
+
+export const SERVED_BY_CACHE = "cache"
+export const SERVED_BY_CARD = "card_synth"
+export const SERVED_BY_SYNTH = "synth"
+
+export const SOURCE_ORIGIN_CHUNK = "chunk"
+export const SOURCE_ORIGIN_CARD = "card"
+
+/**
+ * Optional context about the caller, injected into the system prompt. The
+ * engine is caller-agnostic — it never fetches this; the host supplies it.
+ * Agent callers pass `intent` (what they're trying to accomplish) and/or
+ * generic `facts`; human callers may pass the legacy CRM profile fields.
+ */
+export type CallerContext = {
+  kind?: "human" | "agent" | "service"
+  /** What the caller is trying to accomplish (agent task / goal). */
+  intent?: string
+  /** Arbitrary caller facts the synth may tailor phrasing to. */
+  facts?: { label: string; value: string }[]
+  // Legacy human CRM profile (all optional; kept for back-compat).
+  industry?: string
+  stage?: string
+  expertise?: string[]
+  challenges?: string[]
+  customTags?: string[]
+  partnershipInterests?: string[]
+  recentJourney?: string
+}
+
+/** @deprecated Use `CallerContext`. Retained as an alias for back-compat. */
+export type MemberContext = CallerContext
+
+export type Source = {
+  number: number
+  /** Chunk id, or (for card sources) the card id overloaded into this slot. */
+  chunkId: string
+  materialId: string
+  title: string
+  body: string
+  score: number
+  updatedAt: Date | null
+  origin: string
+  spanStart?: number | null
+  spanEnd?: number | null
+  confidence?: number
+}
+
+export type Citation = {
+  number: number
+  materialId: string
+  title: string
+  chunkId: string
+  snippet: string
+  score: number
+  origin?: string
+  spanStart?: number | null
+  spanEnd?: number | null
+  confidence?: number
+}
+
+export type GraphContextRow = {
+  body: string
+  materialIds: string[]
+}
+
+export type Answer = {
+  answer: string
+  citations: Citation[]
+  retrievalMs: number
+  generationMs: number
+  model: string
+  servedBy: string
+  rerankUsed?: boolean
+  rerankLatencyMs?: number
+  graphContextRows?: number
+  /** Per-phase latency breakdown (embed/cache/retrieve/rerank/synth/output_filter). */
+  phases?: { phase: string; ms: number }[]
+  /** ask_telemetry row id, set after the best-effort telemetry write. */
+  telemetryId?: string
+}
+
+export const SYSTEM_PROMPT = `You are a knowledge-base assistant for a private community. Answer the user's
+question using ONLY the numbered sources below. Cite the sources you used by
+appending [N] at the end of the relevant sentence (e.g. "Sales rose 12% [2].").
+
+Language:
+- Answer in clear English.
+- Keep proper nouns / company names / acronyms verbatim (e.g. "Y Combinator",
+  "API", "MVP").
+
+Rules:
+- Do not invent facts that are not in the sources.
+- If the sources are insufficient, say so plainly and suggest what would help.
+- Keep the answer concise (3–6 sentences unless the question demands more).
+- Never claim to have access to information beyond these sources.
+
+Resolving conflicts between sources:
+- Each source line ends with "(updated YYYY-MM-DD)" when known. When two
+  sources disagree on a fact (e.g. "Clinic X is on Street A" vs "Clinic X
+  is on Street B"), prefer the one with the most recent updated date and
+  cite ONLY that one.
+- If the dates are equal, or one source has no date, mention the conflict
+  briefly and recommend the user verify with the source owner.
+- Do not blend conflicting facts as if they were all true — that's how
+  stale data leaks into answers.
+
+Example:
+Q: "What is Y Combinator?"
+A: "Y Combinator is a startup accelerator founded in 2005 [1]. The program
+runs for 3 months and includes funding in exchange for 7% equity [2]."`
+
+export const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
+
+const isCallerContextEmpty = (c: CallerContext | null | undefined): boolean => {
+  if (c === null || c === undefined) return true
+  return (
+    (c.intent ?? "") === "" &&
+    (c.facts?.length ?? 0) === 0 &&
+    (c.industry ?? "") === "" &&
+    (c.stage ?? "") === "" &&
+    (c.expertise?.length ?? 0) === 0 &&
+    (c.challenges?.length ?? 0) === 0 &&
+    (c.customTags?.length ?? 0) === 0 &&
+    (c.partnershipInterests?.length ?? 0) === 0 &&
+    (c.recentJourney ?? "") === ""
+  )
+}
+
+/** SYSTEM_PROMPT + an optional caller-context block (in the system message). */
+export const buildSystemPromptWithContext = (c: CallerContext | null | undefined): string => {
+  if (isCallerContextEmpty(c)) return SYSTEM_PROMPT
+  const m = c as CallerContext
+  const lines: string[] = [
+    SYSTEM_PROMPT,
+    "",
+    "The caller has the following context. Tailor your phrasing and emphasis",
+    "to it where relevant; never invent facts about the caller, and don't",
+    "address them by name.",
+    "",
+    "[user context]",
+  ]
+  if ((m.intent ?? "") !== "") lines.push(`- goal: ${m.intent}`)
+  for (const f of m.facts ?? []) {
+    if (f.label !== "" && f.value !== "") lines.push(`- ${f.label}: ${f.value}`)
+  }
+  if ((m.industry ?? "") !== "") lines.push(`- industry: ${m.industry}`)
+  if ((m.stage ?? "") !== "") lines.push(`- stage: ${m.stage}`)
+  if ((m.expertise?.length ?? 0) > 0) lines.push(`- expertise: ${m.expertise!.join(", ")}`)
+  if ((m.challenges?.length ?? 0) > 0)
+    lines.push(`- current challenges: ${m.challenges!.join(", ")}`)
+  if ((m.customTags?.length ?? 0) > 0) lines.push(`- tags: ${m.customTags!.join(", ")}`)
+  if ((m.partnershipInterests?.length ?? 0) > 0) {
+    lines.push(`- looking for: ${m.partnershipInterests!.join(", ")}`)
+  }
+  let out = lines.join("\n")
+  if ((m.recentJourney ?? "") !== "") {
+    out += `\n\n[recent journey] (supplementary, not citable)\n${m.recentJourney}\n`
+  }
+  return out
+}
+
+/** " (updated YYYY-MM-DD)" for a known date, else "". */
+export const formatUpdatedAnnotation = (date: Date | null | undefined): string => {
+  if (date === null || date === undefined) return ""
+  return ` (updated ${date.toISOString().slice(0, 10)})`
+}
+
+const truncate = (s: string, max: number): string => {
+  const runes = Array.from(s)
+  return runes.length <= max ? s : `${runes.slice(0, max).join("")}…`
+}
+
+/** Builds the user prompt: optional graph-context prelude + numbered sources + question. */
+export const buildPromptWithGraphContext = (
+  question: string,
+  sources: Source[],
+  graphContext: GraphContextRow[] = [],
+): string => {
+  const parts: string[] = []
+  if (graphContext.length > 0) {
+    parts.push(
+      "Graph context (supplementary, NOT a citable source — only the numbered Sources below count):",
+    )
+    for (const g of graphContext) parts.push(`- ${g.body}`)
+    parts.push("")
+  }
+  if (sources.length === 0) {
+    parts.push("Sources: (none — answer that you don't know)", "")
+  } else {
+    parts.push("Sources:")
+    for (const s of sources) {
+      const title = s.title === "" ? "Untitled" : s.title
+      parts.push(`[${s.number}] ${title}${formatUpdatedAnnotation(s.updatedAt)}`, s.body, "")
+    }
+  }
+  parts.push(`Question: ${question}`, "", "Answer:")
+  return parts.join("\n")
+}
+
+export const buildPrompt = (question: string, sources: Source[]): string =>
+  buildPromptWithGraphContext(question, sources, [])
+
+const CITATION_RE = /\[(\d+)\]/g
+
+/** Finds [N] markers, returns matching sources deduped + sorted by number. */
+export const parseCitations = (answerText: string, sources: Source[]): Citation[] => {
+  const bySource = new Map<number, Source>()
+  for (const s of sources) bySource.set(s.number, s)
+
+  const seen = new Set<number>()
+  const out: Citation[] = []
+  for (const match of answerText.matchAll(CITATION_RE)) {
+    const n = Number.parseInt(match[1]!, 10)
+    if (Number.isNaN(n) || seen.has(n)) continue
+    seen.add(n)
+    const src = bySource.get(n)
+    if (src === undefined) continue
+    out.push({
+      number: src.number,
+      materialId: src.materialId,
+      title: src.title,
+      chunkId: src.chunkId,
+      snippet: truncate(src.body, MAX_SNIPPET_RUNES),
+      score: src.score,
+      origin: src.origin,
+      spanStart: src.spanStart,
+      spanEnd: src.spanEnd,
+      confidence: src.confidence,
+    })
+  }
+  out.sort((a, b) => a.number - b.number)
+  return out
+}
+
+/** card_synth when any cited source is a card; else synth. */
+export const classifyServedBy = (citations: Citation[], sources: Source[]): string => {
+  if (citations.length === 0) return SERVED_BY_SYNTH
+  const originById = new Map<string, string>()
+  for (const s of sources) originById.set(s.chunkId, s.origin)
+  for (const c of citations) {
+    if (originById.get(c.chunkId) === SOURCE_ORIGIN_CARD) return SERVED_BY_CARD
+  }
+  return SERVED_BY_SYNTH
+}

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "globalEnv": ["NODE_ENV", "DATABASE_URL", "SKIP_VALIDATION", "AUTH_SECRET", "OPENROUTER_API_KEY"],
+  "globalDependencies": [
+    "packages/*/src/**",
+    "packages/*/package.json",
+    "packages/*/tsconfig.json",
+    "oxlint.config.ts",
+    "packages/oxlint-config/src/**",
+    "packages/oxlint-config/package.json",
+    "apps/*/oxlint.config.ts",
+    "packages/*/oxlint.config.ts"
+  ],
+  "tasks": {
+    "dev": {
+      "dependsOn": ["^tsc"],
+      "cache": false,
+      "persistent": true
+    },
+    "build": {
+      "outputs": [".next/**", "!.next/cache/**"],
+      "inputs": [
+        "src/**",
+        "public/**",
+        "next.config.*",
+        "tsconfig.json",
+        "tailwind.config.*",
+        "postcss.config.*"
+      ]
+    },
+    "tsc": {
+      "dependsOn": ["format"],
+      "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json"]
+    },
+    "test": {
+      "dependsOn": ["^tsc"],
+      "inputs": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.test.ts"],
+      "outputs": []
+    },
+    "format": {
+      "inputs": ["src/**"]
+    },
+    "lint": {
+      "dependsOn": ["format"],
+      "inputs": ["src/**"]
+    },
+    "@agenticmind/server#dev": {
+      "dependsOn": ["^tsc"],
+      "persistent": true,
+      "env": [
+        "PORT",
+        "KNOWLEDGE_CARDS_ENABLED",
+        "KNOWLEDGE_CACHE_ENABLED",
+        "KNOWLEDGE_GRAPHRAG_ENABLED",
+        "SPACES_ACCESS_KEY",
+        "SPACES_SECRET_KEY",
+        "SPACES_REGION",
+        "SPACES_KNOWLEDGE_BUCKET"
+      ]
+    },
+    "@agenticmind/worker#dev": {
+      "dependsOn": ["^tsc"],
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "name": "@agenticmind/shared",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./settings/*": "./src/settings/*.ts",
+    "./lib/*": "./src/lib/*.ts",
+    "./lib/**/*": "./src/lib/**/*.ts",
+    "./bot/*": "./src/bot/*.ts",
+    "./bot/**/*": "./src/bot/**/*.ts",
+    "./database/*": "./src/database/*.ts",
+    "./database/**/*": "./src/database/**/*.ts",
+    "./worker/*": "./src/worker/*.ts",
+    "./worker/**/*": "./src/worker/**/*.ts"
+  },
+  "scripts": {
+    "migrate:profile-images": "dotenvx run -f .env.local -- tsx src/scripts/migrate-profile-images.ts",
+    "migrate:notification-campaign-content": "tsx src/scripts/migrate-notification-campaign-content.ts",
+    "migrate:notification-campaign-content:write": "tsx src/scripts/migrate-notification-campaign-content.ts --write",
+    "sync:partners-csv": "dotenvx run -f .env.local -- tsx src/scripts/sync-partners-from-csv.ts",
+    "sync:partners-csv:dev": "dotenvx run -f .env.dev -- tsx src/scripts/sync-partners-from-csv.ts",
+    "update:community-menu-buttons": "dotenvx run -f .env.local -- tsx src/scripts/update-community-menu-buttons.ts",
+    "update:community-menu-buttons-dev": "dotenvx run -f .env.dev -- tsx src/scripts/update-community-menu-buttons.ts",
+    "tsc": "tsc --noEmit",
+    "format": "oxfmt",
+    "lint": "oxlint --type-aware --fix"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1048.0",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
+    "@t3-oss/env-core": "^0.13.11",
+    "ai": "^6.0.190",
+    "drizzle-orm": "^0.45.2",
+    "htmlparser2": "^12.0.0",
+    "mammoth": "^1.12.0",
+    "neverthrow": "^8.2.0",
+    "p-retry": "^8.0.0",
+    "pg": "^8.21.0",
+    "unpdf": "^1.6.2",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@agenticmind/typescript-config": "workspace:*",
+    "@dotenvx/dotenvx": "^1.67.0",
+    "@inquirer/select": "^5.1.5",
+    "@ngneat/falso": "^8.0.2",
+    "@types/pg": "^8.20.0",
+    "@types/sanitize-html": "^2.16.1",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,7 @@
+# Local-only port override — applied with:
+#   docker compose -f docker-compose.yml -f docker-compose.local.yml up -d
+# Maps the db to 5434 on host (in case 5432/5433 are taken by other projects).
+services:
+  db:
+    ports: !override
+      - "5434:5432"

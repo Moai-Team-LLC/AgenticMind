@@ -1,0 +1,6 @@
+[install]
+# Next 16's webpack chunking expects a hoisted node_modules tree —
+# isolated mode causes "useContext null" during prerender because some
+# React imports in synthetic chunks (like _global-error) bind to null.
+linker = "isolated"
+minimumReleaseAge = 259200

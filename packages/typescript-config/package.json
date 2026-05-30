@@ -1,0 +1,19 @@
+{
+  "name": "@agenticmind/typescript-config",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "files": [
+    "base.json",
+    "lib.json",
+    "app.json",
+    "nextjs.json"
+  ],
+  "type": "module",
+  "exports": {
+    "./base.json": "./base.json",
+    "./lib.json": "./lib.json",
+    "./app.json": "./app.json",
+    "./nextjs.json": "./nextjs.json"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@agenticmind/worker",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "dotenvx run -f .env.local -- bun --bun --watch src/index.ts",
+    "start": "bun --bun src/index.ts",
+    "start-local": "NODE_ENV=production dotenvx run -f .env.local -- bun --bun src/index.ts",
+    "tsc": "tsc --noEmit",
+    "format": "oxfmt",
+    "lint": "oxlint --type-aware --fix"
+  },
+  "dependencies": {
+    "@agenticmind/shared": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "neverthrow": "^8.2.0",
+    "pg": "^8.21.0"
+  },
+  "devDependencies": {
+    "@agenticmind/typescript-config": "workspace:*",
+    "@dotenvx/dotenvx": "^1.67.0",
+    "@types/pg": "^8.20.0",
+    "typescript": "^6.0.3"
+  }
+}
