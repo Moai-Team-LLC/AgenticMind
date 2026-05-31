@@ -23,7 +23,9 @@ const INJECTION_PATTERNS: readonly RegExp[] = [
   /\b(jailbreak|DAN\s+mode|developer\s+mode)\b/i,
   /override\s+(the\s+)?(rules?|instructions?|system)/i,
   /\bnew\s+instructions?\s*:/i,
-  /system\s+prompt/i,
+  // "system prompt" only when paired with an exfiltration verb (so benign
+  // questions that merely mention the system prompt are not over-blocked).
+  /(reveal|show|print|repeat|leak|dump|expose|share|output)\b[\s\S]{0,40}?system\s+prompt/i,
   // Russian
   /игнорир[а-яё]*\s+[а-яё\s]{0,30}?(инструкц|указани|правил|промпт)/iu,
   /забуд[а-яё]*\s+[а-яё\s]{0,20}?(инструкц|правил|указани|промпт|контекст|вс[её])/iu,
