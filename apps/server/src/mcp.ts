@@ -226,7 +226,10 @@ const handler = createMcpHandler(
     capabilities: { tools: {} },
   },
   {
-    basePath: "/mcp",
+    // mcp-handler mounts the streamable transport at `${basePath}/mcp`, so an
+    // empty basePath serves it at /mcp — the URL the README documents. (index.ts
+    // already routes /mcp here.)
+    basePath: "",
     maxDuration: 60,
   },
 )

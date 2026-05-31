@@ -96,9 +96,23 @@ cp .env.example .env.local         # then set OPENROUTER_API_KEY + AUTH_SECRET
 bun run dev                        # headless MCP server on :3000
 ```
 
-Verify the build with `bun run check` (typecheck + tests). Point an MCP client at
-`http://localhost:3000/mcp` with a bearer `typ="mcp"` JWT. (Lint additionally requires
-Node ≥22.18 — see `.nvmrc`.)
+Verify the build with `bun run check` (typecheck + tests).
+
+The MCP endpoint is fail-closed, so you need a bearer `typ="mcp"` JWT. The headless
+server ships no admin UI — mint one with the issuance CLI (needs `DATABASE_URL` +
+`AUTH_SECRET` from your `.env.local`):
+
+```bash
+bun run scripts/issue-mcp-token.ts --label "claude-code" --ttl-days 365
+# prints the bearer on the last line — capture it, it is not stored in plaintext
+```
+
+Then point an MCP client at `http://localhost:3000/mcp` with that token as the
+`Authorization: Bearer …` header. (Lint additionally requires Node ≥22.18 — see `.nvmrc`.)
+
+> **Note.** The local Docker Postgres has no TLS, so `.env.example` ships
+> `DATABASE_SSL=false` and `DATABASE_URL` on host port `5435`. For managed Postgres
+> (Supabase, RDS, …) that requires SSL, set `DATABASE_SSL=true`.
 
 ## 🧱 Layout
 

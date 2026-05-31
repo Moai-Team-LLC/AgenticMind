@@ -25,7 +25,7 @@ fi
 echo "==> Installing dependencies (bun install)"
 bun install
 
-echo "==> Starting Postgres + pgvector (host port 5434)"
+echo "==> Starting Postgres + pgvector (host port 5435)"
 "${COMPOSE[@]}" up -d
 
 echo "==> Waiting for Postgres to accept connections"

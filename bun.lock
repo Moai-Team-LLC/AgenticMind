@@ -9,6 +9,7 @@
       },
       "devDependencies": {
         "@agenticmind/oxlint-config": "workspace:*",
+        "@agenticmind/shared": "workspace:*",
         "@dotenvx/dotenvx": "^1.67.0",
         "@types/node": "^25.9.1",
         "oxfmt": "^0.51.0",

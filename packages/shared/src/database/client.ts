@@ -15,7 +15,9 @@ const createClient = (databaseUrl: string): NodePgDatabase<typeof schema> => {
     max: databaseSettings.DATABASE_POOL_MAX,
     idleTimeoutMillis: 60_000,
     connectionTimeoutMillis: 5000,
-    ssl: { rejectUnauthorized: false },
+    // String() guards the SKIP_VALIDATION path, where the Zod transform is
+    // bypassed and DATABASE_SSL arrives as a raw string ("false" is truthy).
+    ssl: String(databaseSettings.DATABASE_SSL) === "true" ? { rejectUnauthorized: false } : false,
   })
 
   return drizzle({

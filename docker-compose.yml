@@ -1,8 +1,8 @@
 services:
   db:
-    build:
-      context: .
-      dockerfile: Dockerfile.timescale
+    # Timescale HA image bundles pgvector + pgvectorscale (the `diskann` access
+    # method the schema's vector indexes need). No custom build required.
+    image: timescale/timescaledb-ha:pg17
     ports:
       - "5432:5432"
     environment:
@@ -21,6 +21,8 @@ services:
       ]
     volumes:
       - pgdata:/home/postgres/pgdata
+      # Creates the vector + vectorscale extensions on first init.
+      - ./scripts/db-init:/docker-entrypoint-initdb.d:ro
 
 volumes:
   pgdata:
