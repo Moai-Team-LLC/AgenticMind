@@ -8,6 +8,10 @@
  */
 
 import { mcpFetch } from "@/mcp"
+import { initTracing } from "@/tracing"
+
+// Register the OTLP trace exporter before serving, if configured (no-op otherwise).
+initTracing()
 
 const PORT = Number(process.env.PORT ?? 3000)
 

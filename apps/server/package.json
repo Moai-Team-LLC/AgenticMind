@@ -15,6 +15,10 @@
   "dependencies": {
     "@agenticmind/shared": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
+    "@opentelemetry/resources": "^2.7.1",
+    "@opentelemetry/sdk-trace-node": "^2.7.1",
+    "@opentelemetry/semantic-conventions": "^1.41.1",
     "drizzle-orm": "^0.45.2",
     "jose": "^6.2.3",
     "mcp-handler": "^1.1.0",

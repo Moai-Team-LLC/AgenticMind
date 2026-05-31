@@ -56,6 +56,13 @@ import {
   SOURCE_ORIGIN_CARD,
   SOURCE_ORIGIN_CHUNK,
 } from "@agenticmind/shared/lib/knowledge/synth"
+import {
+  Attr,
+  setInput,
+  setOutput,
+  SpanKind,
+  withSpan,
+} from "@agenticmind/shared/lib/observability/trace"
 import { okAsync, ResultAsync } from "neverthrow"
 
 export type AskError = { readonly type: "ask_error"; readonly message: string }
@@ -370,9 +377,29 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   }
 }
 
+/** `runAsk` wrapped in an OpenInference CHAIN span (a no-op until an exporter is
+ * registered). Captures the question, answer, model, served-by, citation count,
+ * and the phase timings as span events — the why-trace, portable to any OTel
+ * backend (Phoenix / Langfuse / LangSmith). */
+const runAskTraced = (props: AskProps): Promise<Answer> =>
+  withSpan("knowledge.ask", SpanKind.CHAIN, async (span) => {
+    setInput(span, props.question)
+    const answer = await runAsk(props)
+    setOutput(span, answer.answer)
+    span.setAttribute(Attr.LLM_MODEL, answer.model)
+    span.setAttribute(Attr.SERVED_BY, answer.servedBy)
+    span.setAttribute(Attr.CITATION_COUNT, answer.citations.length)
+    span.setAttribute(Attr.RETRIEVAL_MS, answer.retrievalMs)
+    span.setAttribute(Attr.GENERATION_MS, answer.generationMs)
+    for (const phase of answer.phases ?? []) {
+      span.addEvent(`phase.${phase.phase}`, { ms: phase.ms })
+    }
+    return answer
+  })
+
 /** Runs the full /ask pipeline for one question. */
 export const ask = (props: AskProps): ResultAsync<Answer, AskError> =>
-  ResultAsync.fromPromise(runAsk(props), (e) =>
+  ResultAsync.fromPromise(runAskTraced(props), (e) =>
     e !== null && typeof e === "object" && "type" in e && (e as AskError).type === "ask_error"
       ? (e as AskError)
       : askError(e instanceof Error ? e.message : String(e)),
