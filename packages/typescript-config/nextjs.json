@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "@agenticmind/typescript-config/base.json",
-  "compilerOptions": {
-    "plugins": [{ "name": "next" }],
-    "jsx": "preserve",
-    "incremental": true
-  }
-}

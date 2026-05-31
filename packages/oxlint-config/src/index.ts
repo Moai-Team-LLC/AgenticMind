@@ -114,21 +114,6 @@ const frontendRuleOverrides: RuleConfig = {
   "react/forbid-component-props": ["error", { forbid: ["style"] }],
 }
 
-const nextConventionFileOverrides: OverridesConfig = [
-  {
-    files: [
-      "apps/web/src/proxy.ts",
-      "apps/web/src/app/**/{default,error,global-error,layout,loading,not-found,page,route,template}.{ts,tsx}",
-      "src/proxy.ts",
-      "src/app/**/{default,error,global-error,layout,loading,not-found,page,route,template}.{ts,tsx}",
-    ],
-    rules: {
-      "import/group-exports": "off",
-      "import/no-default-export": "off",
-    },
-  },
-]
-
 const schemaFileOverrides: OverridesConfig = [
   {
     files: ["**/schema.ts", "**/schema/**/*.ts"],
@@ -147,7 +132,6 @@ const frontendSettings: SettingsConfig = {
 const baseIgnorePatterns = [
   "**/node_modules/**",
   "**/dist/**",
-  "**/.next/**",
   "**/drizzle/**",
   "**/*.d.ts",
   "**/*.config.{js,ts,mjs,cjs}",
@@ -204,7 +188,6 @@ export {
   frontendPlugins,
   frontendRuleOverrides,
   frontendSettings,
-  nextConventionFileOverrides,
   rootIgnorePatterns,
   schemaFileOverrides,
   uiIgnorePatterns,

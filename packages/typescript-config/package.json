@@ -6,14 +6,12 @@
   "files": [
     "base.json",
     "lib.json",
-    "app.json",
-    "nextjs.json"
+    "app.json"
   ],
   "type": "module",
   "exports": {
     "./base.json": "./base.json",
     "./lib.json": "./lib.json",
-    "./app.json": "./app.json",
-    "./nextjs.json": "./nextjs.json"
+    "./app.json": "./app.json"
   }
 }
