@@ -7,6 +7,10 @@
  */
 
 import { startKnowledgeFeedbackScheduler } from "@/jobs/knowledge-feedback/worker"
+import { initTracing } from "@/tracing"
+
+// Register the OTLP trace exporter before scheduling, if configured (no-op otherwise).
+initTracing()
 
 const scheduler = startKnowledgeFeedbackScheduler()
 
