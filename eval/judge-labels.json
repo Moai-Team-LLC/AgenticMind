@@ -23,5 +23,75 @@
     "id": "no-citation",
     "input": "Q: Tax rate? A: Probably around 15%, I think. Citations: none.",
     "expected": false
+  },
+  {
+    "id": "std-grounded-harness",
+    "input": "Q: What share of agent reliability is the harness? A: ~98% [1]. Citations: [1] Standard, Canon 4 (the harness is 98% of the code).",
+    "expected": true
+  },
+  {
+    "id": "std-grounded-context",
+    "input": "Q: Max context-window utilization? A: Below 40% [1]. Citations: [1] Standard, Layer 3 (keep usage below 40% of the limit).",
+    "expected": true
+  },
+  {
+    "id": "std-grounded-temporal",
+    "input": "Q: Industry-standard durable execution? A: Temporal [1]. Citations: [1] Standard, Layer 5 (Temporal — the industry standard).",
+    "expected": true
+  },
+  {
+    "id": "std-grounded-binary",
+    "input": "Q: What output must an LLM judge return? A: Binary true/false [1]. Citations: [1] Standard, eval rules (binary outputs).",
+    "expected": true
+  },
+  {
+    "id": "std-grounded-breadth",
+    "input": "Q: Architecture for breadth-first parallelizable tasks? A: Multi-agent [1]. Citations: [1] Standard, Canon 3 (breadth-first → multi-agent).",
+    "expected": true
+  },
+  {
+    "id": "std-grounded-eval-size",
+    "input": "Q: Minimum eval set per failure mode? A: At least 50 [1]. Citations: [1] Standard, DoD #10 (≥50 examples per top-priority failure mode).",
+    "expected": true
+  },
+  {
+    "id": "std-grounded-langgraph",
+    "input": "Q: Framework for maximum control with multi-vendor workflows? A: LangGraph [1]. Citations: [1] Standard, Layer 7 (LangGraph — maximum control).",
+    "expected": true
+  },
+  {
+    "id": "std-ungrounded-harness",
+    "input": "Q: Harness share of reliability? A: About 50% [1]. Citations: [1] Standard, Canon 4 (which says 98%).",
+    "expected": false
+  },
+  {
+    "id": "std-ungrounded-temporal",
+    "input": "Q: Durable-execution standard? A: Airflow [1]. Citations: [1] Standard, Layer 5 (which names Temporal).",
+    "expected": false
+  },
+  {
+    "id": "std-ungrounded-vectordb",
+    "input": "Q: Recommended vector database? A: Pinecone [1]. Citations: [1] Standard, Layer 4 (lists memory vendors, mandates no vector DB).",
+    "expected": false
+  },
+  {
+    "id": "std-ungrounded-context",
+    "input": "Q: Context-utilization rule? A: Stay below 80% [1]. Citations: [1] Standard, Layer 3 (which says 40%).",
+    "expected": false
+  },
+  {
+    "id": "std-ungrounded-likert",
+    "input": "Q: What output should a judge return? A: A 1-5 Likert score [1]. Citations: [1] Standard, eval rules (which require binary and warn Likert breaks alignment).",
+    "expected": false
+  },
+  {
+    "id": "std-ungrounded-single",
+    "input": "Q: Architecture for a stateful coding agent? A: A multi-agent constellation [1]. Citations: [1] Standard, Canon 3 (depth-first coding → single-agent).",
+    "expected": false
+  },
+  {
+    "id": "std-ungrounded-uncited",
+    "input": "Q: Max active tools per agent? A: Around 20, I think. Citations: none.",
+    "expected": false
   }
 ]
