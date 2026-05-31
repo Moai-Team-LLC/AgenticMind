@@ -58,6 +58,7 @@ import {
 } from "@agenticmind/shared/lib/knowledge/synth"
 import {
   Attr,
+  recordChildSpan,
   setInput,
   setOutput,
   SpanKind,
@@ -242,6 +243,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
 
   // Hybrid retrieval over chunks.
   ts = Date.now()
+  const retrieveStartMs = ts
   const pool = Math.max(topK, Math.min(topK * 3, 30))
   const vectorHits = await searchChunks({ tx: props.tx, queryEmbedding: queryVec, limit: pool })
   if (vectorHits.isErr()) {
@@ -291,6 +293,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     s.number = i + 1
   }
   mark("rerank", ts)
+  recordChildSpan("retrieve", SpanKind.RETRIEVER, retrieveStartMs, Date.now(), {
+    [Attr.RETRIEVAL_DOC_COUNT]: sources.length,
+  })
 
   // Tier-2: optional graph-context prelude (best-effort).
   let graphContext: GraphContextRow[] = []
@@ -320,6 +325,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   }
   const generationMs = Date.now() - ts
   mark("synth", ts)
+  recordChildSpan("synthesize", SpanKind.LLM, ts, ts + generationMs, {
+    [Attr.LLM_MODEL]: model,
+  })
 
   // Output guard: a grounded answer must never echo the system prompt. On a
   // Leak we drop the answer (and its citations) for a safe fallback.

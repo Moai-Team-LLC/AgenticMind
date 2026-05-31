@@ -63,6 +63,29 @@ export const withSpan = <T>(
     }
   })
 
+/**
+ * Emits an already-finished child span with explicit start/end (epoch ms) under
+ * the current active span. For instrumenting a phase that already completed
+ * (timed via Date.now()) without restructuring control flow — a no-op unless an
+ * exporter is registered.
+ */
+export const recordChildSpan = (
+  name: string,
+  kind: SpanKind,
+  startMs: number,
+  endMs: number,
+  attributes?: Record<string, string | number | boolean>,
+): void => {
+  const span = tracer.startSpan(name, { startTime: startMs })
+  span.setAttribute(Attr.SPAN_KIND, kind)
+  if (attributes !== undefined) {
+    for (const [key, value] of Object.entries(attributes)) {
+      span.setAttribute(key, value)
+    }
+  }
+  span.end(endMs)
+}
+
 /** Sets an input.value attribute (capped). */
 export const setInput = (span: Span, value: string): void => {
   span.setAttribute(Attr.INPUT_VALUE, cap(value))
