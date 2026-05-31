@@ -1,6 +1,6 @@
 /**
  * Input guardrails — fail-closed, regex-first (cheap, no LLM). Two checks:
- *   - prompt-injection / jailbreak detection (top EN patterns)
+ *   - prompt-injection / jailbreak detection (EN + RU patterns)
  *   - PII detection + redaction (email, phone, card, SSN, IPv4)
  *
  * `guardInput` gates the agent-facing surface: kl_ask_global blocks injected
@@ -8,8 +8,12 @@
  * (no nested quantifiers -> no ReDoS), so it's unit-tested and trivially fast.
  */
 
-/** Prompt-injection / jailbreak markers. Linear patterns only. */
+/** Prompt-injection / jailbreak markers. Linear patterns only (bounded
+ * quantifiers, no nesting -> no ReDoS). EN + RU, since the corpus and agents are
+ * multilingual; the RU patterns avoid `\b` (which keys off ASCII word chars and
+ * does not fire around Cyrillic). */
 const INJECTION_PATTERNS: readonly RegExp[] = [
+  // English
   /ignore\s+(all\s+)?(the\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)/i,
   /disregard\s+(the\s+)?(above|previous|prior|system|earlier)/i,
   /forget\s+(everything|all|your|the)\b/i,
@@ -19,6 +23,17 @@ const INJECTION_PATTERNS: readonly RegExp[] = [
   /\b(jailbreak|DAN\s+mode|developer\s+mode)\b/i,
   /override\s+(the\s+)?(rules?|instructions?|system)/i,
   /\bnew\s+instructions?\s*:/i,
+  /system\s+prompt/i,
+  // Russian
+  /игнорир[а-яё]*\s+[а-яё\s]{0,30}?(инструкц|указани|правил|промпт)/iu,
+  /забуд[а-яё]*\s+[а-яё\s]{0,20}?(инструкц|правил|указани|промпт|контекст|вс[её])/iu,
+  /ты\s+(теперь|больше\s+не|отныне)/iu,
+  /(покаж|раскро|выв[еэ]д|повтори|сообщи|напечат)[а-яё]*\s+[а-яё\s]{0,20}?(систем[а-яё]*\s*)?промпт/iu,
+  /(притвор[а-яё]*|прикинься|веди\s+себя\s+как\s+будто|сыгра[а-яё]+\s+роль)/iu,
+  /(обойд|обход|отключ|сними|сброс)[а-яё]*\s+[а-яё\s]{0,20}?(правил|ограничени|инструкц|фильтр|цензур|защит)/iu,
+  /нов[а-яё]+\s+(инструкц|указани|правил)[а-яё]*\s*:/iu,
+  /у\s+теб[яе]\s+нет\s+[а-яё\s]{0,20}?(правил|ограничени|инструкц|фильтр)/iu,
+  /(джейлбрейк|режим\s+разработчика)/iu,
 ]
 
 export const detectInjection = (text: string): { injection: boolean; pattern?: string } => {
