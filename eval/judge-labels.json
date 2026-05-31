@@ -93,5 +93,555 @@
     "id": "std-ungrounded-uncited",
     "input": "Q: Max active tools per agent? A: Around 20, I think. Citations: none.",
     "expected": false
+  },
+  {
+    "id": "auto-grounded-1",
+    "input": "Q: What share of a production agent's reliability lives in the harness rather than the model? A: 98% [1]. Citations: [1] Agentic Product Standard (states \"98%\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-1",
+    "input": "Q: What share of a production agent's reliability lives in the harness rather than the model? A: Probably 98%, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-2",
+    "input": "Q: What is the recommended maximum context-window utilization in a typical cycle? A: 40% [1]. Citations: [1] Agentic Product Standard (states \"40%\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-2",
+    "input": "Q: What is the recommended maximum context-window utilization in a typical cycle? A: Probably 40%, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-3",
+    "input": "Q: What eval pass rate must a level reach before climbing the autonomy ladder? A: 90% [1]. Citations: [1] Agentic Product Standard (states \"90%\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-3",
+    "input": "Q: What eval pass rate must a level reach before climbing the autonomy ladder? A: Probably 90%, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-4",
+    "input": "Q: How many human-labeled examples at minimum are needed to calibrate an LLM judge? A: 100 [1]. Citations: [1] Agentic Product Standard (states \"100\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-4",
+    "input": "Q: How many human-labeled examples at minimum are needed to calibrate an LLM judge? A: Probably 100, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-5",
+    "input": "Q: What is the minimum eval set size per top-priority failure mode? A: 50 [1]. Citations: [1] Agentic Product Standard (states \"50\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-5",
+    "input": "Q: What is the minimum eval set size per top-priority failure mode? A: Probably 50, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-6",
+    "input": "Q: Which durable-execution engine does the standard call the industry standard? A: Temporal [1]. Citations: [1] Agentic Product Standard (states \"Temporal\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-6",
+    "input": "Q: Which durable-execution engine does the standard call the industry standard? A: Probably Temporal, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-7",
+    "input": "Q: Which memory option suits evolving facts and a temporal knowledge graph? A: Zep [1]. Citations: [1] Agentic Product Standard (states \"Zep\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-7",
+    "input": "Q: Which memory option suits evolving facts and a temporal knowledge graph? A: Probably Zep, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-8",
+    "input": "Q: Roughly how many MCP servers existed by early 2026? A: 10,000 [1]. Citations: [1] Agentic Product Standard (states \"10,000\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-8",
+    "input": "Q: Roughly how many MCP servers existed by early 2026? A: Probably 10,000, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-9",
+    "input": "Q: Roughly how many MCP tools existed by early 2026? A: 177,000 [1]. Citations: [1] Agentic Product Standard (states \"177,000\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-9",
+    "input": "Q: Roughly how many MCP tools existed by early 2026? A: Probably 177,000, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-10",
+    "input": "Q: How many active tools per agent before switching to RAG-MCP or routing? A: 20 active tools [1]. Citations: [1] Agentic Product Standard (states \"20 active tools\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-10",
+    "input": "Q: How many active tools per agent before switching to RAG-MCP or routing? A: Probably 20 active tools, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-11",
+    "input": "Q: What kind of output must an LLM judge always return? A: binary [1]. Citations: [1] Agentic Product Standard (states \"binary\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-11",
+    "input": "Q: What kind of output must an LLM judge always return? A: Probably binary, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-12",
+    "input": "Q: For breadth-first, parallelizable tasks, which architecture is recommended? A: multi-agent [1]. Citations: [1] Agentic Product Standard (states \"multi-agent\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-12",
+    "input": "Q: For breadth-first, parallelizable tasks, which architecture is recommended? A: Probably multi-agent, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-13",
+    "input": "Q: For depth-first, coherent work like coding, which architecture is recommended? A: single-agent [1]. Citations: [1] Agentic Product Standard (states \"single-agent\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-13",
+    "input": "Q: For depth-first, coherent work like coding, which architecture is recommended? A: Probably single-agent, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-14",
+    "input": "Q: Should sub-agents return synthesis or the raw transcript? A: synthesis, not transcript [1]. Citations: [1] Agentic Product Standard (states \"synthesis, not transcript\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-14",
+    "input": "Q: Should sub-agents return synthesis or the raw transcript? A: Probably synthesis, not transcript, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-15",
+    "input": "Q: Which framework fits maximum control over complex stateful multi-vendor workflows? A: LangGraph [1]. Citations: [1] Agentic Product Standard (states \"LangGraph\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-15",
+    "input": "Q: Which framework fits maximum control over complex stateful multi-vendor workflows? A: Probably LangGraph, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-16",
+    "input": "Q: What is the first of the five composition patterns? A: Prompt Chaining [1]. Citations: [1] Agentic Product Standard (states \"Prompt Chaining\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-16",
+    "input": "Q: What is the first of the five composition patterns? A: Probably Prompt Chaining, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-17",
+    "input": "Q: What does the standard call its single most important rule? A: Architecture is what remains [1]. Citations: [1] Agentic Product Standard (states \"Architecture is what remains\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-17",
+    "input": "Q: What does the standard call its single most important rule? A: Probably Architecture is what remains, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-18",
+    "input": "Q: How must permissions be enforced? A: enforced by code [1]. Citations: [1] Agentic Product Standard (states \"enforced by code\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-18",
+    "input": "Q: How must permissions be enforced? A: Probably enforced by code, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-19",
+    "input": "Q: Which memory vendor is the general-purpose default? A: Mem0 [1]. Citations: [1] Agentic Product Standard (states \"Mem0\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-19",
+    "input": "Q: Which memory vendor is the general-purpose default? A: Probably Mem0, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-20",
+    "input": "Q: Which memory system offers tiered self-editing memory? A: Letta [1]. Citations: [1] Agentic Product Standard (states \"Letta\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-20",
+    "input": "Q: Which memory system offers tiered self-editing memory? A: Probably Letta, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-21",
+    "input": "Q: Which memory option is LangChain-native? A: LangMem [1]. Citations: [1] Agentic Product Standard (states \"LangMem\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-21",
+    "input": "Q: Which memory option is LangChain-native? A: Probably LangMem, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-22",
+    "input": "Q: Which framework emphasizes type-safety and FastAPI ergonomics? A: Pydantic AI [1]. Citations: [1] Agentic Product Standard (states \"Pydantic AI\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-22",
+    "input": "Q: Which framework emphasizes type-safety and FastAPI ergonomics? A: Probably Pydantic AI, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-23",
+    "input": "Q: Which framework is best for the fastest multi-agent prototype with explicit roles? A: CrewAI [1]. Citations: [1] Agentic Product Standard (states \"CrewAI\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-23",
+    "input": "Q: Which framework is best for the fastest multi-agent prototype with explicit roles? A: Probably CrewAI, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-24",
+    "input": "Q: Which framework is Anthropic-native, especially for coding and computer-use? A: Claude Agent SDK [1]. Citations: [1] Agentic Product Standard (states \"Claude Agent SDK\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-24",
+    "input": "Q: Which framework is Anthropic-native, especially for coding and computer-use? A: Probably Claude Agent SDK, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-25",
+    "input": "Q: Which framework suits document-heavy RAG at the core? A: LlamaIndex [1]. Citations: [1] Agentic Product Standard (states \"LlamaIndex\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-25",
+    "input": "Q: Which framework suits document-heavy RAG at the core? A: Probably LlamaIndex, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-26",
+    "input": "Q: Which framework targets TypeScript full-stack agentic apps? A: Mastra [1]. Citations: [1] Agentic Product Standard (states \"Mastra\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-26",
+    "input": "Q: Which framework targets TypeScript full-stack agentic apps? A: Probably Mastra, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-27",
+    "input": "Q: Which framework is for programmatic prompt optimization? A: DSPy [1]. Citations: [1] Agentic Product Standard (states \"DSPy\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-27",
+    "input": "Q: Which framework is for programmatic prompt optimization? A: Probably DSPy, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-28",
+    "input": "Q: Which framework is MCP-native and pairs with Temporal? A: mcp-agent [1]. Citations: [1] Agentic Product Standard (states \"mcp-agent\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-28",
+    "input": "Q: Which framework is MCP-native and pairs with Temporal? A: Probably mcp-agent, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-29",
+    "input": "Q: Which observability tool is OSS / self-hosted and vendor-neutral? A: Langfuse [1]. Citations: [1] Agentic Product Standard (states \"Langfuse\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-29",
+    "input": "Q: Which observability tool is OSS / self-hosted and vendor-neutral? A: Probably Langfuse, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-30",
+    "input": "Q: Which observability tool is suited to eval-driven CI/CD deploy gating? A: Braintrust [1]. Citations: [1] Agentic Product Standard (states \"Braintrust\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-30",
+    "input": "Q: Which observability tool is suited to eval-driven CI/CD deploy gating? A: Probably Braintrust, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-31",
+    "input": "Q: Which observability tool is OpenTelemetry-native with ML monitoring lineage? A: Phoenix [1]. Citations: [1] Agentic Product Standard (states \"Phoenix\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-31",
+    "input": "Q: Which observability tool is OpenTelemetry-native with ML monitoring lineage? A: Probably Phoenix, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-32",
+    "input": "Q: Through which conventions should you instrument to stay vendor-neutral? A: OpenInference [1]. Citations: [1] Agentic Product Standard (states \"OpenInference\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-32",
+    "input": "Q: Through which conventions should you instrument to stay vendor-neutral? A: Probably OpenInference, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-33",
+    "input": "Q: What is the agent-to-agent standard called? A: A2A [1]. Citations: [1] Agentic Product Standard (states \"A2A\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-33",
+    "input": "Q: What is the agent-to-agent standard called? A: Probably A2A, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-34",
+    "input": "Q: What accuracy lift does RAG-MCP give on correct tool selection? A: 3.2 [1]. Citations: [1] Agentic Product Standard (states \"3.2\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-34",
+    "input": "Q: What accuracy lift does RAG-MCP give on correct tool selection? A: Probably 3.2, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-35",
+    "input": "Q: What is mandatory for stable parts of the prompt like the system prompt? A: Prompt caching [1]. Citations: [1] Agentic Product Standard (states \"Prompt caching\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-35",
+    "input": "Q: What is mandatory for stable parts of the prompt like the system prompt? A: Probably Prompt caching, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-36",
+    "input": "Q: What is the generator-plus-critic composition pattern called? A: Evaluator-Optimizer [1]. Citations: [1] Agentic Product Standard (states \"Evaluator-Optimizer\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-36",
+    "input": "Q: What is the generator-plus-critic composition pattern called? A: Probably Evaluator-Optimizer, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-37",
+    "input": "Q: Which 2025 incident is cited as proof that permissions must be in code? A: Replit [1]. Citations: [1] Agentic Product Standard (states \"Replit\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-37",
+    "input": "Q: Which 2025 incident is cited as proof that permissions must be in code? A: Probably Replit, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-38",
+    "input": "Q: Who authored 'Don't Build Multi-Agents'? A: Walden Yan [1]. Citations: [1] Agentic Product Standard (states \"Walden Yan\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-38",
+    "input": "Q: Who authored 'Don't Build Multi-Agents'? A: Probably Walden Yan, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-39",
+    "input": "Q: Who is associated with the 12 Factor Agents methodology? A: Horthy [1]. Citations: [1] Agentic Product Standard (states \"Horthy\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-39",
+    "input": "Q: Who is associated with the 12 Factor Agents methodology? A: Probably Horthy, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-40",
+    "input": "Q: Who is the lead voice on eval methodology from Parlance Labs? A: Husain [1]. Citations: [1] Agentic Product Standard (states \"Husain\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-40",
+    "input": "Q: Who is the lead voice on eval methodology from Parlance Labs? A: Probably Husain, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-41",
+    "input": "Q: Who is credited with the four agentic design patterns? A: Andrew Ng [1]. Citations: [1] Agentic Product Standard (states \"Andrew Ng\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-41",
+    "input": "Q: Who is credited with the four agentic design patterns? A: Probably Andrew Ng, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-42",
+    "input": "Q: Which simpler durable-execution option is suggested for TypeScript teams? A: Inngest [1]. Citations: [1] Agentic Product Standard (states \"Inngest\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-42",
+    "input": "Q: Which simpler durable-execution option is suggested for TypeScript teams? A: Probably Inngest, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-43",
+    "input": "Q: What kind of judge scale breaks alignment and should be avoided? A: Likert [1]. Citations: [1] Agentic Product Standard (states \"Likert\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-43",
+    "input": "Q: What kind of judge scale breaks alignment and should be avoided? A: Probably Likert, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-44",
+    "input": "Q: What is level L0 of the autonomy ladder? A: Single LLM call [1]. Citations: [1] Agentic Product Standard (states \"Single LLM call\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-44",
+    "input": "Q: What is level L0 of the autonomy ladder? A: Probably Single LLM call, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-45",
+    "input": "Q: What is the highest level (L4) of the autonomy ladder? A: Autonomous Agent Loop [1]. Citations: [1] Agentic Product Standard (states \"Autonomous Agent Loop\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-45",
+    "input": "Q: What is the highest level (L4) of the autonomy ladder? A: Probably Autonomous Agent Loop, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-46",
+    "input": "Q: What is the second composition pattern, a classifier plus dispatcher? A: Routing [1]. Citations: [1] Agentic Product Standard (states \"Routing\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-46",
+    "input": "Q: What is the second composition pattern, a classifier plus dispatcher? A: Probably Routing, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-47",
+    "input": "Q: What is the fan-out composition pattern called? A: Parallelization [1]. Citations: [1] Agentic Product Standard (states \"Parallelization\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-47",
+    "input": "Q: What is the fan-out composition pattern called? A: Probably Parallelization, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-48",
+    "input": "Q: What is the central-planner-plus-dynamic-workers pattern called? A: Orchestrator-Workers [1]. Citations: [1] Agentic Product Standard (states \"Orchestrator-Workers\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-48",
+    "input": "Q: What is the central-planner-plus-dynamic-workers pattern called? A: Probably Orchestrator-Workers, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-49",
+    "input": "Q: Who is cited as the enterprise agentic operations voice from Sierra? A: Bret Taylor [1]. Citations: [1] Agentic Product Standard (states \"Bret Taylor\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-49",
+    "input": "Q: Who is cited as the enterprise agentic operations voice from Sierra? A: Probably Bret Taylor, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-50",
+    "input": "Q: Which restate-like option is named alongside Inngest for TS teams? A: Restate [1]. Citations: [1] Agentic Product Standard (states \"Restate\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-50",
+    "input": "Q: Which restate-like option is named alongside Inngest for TS teams? A: Probably Restate, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-51",
+    "input": "Q: What formats from the training distribution are preferred over custom DSLs? A: Markdown diffs [1]. Citations: [1] Agentic Product Standard (states \"Markdown diffs\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-51",
+    "input": "Q: What formats from the training distribution are preferred over custom DSLs? A: Probably Markdown diffs, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-52",
+    "input": "Q: What does the closing call the standard — a tilt of what? A: tilt of the field [1]. Citations: [1] Agentic Product Standard (states \"tilt of the field\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-52",
+    "input": "Q: What does the closing call the standard — a tilt of what? A: Probably tilt of the field, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-53",
+    "input": "Q: Which company's research feature is cited for orchestrator-worker with a citation pass? A: Anthropic [1]. Citations: [1] Agentic Product Standard (states \"Anthropic\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-53",
+    "input": "Q: Which company's research feature is cited for orchestrator-worker with a citation pass? A: Probably Anthropic, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-54",
+    "input": "Q: Which coding agent is cited for single-threaded design and the RPI framework? A: Devin [1]. Citations: [1] Agentic Product Standard (states \"Devin\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-54",
+    "input": "Q: Which coding agent is cited for single-threaded design and the RPI framework? A: Probably Devin, but I'm not certain. Citations: none.",
+    "expected": false
+  },
+  {
+    "id": "auto-grounded-55",
+    "input": "Q: What is the title of Anthropic's Dec 2024 vocabulary-of-patterns paper? A: Building Effective Agents [1]. Citations: [1] Agentic Product Standard (states \"Building Effective Agents\").",
+    "expected": true
+  },
+  {
+    "id": "auto-uncited-55",
+    "input": "Q: What is the title of Anthropic's Dec 2024 vocabulary-of-patterns paper? A: Probably Building Effective Agents, but I'm not certain. Citations: none.",
+    "expected": false
   }
 ]

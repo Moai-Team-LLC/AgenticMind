@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "dotenvx run -f .env.local -- bun scripts/eval.ts",
+    "build-eval": "bun scripts/build-eval-cases.ts",
     "seed-eval": "dotenvx run -f .env.local -- bun scripts/seed-eval-corpus.ts",
     "reembed": "dotenvx run -f .env.local -- bun scripts/reembed.ts",
     "calibrate": "dotenvx run -f .env.local -- bun scripts/calibrate.ts",
