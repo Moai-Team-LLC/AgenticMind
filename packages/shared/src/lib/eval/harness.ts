@@ -66,35 +66,48 @@ export const evaluateCase = async (
   const a = c.assertions
   const failures: string[] = []
 
-  if (a.expectBlocked === true && !obs.blocked) failures.push("expected the input to be blocked")
-  if (a.expectBlocked !== true && obs.blocked) failures.push("input was unexpectedly blocked")
+  if (a.expectBlocked === true && !obs.blocked) {
+    failures.push("expected the input to be blocked")
+  }
+  if (a.expectBlocked !== true && obs.blocked) {
+    failures.push("input was unexpectedly blocked")
+  }
 
   // Once blocked, answer-level assertions don't apply.
   if (!obs.blocked) {
     const nCit = obs.citations.length
-    if (a.minCitations !== undefined && nCit < a.minCitations)
+    if (a.minCitations !== undefined && nCit < a.minCitations) {
       failures.push(`expected >= ${a.minCitations} citations, got ${nCit}`)
-    if (a.maxCitations !== undefined && nCit > a.maxCitations)
+    }
+    if (a.maxCitations !== undefined && nCit > a.maxCitations) {
       failures.push(`expected <= ${a.maxCitations} citations, got ${nCit}`)
+    }
 
     for (const title of a.mustCiteMaterial ?? []) {
-      if (!obs.citations.some((cit) => includesCi(cit.title, title)))
+      if (!obs.citations.some((cit) => includesCi(cit.title, title))) {
         failures.push(`expected a citation to material matching "${title}"`)
+      }
     }
     for (const phrase of a.mustMention ?? []) {
-      if (!includesCi(obs.answer, phrase))
+      if (!includesCi(obs.answer, phrase)) {
         failures.push(`answer missing required phrase "${phrase}"`)
+      }
     }
     for (const phrase of a.forbidPhrases ?? []) {
-      if (includesCi(obs.answer, phrase))
+      if (includesCi(obs.answer, phrase)) {
         failures.push(`answer contains forbidden phrase "${phrase}"`)
+      }
     }
-    if (a.minAnswerChars !== undefined && obs.answer.length < a.minAnswerChars)
+    if (a.minAnswerChars !== undefined && obs.answer.length < a.minAnswerChars) {
       failures.push(`answer shorter than ${a.minAnswerChars} chars`)
+    }
 
     if (a.judge !== undefined) {
-      if (judge === undefined) failures.push("case has a judge assertion but no judge was provided")
-      else if (!(await judge(a.judge, obs))) failures.push(`judge rejected: ${a.judge}`)
+      if (judge === undefined) {
+        failures.push("case has a judge assertion but no judge was provided")
+      } else if (!(await judge(a.judge, obs))) {
+        failures.push(`judge rejected: ${a.judge}`)
+      }
     }
   }
 
@@ -112,12 +125,12 @@ export const runEvalSuite = async (
     let obs: EvalObservation
     try {
       obs = await ask(c.query)
-    } catch (e) {
+    } catch (error) {
       results.push({
         id: c.id,
         failureMode: c.failureMode,
         passed: false,
-        failures: [`ask threw: ${e instanceof Error ? e.message : String(e)}`],
+        failures: [`ask threw: ${error instanceof Error ? error.message : String(error)}`],
       })
       continue
     }
@@ -128,9 +141,13 @@ export const runEvalSuite = async (
   for (const r of results) {
     const b = (byFailureMode[r.failureMode] ??= { total: 0, passed: 0, passRate: 0 })
     b.total += 1
-    if (r.passed) b.passed += 1
+    if (r.passed) {
+      b.passed += 1
+    }
   }
-  for (const b of Object.values(byFailureMode)) b.passRate = b.total === 0 ? 1 : b.passed / b.total
+  for (const b of Object.values(byFailureMode)) {
+    b.passRate = b.total === 0 ? 1 : b.passed / b.total
+  }
 
   const passed = results.filter((r) => r.passed).length
   return {

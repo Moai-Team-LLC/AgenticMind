@@ -37,9 +37,14 @@ export const buildJudgeUser = (
 /** Tolerant parse of the judge's JSON (handles code fences). */
 export const parseJudgeResponse = (raw: string): JudgeResult => {
   let clean = raw.trim()
-  if (clean.startsWith("```json")) clean = clean.slice("```json".length)
-  else if (clean.startsWith("```")) clean = clean.slice(3)
-  if (clean.endsWith("```")) clean = clean.slice(0, -3)
+  if (clean.startsWith("```json")) {
+    clean = clean.slice("```json".length)
+  } else if (clean.startsWith("```")) {
+    clean = clean.slice(3)
+  }
+  if (clean.endsWith("```")) {
+    clean = clean.slice(0, -3)
+  }
   clean = clean.trim()
   let obj: { verdict?: unknown; rationale?: unknown }
   try {
@@ -72,6 +77,6 @@ export const confidenceForScore = (aggregateScore: number): number =>
 
 /** Rune-safe truncation to n characters. */
 export const truncate = (s: string, n: number): string => {
-  const runes = [...s]
+  const runes = Array.from(s)
   return runes.length <= n ? s : runes.slice(0, n).join("")
 }

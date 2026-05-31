@@ -10,6 +10,7 @@
  * (endpoint-level), kl_signal needs knowledge:signal (enforced in the tool).
  */
 
+import type { McpToolDeps } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import type { z } from "zod"
@@ -32,7 +33,6 @@ import {
   memWriteInput,
   klIngest,
   klIngestInput,
-  type McpToolDeps,
 } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import { createMcpHandler, withMcpAuth } from "mcp-handler"
 
@@ -49,14 +49,18 @@ type ToolResult = {
   isError?: boolean
 }
 
-const jsonContent = (value: unknown): ToolResult => ({
-  content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
-})
+const jsonContent = (value: unknown): ToolResult => {
+  return {
+    content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
+  }
+}
 
-const errorContent = (message: string): ToolResult => ({
-  content: [{ type: "text", text: message }],
-  isError: true,
-})
+const errorContent = (message: string): ToolResult => {
+  return {
+    content: [{ type: "text", text: message }],
+    isError: true,
+  }
+}
 
 type ToolExtra = { authInfo?: { scopes?: string[]; clientId?: string } }
 
@@ -91,7 +95,9 @@ const registerKlTool = <S extends z.ZodType>(
     extra: ToolExtra,
   ): Promise<ToolResult> => {
     const parsed = schema.safeParse(raw)
-    if (!parsed.success) return errorContent(`${name}: invalid arguments`)
+    if (!parsed.success) {
+      return errorContent(`${name}: invalid arguments`)
+    }
     return handle(parsed.data as z.infer<S>, extra)
   }) as never)
 }
@@ -107,8 +113,8 @@ const handler = createMcpHandler(
       async (args, extra) => {
         try {
           return jsonContent(await klSearch(toolDeps(extra), args))
-        } catch (e) {
-          return errorContent(e instanceof Error ? e.message : "kl_search failed")
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "kl_search failed")
         }
       },
     )
@@ -122,8 +128,8 @@ const handler = createMcpHandler(
       async (args, extra) => {
         try {
           return jsonContent(await klAskGlobal(toolDeps(extra), args))
-        } catch (e) {
-          return errorContent(e instanceof Error ? e.message : "kl_ask_global failed")
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "kl_ask_global failed")
         }
       },
     )
@@ -137,8 +143,8 @@ const handler = createMcpHandler(
       async (args, extra) => {
         try {
           return jsonContent(await klGetMaterial(toolDeps(extra), args))
-        } catch (e) {
-          return errorContent(e instanceof Error ? e.message : "kl_get_material failed")
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "kl_get_material failed")
         }
       },
     )
@@ -152,8 +158,8 @@ const handler = createMcpHandler(
       async (args, extra) => {
         try {
           return jsonContent(await klSignal(toolDeps(extra), args))
-        } catch (e) {
-          return errorContent(e instanceof Error ? e.message : "kl_signal failed")
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "kl_signal failed")
         }
       },
     )
@@ -167,8 +173,8 @@ const handler = createMcpHandler(
       async (args, extra) => {
         try {
           return jsonContent(await memRecall(toolDeps(extra), args))
-        } catch (e) {
-          return errorContent(e instanceof Error ? e.message : "mem_recall failed")
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "mem_recall failed")
         }
       },
     )
@@ -182,8 +188,8 @@ const handler = createMcpHandler(
       async (args, extra) => {
         try {
           return jsonContent(await memWrite(toolDeps(extra), args))
-        } catch (e) {
-          return errorContent(e instanceof Error ? e.message : "mem_write failed")
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "mem_write failed")
         }
       },
     )
@@ -197,8 +203,8 @@ const handler = createMcpHandler(
       async (args, extra) => {
         try {
           return jsonContent(await klIngest(toolDeps(extra), args))
-        } catch (e) {
-          return errorContent(e instanceof Error ? e.message : "kl_ingest failed")
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "kl_ingest failed")
         }
       },
     )
@@ -214,8 +220,10 @@ const handler = createMcpHandler(
         async (args, extra) => {
           try {
             return jsonContent(await klGraphNeighbors(toolDeps(extra), args))
-          } catch (e) {
-            return errorContent(e instanceof Error ? e.message : "kl_graph_neighbors failed")
+          } catch (error) {
+            return errorContent(
+              error instanceof Error ? error.message : "kl_graph_neighbors failed",
+            )
           }
         },
       )
@@ -226,9 +234,9 @@ const handler = createMcpHandler(
     capabilities: { tools: {} },
   },
   {
-    // mcp-handler mounts the streamable transport at `${basePath}/mcp`, so an
-    // empty basePath serves it at /mcp — the URL the README documents. (index.ts
-    // already routes /mcp here.)
+    // Mcp-handler mounts the streamable transport at `${basePath}/mcp`, so an
+    // Empty basePath serves it at /mcp — the URL the README documents. (index.ts
+    // Already routes /mcp here.)
     basePath: "",
     maxDuration: 60,
   },
@@ -236,14 +244,20 @@ const handler = createMcpHandler(
 
 /** Fail-closed bearer verification: signature + typ="mcp" + active jti. */
 const verifyMcpAccess = async (_req: Request, bearer?: string): Promise<AuthInfo | undefined> => {
-  if (bearer === undefined || bearer === "") return undefined
+  if (bearer === undefined || bearer === "") {
+    return undefined
+  }
   const verified = await verifyMcpToken(bearer)
-  if (verified === null) return undefined
+  if (verified === null) {
+    return undefined
+  }
   const check = await checkMcpToken({ tx: getDb(), jti: verified.jti }).unwrapOr({
     active: false as const,
     reason: "unknown" as const,
   })
-  if (!check.active) return undefined
+  if (!check.active) {
+    return undefined
+  }
   const scopes = check.scopes.length > 0 ? check.scopes : ["knowledge:read"]
   return {
     token: bearer,

@@ -30,7 +30,7 @@ export const checkRateLimit = (props: {
             THEN now() ELSE rate_limits.window_start END
         RETURNING count`)
       const row = res.rows[0] as { count: number } | undefined
-      const count = Number(row?.count ?? 0)
+      const count = row?.count ?? 0
       return { allowed: count <= props.limit, count }
     })(),
     mapDatabaseError,

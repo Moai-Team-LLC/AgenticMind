@@ -11,7 +11,7 @@ import type { Transaction } from "@agenticmind/shared/database/client"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
-import type { CallerContext, MemberContext } from "@agenticmind/shared/lib/knowledge/synth"
+import type { CallerContext } from "@agenticmind/shared/lib/knowledge/synth"
 
 import { recordEvent } from "@agenticmind/shared/database/query/knowledge/ask-feedback"
 import { assertBelief, recallBeliefs } from "@agenticmind/shared/database/query/knowledge/beliefs"
@@ -39,7 +39,7 @@ export type McpToolDeps = {
   cardsEnabled?: boolean
   cacheEnabled?: boolean
   chatModel?: LlmModel
-  memberContext?: MemberContext | null
+  memberContext?: CallerContext | null
   /** Optional GraphRAG store (Postgres flagship / Neo4j swap-in);
    * kl_graph_neighbors is omitted when absent. */
   graph?: GraphStore
@@ -63,7 +63,9 @@ const resolveTitle = async (
   cache: Map<string, string>,
 ): Promise<string> => {
   const cached = cache.get(materialId)
-  if (cached !== undefined) return cached
+  if (cached !== undefined) {
+    return cached
+  }
   const res = await getMaterial({ tx, id: materialId })
   const title = res.isOk() && res.value !== null ? res.value.title : ""
   cache.set(materialId, title)
@@ -89,7 +91,7 @@ const enforceGuards = async (deps: McpToolDeps, tool: string, text: string): Pro
         tx: deps.tx,
         event: { actorUuid, tool, reason: "rate_limited" },
       }).unwrapOr([])
-      throw new Error(tool + ": rate limit exceeded")
+      throw new Error(`${tool}: rate limit exceeded`)
     }
   }
   const g = guardInput(text)
@@ -99,7 +101,7 @@ const enforceGuards = async (deps: McpToolDeps, tool: string, text: string): Pro
       tx: deps.tx,
       event: { actorUuid, tool, reason, inputHash: sha256hex(text) },
     }).unwrapOr([])
-    throw new Error(tool + " blocked: " + g.reason)
+    throw new Error(`${tool} blocked: ${g.reason}`)
   }
 }
 
@@ -108,7 +110,7 @@ export const klSearchInput = z.object({
   limit: z.number().int().positive().max(50).optional(),
 })
 
-/** kl_search — vector retrieval over the chunks index. */
+/** Kl_search — vector retrieval over the chunks index. */
 export const klSearch = async (
   deps: McpToolDeps,
   args: z.infer<typeof klSearchInput>,
@@ -119,9 +121,13 @@ export const klSearch = async (
   await enforceGuards(deps, "kl_search", args.q)
   const limit = args.limit !== undefined && args.limit > 0 && args.limit <= 50 ? args.limit : 10
   const embedded = await embedKnowledgeText(args.q)
-  if (embedded.isErr()) throw new Error(`kl_search: embed: ${embedded.error.message}`)
+  if (embedded.isErr()) {
+    throw new Error(`kl_search: embed: ${embedded.error.message}`)
+  }
   const hits = await searchChunks({ tx: deps.tx, queryEmbedding: embedded.value, limit })
-  if (hits.isErr()) throw new Error(`kl_search: ${hits.error.message}`)
+  if (hits.isErr()) {
+    throw new Error(`kl_search: ${hits.error.message}`)
+  }
   const titles = new Map<string, string>()
   const out = []
   for (const h of hits.value) {
@@ -146,14 +152,14 @@ export const klAskGlobalInput = z.object({
     .optional(),
 })
 
-/** kl_ask_global — RAG synthesis with citations (reuses the ask pipeline). */
+/** Kl_ask_global — RAG synthesis with citations (reuses the ask pipeline). */
 export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskGlobalInput>) => {
   await enforceGuards(deps, "kl_ask_global", args.question)
   // Caller context: host-supplied context merged with the agent's per-call
-  // intent/facts. Empty → the synth falls back to the bare system prompt.
+  // Intent/facts. Empty → the synth falls back to the bare system prompt.
   const callerContext: CallerContext = {
     kind: "agent",
-    ...(deps.memberContext ?? {}),
+    ...deps.memberContext,
     ...(args.intent !== undefined ? { intent: args.intent } : {}),
     ...(args.facts !== undefined ? { facts: args.facts } : {}),
   }
@@ -165,26 +171,32 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     cacheEnabled: deps.cacheEnabled,
     chatModel: deps.chatModel,
     // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
-    // provider when a graph store is configured.
+    // Provider when a graph store is configured.
     graphContext:
       deps.graph !== undefined
         ? createGraphContextProvider({ repo: deps.graph, chatModel: deps.chatModel })
         : undefined,
   })
-  if (answer.isErr()) throw new Error(`kl_ask_global: ${answer.error.message}`)
+  if (answer.isErr()) {
+    throw new Error(`kl_ask_global: ${answer.error.message}`)
+  }
   return answer.value
 }
 
 export const klGetMaterialInput = z.object({ id: z.string().min(1) })
 
-/** kl_get_material — fetch a single material's metadata by id. */
+/** Kl_get_material — fetch a single material's metadata by id. */
 export const klGetMaterial = async (
   deps: McpToolDeps,
   args: z.infer<typeof klGetMaterialInput>,
 ) => {
   const res = await getMaterial({ tx: deps.tx, id: args.id })
-  if (res.isErr()) throw new Error(`kl_get_material: ${res.error.message}`)
-  if (res.value === null) throw new Error("kl_get_material: not found")
+  if (res.isErr()) {
+    throw new Error(`kl_get_material: ${res.error.message}`)
+  }
+  if (res.value === null) {
+    throw new Error("kl_get_material: not found")
+  }
   return res.value
 }
 
@@ -193,7 +205,7 @@ export const klGraphNeighborsInput = z.object({
   limit: z.number().int().positive().max(50).optional(),
 })
 
-/** kl_graph_neighbors — materials sharing a graph entity with the seed. */
+/** Kl_graph_neighbors — materials sharing a graph entity with the seed. */
 export const klGraphNeighbors = async (
   deps: McpToolDeps,
   args: z.infer<typeof klGraphNeighborsInput>,
@@ -207,11 +219,14 @@ export const klGraphNeighbors = async (
     distance: number
   }[]
 }> => {
-  if (deps.graph === undefined)
+  if (deps.graph === undefined) {
     throw new Error("kl_graph_neighbors disabled: graphrag not configured")
+  }
   const limit = args.limit !== undefined && args.limit > 0 && args.limit <= 50 ? args.limit : 10
   const result = await deps.graph.neighbors(args.materialId, limit)
-  if (result.isErr()) throw new Error(`kl_graph_neighbors: ${result.error.message}`)
+  if (result.isErr()) {
+    throw new Error(`kl_graph_neighbors: ${result.error.message}`)
+  }
   const titles = new Map<string, string>()
   const neighbors = []
   for (const n of result.value) {
@@ -239,7 +254,7 @@ export const klSignalInput = z.object({
 })
 
 /**
- * kl_signal — an agent / eval / verifier emits a programmatic feedback signal
+ * Kl_signal — an agent / eval / verifier emits a programmatic feedback signal
  * on a prior answer. This is what makes the compounding loop self-improve
  * without a human: signals feed the same clustering → judge → resolution-card
  * promotion path that human thumbs do. Only agent signals are accepted here.
@@ -248,11 +263,15 @@ export const klSignal = async (
   deps: McpToolDeps,
   args: z.infer<typeof klSignalInput>,
 ): Promise<{ ok: true; askId: string; signal: string; strength: number }> => {
-  if (!hasScope(deps.scopes, "knowledge:signal"))
+  if (!hasScope(deps.scopes, "knowledge:signal")) {
     throw new Error("kl_signal: missing required scope 'knowledge:signal'")
-  if (!isValidSignal(args.signal)) throw new Error(`kl_signal: unknown signal '${args.signal}'`)
-  if (!isAgentSignal(args.signal))
+  }
+  if (!isValidSignal(args.signal)) {
+    throw new Error(`kl_signal: unknown signal '${args.signal}'`)
+  }
+  if (!isAgentSignal(args.signal)) {
     throw new Error(`kl_signal: '${args.signal}' is not an agent signal`)
+  }
   const strength = args.strength ?? defaultStrengthFor(args.signal)
   const res = await recordEvent({
     tx: deps.tx,
@@ -265,7 +284,9 @@ export const klSignal = async (
       metadata: args.note !== undefined && args.note !== "" ? { note: args.note } : {},
     },
   })
-  if (res.isErr()) throw new Error(`kl_signal: ${res.error.message}`)
+  if (res.isErr()) {
+    throw new Error(`kl_signal: ${res.error.message}`)
+  }
   return { ok: true, askId: args.askId, signal: args.signal, strength }
 }
 
@@ -283,7 +304,7 @@ export const memWriteInput = z.object({
 })
 
 /**
- * mem_write — the calling agent records a belief into its PRIVATE memory.
+ * Mem_write — the calling agent records a belief into its PRIVATE memory.
  * Belief-revision-aware: a contradicting claim on the same (subject,predicate)
  * supersedes the old one non-destructively (the history stays replayable).
  * Corroborated private beliefs are later consolidated into shared memory by the
@@ -293,15 +314,18 @@ export const memWrite = async (
   deps: McpToolDeps,
   args: z.infer<typeof memWriteInput>,
 ): Promise<{ id: string; revised: boolean }> => {
-  if (!hasScope(deps.scopes, "memory:write"))
+  if (!hasScope(deps.scopes, "memory:write")) {
     throw new Error("mem_write: missing required scope 'memory:write'")
+  }
   const actorUuid = deps.actorUuid ?? null
-  if (actorUuid === null) throw new Error("mem_write: no agent identity on the token")
+  if (actorUuid === null) {
+    throw new Error("mem_write: no agent identity on the token")
+  }
 
-  await enforceGuards(deps, "mem_write", args.subject + " " + args.predicate + " " + args.object)
+  await enforceGuards(deps, "mem_write", `${args.subject} ${args.predicate} ${args.object}`)
   const redactRes = redactPii(args.object)
   const object = redactRes.redacted
-  if (redactRes.found.length > 0)
+  if (redactRes.found.length > 0) {
     await recordGuardEvent({
       tx: deps.tx,
       event: {
@@ -311,11 +335,14 @@ export const memWrite = async (
         inputHash: sha256hex(args.object),
       },
     }).unwrapOr([])
+  }
 
   let embedding: number[] | null = null
   if (args.embed !== false) {
     const e = await embedKnowledgeText(`${args.subject} ${args.predicate} ${args.object}`)
-    if (e.isOk()) embedding = e.value
+    if (e.isOk()) {
+      embedding = e.value
+    }
   }
 
   const res = await assertBelief({
@@ -331,7 +358,9 @@ export const memWrite = async (
       embedding,
     },
   })
-  if (res.isErr()) throw new Error(`mem_write: ${res.error.message}`)
+  if (res.isErr()) {
+    throw new Error(`mem_write: ${res.error.message}`)
+  }
   return { id: res.value.id, revised: res.value.supersedes !== null }
 }
 
@@ -341,25 +370,28 @@ export const memRecallInput = z.object({
   /** Semantic query — recall the most relevant beliefs (optional). */
   query: z.string().max(500).optional(),
   /** Time-travel: what was believed at this ISO instant (transaction time). */
-  asOf: z.string().datetime().optional(),
+  asOf: z.iso.datetime().optional(),
   /** Include shared/collective beliefs alongside the agent's own (default true). */
   includeShared: z.boolean().optional(),
   limit: z.number().int().positive().max(50).optional(),
 })
 
 /**
- * mem_recall — recall the calling agent's beliefs, optionally unioned with the
+ * Mem_recall — recall the calling agent's beliefs, optionally unioned with the
  * shared/collective memory, by subject or semantic similarity, optionally as of
  * a past instant (belief time-travel). Requires the memory:read scope.
  */
 export const memRecall = async (deps: McpToolDeps, args: z.infer<typeof memRecallInput>) => {
-  if (!hasScope(deps.scopes, "memory:read"))
+  if (!hasScope(deps.scopes, "memory:read")) {
     throw new Error("mem_recall: missing required scope 'memory:read'")
+  }
 
   let queryEmbedding: number[] | undefined
   if (args.query !== undefined && args.query !== "") {
     const e = await embedKnowledgeText(args.query)
-    if (e.isOk()) queryEmbedding = e.value
+    if (e.isOk()) {
+      queryEmbedding = e.value
+    }
   }
 
   const res = await recallBeliefs({
@@ -371,24 +403,29 @@ export const memRecall = async (deps: McpToolDeps, args: z.infer<typeof memRecal
     asOf: args.asOf !== undefined ? new Date(args.asOf) : undefined,
     limit: args.limit,
   })
-  if (res.isErr()) throw new Error(`mem_recall: ${res.error.message}`)
+  if (res.isErr()) {
+    throw new Error(`mem_recall: ${res.error.message}`)
+  }
   return { beliefs: res.value }
 }
 
 export const klIngestInput = z.object({
   title: z.string().min(1).max(300),
-  text: z.string().min(1).max(200000),
+  text: z.string().min(1).max(200_000),
 })
 
 /**
- * kl_ingest -- push text into the knowledge base (chunk + embed + cards +
+ * Kl_ingest -- push text into the knowledge base (chunk + embed + cards +
  * graph). Requires knowledge:write. Later kl_ask_global / kl_search can cite it.
  */
 export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestInput>) => {
-  if (!hasScope(deps.scopes, "knowledge:write"))
+  if (!hasScope(deps.scopes, "knowledge:write")) {
     throw new Error("kl_ingest: missing required scope 'knowledge:write'")
-  await enforceGuards(deps, "kl_ingest", args.title + " " + args.text.slice(0, 2000))
-  if (deps.blobStore === undefined) throw new Error("kl_ingest: blob store not configured")
+  }
+  await enforceGuards(deps, "kl_ingest", `${args.title} ${args.text.slice(0, 2000)}`)
+  if (deps.blobStore === undefined) {
+    throw new Error("kl_ingest: blob store not configured")
+  }
   const res = await ingestText({
     tx: deps.tx,
     blobStore: deps.blobStore,
@@ -398,7 +435,9 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
     cardsEnabled: deps.cardsEnabled,
     graphragEnabled: deps.graph !== undefined,
   })
-  if (res.isErr()) throw new Error("kl_ingest: " + res.error.message)
+  if (res.isErr()) {
+    throw new Error(`kl_ingest: ${res.error.message}`)
+  }
   return res.value
 }
 

@@ -44,7 +44,9 @@ import { and, desc, eq, isNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 export type PromoterError = { readonly type: "promoter_error"; readonly message: string }
-const promoterError = (message: string): PromoterError => ({ type: "promoter_error", message })
+const promoterError = (message: string): PromoterError => {
+  return { type: "promoter_error", message }
+}
 
 const SENTINEL_MATERIAL_TITLE = "[community-resolutions]"
 
@@ -61,7 +63,9 @@ const fetchBestAnswer = async (tx: Transaction, clusterId: string): Promise<Best
     .groupBy(askClusterMembers.askId)
     .orderBy(desc(strengthSum))
     .limit(1)
-  if (top === undefined) return null
+  if (top === undefined) {
+    return null
+  }
 
   const [ans] = await tx
     .select({ answerText: answerCache.answerText, citationsJson: answerCache.citationsJson })
@@ -75,14 +79,17 @@ const fetchBestAnswer = async (tx: Transaction, clusterId: string): Promise<Best
     )
     .where(eq(askTelemetry.id, top.askId))
     .limit(1)
-  if (ans?.answerText === undefined || ans.answerText === null) return null
+  if (ans?.answerText === undefined || ans.answerText === null) {
+    return null
+  }
 
-  const rawCitations =
-    (ans.citationsJson as Array<{ title?: string; snippet?: string }> | null) ?? []
-  const citations: JudgeCitation[] = rawCitations.map((c) => ({
-    title: c.title ?? "",
-    snippet: c.snippet ?? "",
-  }))
+  const rawCitations = (ans.citationsJson as { title?: string; snippet?: string }[] | null) ?? []
+  const citations: JudgeCitation[] = rawCitations.map((c) => {
+    return {
+      title: c.title ?? "",
+      snippet: c.snippet ?? "",
+    }
+  })
   return { answer: ans.answerText, citations }
 }
 
@@ -93,7 +100,9 @@ const ensureSentinelMaterial = async (tx: Transaction): Promise<string> => {
     .from(materials)
     .where(eq(materials.title, SENTINEL_MATERIAL_TITLE))
     .limit(1)
-  if (found !== undefined) return found.id
+  if (found !== undefined) {
+    return found.id
+  }
   const [created] = await tx
     .insert(materials)
     .values({ title: SENTINEL_MATERIAL_TITLE, source: "manual", status: "embedded" })
@@ -111,8 +120,9 @@ const defaultJudge =
       model: chatModel,
       purpose: "feedback judge",
     })
-    if (completion.isErr())
+    if (completion.isErr()) {
       return { verdict: "unknown", rationale: `judge transport error: ${completion.error.message}` }
+    }
     return parseJudgeResponse(completion.value)
   }
 
@@ -143,7 +153,9 @@ export const sweepPromoteClusters = (props: {
   return ResultAsync.fromPromise(
     (async (): Promise<PromoteResult> => {
       const readyResult = await listReadyClusters({ tx: props.tx, limit: maxPerSweep })
-      if (readyResult.isErr()) throw new Error(readyResult.error.message)
+      if (readyResult.isErr()) {
+        throw new Error(readyResult.error.message)
+      }
       const ready = readyResult.value
 
       let promoted = 0
@@ -170,7 +182,9 @@ export const sweepPromoteClusters = (props: {
         })
         judged++
 
-        if (!judgeAllowsPromotion(verdict)) continue
+        if (!judgeAllowsPromotion(verdict)) {
+          continue
+        }
 
         // Embed the answer (best-effort) so the card lands in vector retrieval.
         const embedded = await embedKnowledgeText(best.answer, "resolution card embed")

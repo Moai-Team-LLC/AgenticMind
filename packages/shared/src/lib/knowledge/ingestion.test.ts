@@ -31,7 +31,7 @@ describe("buildObjectKey", () => {
     expect(buildObjectKey("abc-123", "report.pdf")).toBe("manual/abc-123/report.pdf")
   })
   it("strips directory components (incl. backslashes)", () => {
-    expect(buildObjectKey("id", "C:\\Users\\a\\file.docx")).toBe("manual/id/file.docx")
+    expect(buildObjectKey("id", String.raw`C:\Users\a\file.docx`)).toBe("manual/id/file.docx")
     expect(buildObjectKey("id", "/var/tmp/x.csv")).toBe("manual/id/x.csv")
   })
   it("falls back to 'blob' for empty/dot names", () => {

@@ -9,13 +9,14 @@
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
+import type { BeliefClaim } from "@agenticmind/shared/lib/knowledge/belief"
 
 import {
   assertBelief,
   currentBeliefsFor,
   findConsolidationCandidates,
 } from "@agenticmind/shared/database/query/knowledge/beliefs"
-import { resolveConflict, type BeliefClaim } from "@agenticmind/shared/lib/knowledge/belief"
+import { resolveConflict } from "@agenticmind/shared/lib/knowledge/belief"
 import { ResultAsync } from "neverthrow"
 
 export const sweepConsolidateBeliefs = (props: {
@@ -42,14 +43,16 @@ export const sweepConsolidateBeliefs = (props: {
 
         const claims: BeliefClaim[] = rows
           .filter((r) => r.actorUuid !== null)
-          .map((r) => ({
-            actorUuid: r.actorUuid,
-            subject: r.subject,
-            predicate: r.predicate,
-            object: r.object,
-            confidence: r.confidence,
-            recordedAt: r.recordedAt ?? undefined,
-          }))
+          .map((r) => {
+            return {
+              actorUuid: r.actorUuid,
+              subject: r.subject,
+              predicate: r.predicate,
+              object: r.object,
+              confidence: r.confidence,
+              recordedAt: r.recordedAt ?? undefined,
+            }
+          })
 
         const resolved = resolveConflict(claims)
         if (resolved !== null && resolved.corroborators >= minActors) {
@@ -65,7 +68,9 @@ export const sweepConsolidateBeliefs = (props: {
             },
             revise: true,
           })
-          if (w.isOk()) consolidated += 1
+          if (w.isOk()) {
+            consolidated += 1
+          }
         }
       }
       return { scanned: candidates.length, consolidated }

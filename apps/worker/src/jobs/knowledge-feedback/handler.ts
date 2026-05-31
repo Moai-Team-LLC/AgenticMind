@@ -5,8 +5,8 @@ import { sweepFeedbackClusters } from "@agenticmind/shared/lib/knowledge/feedbac
 import { sweepPromoteClusters } from "@agenticmind/shared/lib/knowledge/feedback-promoter"
 
 // Re-scan window: each run reconsiders the last 7 days of asks. The builder only
-// touches un-clustered rows and AddMember is idempotent, so re-scanning is cheap
-// and self-healing across restarts.
+// Touches un-clustered rows and AddMember is idempotent, so re-scanning is cheap
+// And self-healing across restarts.
 const LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000
 
 /**
@@ -24,26 +24,36 @@ export const runKnowledgeFeedbackSweep = async (db: Transaction): Promise<void> 
   const since = new Date(Date.now() - LOOKBACK_MS)
   const built = await sweepFeedbackClusters({ tx: db, since })
   built.match(
-    (r) =>
+    (r) => {
       console.log(
         `[KNOWLEDGE_FEEDBACK] builder: scanned=${r.scanned} joined=${r.joined} new=${r.newClusters}`,
-      ),
-    (e) => console.error(`[KNOWLEDGE_FEEDBACK] builder failed:`, e),
+      )
+    },
+    (e) => {
+      console.error(`[KNOWLEDGE_FEEDBACK] builder failed:`, e)
+    },
   )
 
   const promoted = await sweepPromoteClusters({ tx: db })
   promoted.match(
-    (r) =>
+    (r) => {
       console.log(
         `[KNOWLEDGE_FEEDBACK] promoter: promoted=${r.promoted} judged=${r.judged} skipped=${r.skipped}`,
-      ),
-    (e) => console.error(`[KNOWLEDGE_FEEDBACK] promoter failed:`, e),
+      )
+    },
+    (e) => {
+      console.error(`[KNOWLEDGE_FEEDBACK] promoter failed:`, e)
+    },
   )
 
   // Memory consolidation: corroborated private beliefs → shared/collective memory.
   const consolidated = await sweepConsolidateBeliefs({ tx: db })
   consolidated.match(
-    (r) => console.log(`[BELIEF] consolidate: scanned=${r.scanned} consolidated=${r.consolidated}`),
-    () => {},
+    (r) => {
+      console.log(`[BELIEF] consolidate: scanned=${r.scanned} consolidated=${r.consolidated}`)
+    },
+    () => {
+      // Consolidation is best-effort; failures are non-fatal and already logged upstream.
+    },
   )
 }

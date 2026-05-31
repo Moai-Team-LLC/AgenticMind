@@ -24,7 +24,9 @@ import { and, asc, eq, gt, isNull } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 export type BuilderError = { readonly type: "builder_error"; readonly message: string }
-const builderError = (message: string): BuilderError => ({ type: "builder_error", message })
+const builderError = (message: string): BuilderError => {
+  return { type: "builder_error", message }
+}
 
 export type SweepResult = {
   scanned: number
@@ -85,11 +87,15 @@ export const sweepFeedbackClusters = (props: {
 
       for (const row of rows) {
         // The cache LEFT JOIN can duplicate a telemetry row if >1 active cache
-        // entry shares a hash — process each ask once.
-        if (seenAsk.has(row.askId)) continue
+        // Entry shares a hash — process each ask once.
+        if (seenAsk.has(row.askId)) {
+          continue
+        }
         seenAsk.add(row.askId)
         scanned++
-        if (row.createdAt.getTime() > maxSeen.getTime()) maxSeen = row.createdAt
+        if (row.createdAt.getTime() > maxSeen.getTime()) {
+          maxSeen = row.createdAt
+        }
 
         let emb = row.questionEmbedding ?? []
         const text = row.questionText ?? ""
@@ -101,7 +107,9 @@ export const sweepFeedbackClusters = (props: {
           }
           emb = embedded.value
         }
-        if (emb.length === 0) continue // no vector + no recoverable text → can't cluster
+        if (emb.length === 0) {
+          continue
+        } // No vector + no recoverable text → can't cluster
 
         const nearest = await findNearestCluster({ tx: props.tx, queryEmbedding: emb })
         if (nearest.isErr()) {
@@ -145,8 +153,9 @@ export const sweepFeedbackClusters = (props: {
 
       for (const clusterId of touched) {
         const recomputed = await recomputeClusterAggregates({ tx: props.tx, clusterId })
-        if (recomputed.isErr())
+        if (recomputed.isErr()) {
           console.warn(`[Knowledge] builder: recompute ${clusterId} failed`, recomputed.error)
+        }
       }
 
       return { scanned, joined, newClusters, maxSeen }

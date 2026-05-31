@@ -20,7 +20,7 @@ export type ChunkOptions = {
 }
 
 type Section = {
-  /** e.g. "## Pricing" — empty for the prologue / heading-less docs. */
+  /** E.g. "## Pricing" — empty for the prologue / heading-less docs. */
   heading: string
   /** Section content WITHOUT the heading line. */
   body: string
@@ -37,12 +37,20 @@ const HEADING_RE = /^(#{1,6}) +(.+)$/gm
 export const splitText = (text: string, options: ChunkOptions = {}): string[] => {
   let maxRunes = options.maxRunes ?? DEFAULT_MAX_RUNES
   let overlap = options.overlap ?? DEFAULT_OVERLAP
-  if (maxRunes <= 0) maxRunes = DEFAULT_MAX_RUNES
-  if (overlap < 0) overlap = 0
-  if (overlap >= maxRunes) overlap = Math.floor(maxRunes / 4)
+  if (maxRunes <= 0) {
+    maxRunes = DEFAULT_MAX_RUNES
+  }
+  if (overlap < 0) {
+    overlap = 0
+  }
+  if (overlap >= maxRunes) {
+    overlap = Math.floor(maxRunes / 4)
+  }
 
   const body = text.replaceAll("\r\n", "\n").trim()
-  if (body === "") return []
+  if (body === "") {
+    return []
+  }
 
   const out: string[] = []
   for (const sec of splitByHeadings(body)) {
@@ -53,17 +61,24 @@ export const splitText = (text: string, options: ChunkOptions = {}): string[] =>
 
 const splitByHeadings = (body: string): Section[] => {
   const matches = [...body.matchAll(HEADING_RE)]
-  if (matches.length === 0) return [{ heading: "", body }]
+  if (matches.length === 0) {
+    return [{ heading: "", body }]
+  }
 
   const out: Section[] = []
   const firstIndex = matches[0]?.index ?? 0
   // Prologue — text before the first heading.
   if (firstIndex > 0) {
     const prologue = body.slice(0, firstIndex).trim()
-    if (prologue !== "") out.push({ heading: "", body: prologue })
+    if (prologue !== "") {
+      out.push({ heading: "", body: prologue })
+    }
   }
   for (let i = 0; i < matches.length; i++) {
-    const m = matches[i]!
+    const m = matches[i]
+    if (m === undefined) {
+      continue
+    }
     const start = m.index ?? 0
     const headingEnd = start + m[0].length
     const bodyEnd = i + 1 < matches.length ? (matches[i + 1]?.index ?? body.length) : body.length
@@ -86,9 +101,13 @@ const splitSection = (sec: Section, maxRunes: number, overlap: number): string[]
   }
 
   const body = sec.body
-  if (body === "") return []
+  if (body === "") {
+    return []
+  }
   const runes = Array.from(body)
-  if (runes.length <= budget) return [(prefix + body).trim()]
+  if (runes.length <= budget) {
+    return [(prefix + body).trim()]
+  }
 
   const out: string[] = []
   let start = 0
@@ -96,14 +115,20 @@ const splitSection = (sec: Section, maxRunes: number, overlap: number): string[]
     const end = start + budget
     if (end >= runes.length) {
       const piece = runes.slice(start).join("").trim()
-      if (piece !== "") out.push((prefix + piece).trim())
+      if (piece !== "") {
+        out.push((prefix + piece).trim())
+      }
       break
     }
     const boundary = findBoundary(runes, start, end)
     const piece = runes.slice(start, boundary).join("").trim()
-    if (piece !== "") out.push((prefix + piece).trim())
+    if (piece !== "") {
+      out.push((prefix + piece).trim())
+    }
     let next = boundary - overlap
-    if (next <= start) next = boundary
+    if (next <= start) {
+      next = boundary
+    }
     start = next
   }
   return out
@@ -117,19 +142,28 @@ const splitSection = (sec: Section, maxRunes: number, overlap: number): string[]
 const findBoundary = (runes: string[], start: number, endInput: number): number => {
   const end = endInput > runes.length ? runes.length : endInput
   let lookback = end - 200
-  if (lookback < start) lookback = start
+  if (lookback < start) {
+    lookback = start
+  }
 
   const dbl = lastDoubleNewline(runes, lookback, end)
-  if (dbl > 0) return dbl
+  if (dbl > 0) {
+    return dbl
+  }
 
   const nl = lastIndex(runes, lookback, end, "\n")
-  if (nl > 0) return nl + 1
+  if (nl > 0) {
+    return nl + 1
+  }
 
   for (let i = end - 1; i >= lookback; i--) {
     const r = runes[i]
-    if (r === "." || r === "?" || r === "!") {
-      // Skip mid-decimal punctuation (e.g. "1.5"): next rune must be a break.
-      if (i + 1 >= runes.length || runes[i + 1] === " " || runes[i + 1] === "\n") return i + 1
+    // Sentence end, skipping mid-decimal punctuation (e.g. "1.5"): next rune must be a break.
+    if (
+      (r === "." || r === "?" || r === "!") &&
+      (i + 1 >= runes.length || runes[i + 1] === " " || runes[i + 1] === "\n")
+    ) {
+      return i + 1
     }
   }
   return end
@@ -137,14 +171,18 @@ const findBoundary = (runes: string[], start: number, endInput: number): number 
 
 const lastDoubleNewline = (runes: string[], lo: number, hi: number): number => {
   for (let i = hi - 1; i >= lo + 1; i--) {
-    if (runes[i] === "\n" && runes[i - 1] === "\n") return i + 1
+    if (runes[i] === "\n" && runes[i - 1] === "\n") {
+      return i + 1
+    }
   }
   return -1
 }
 
 const lastIndex = (runes: string[], lo: number, hi: number, target: string): number => {
   for (let i = hi - 1; i >= lo; i--) {
-    if (runes[i] === target) return i
+    if (runes[i] === target) {
+      return i
+    }
   }
   return -1
 }
@@ -156,7 +194,9 @@ const lastIndex = (runes: string[], lo: number, hi: number, target: string): num
  */
 export const approxTokens = (s: string): number => {
   const n = Array.from(s).length
-  if (n === 0) return 0
+  if (n === 0) {
+    return 0
+  }
   const tokens = Math.floor((n + 3) / 4)
-  return tokens < 1 ? 1 : tokens
+  return Math.max(1, tokens)
 }

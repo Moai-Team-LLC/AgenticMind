@@ -40,7 +40,9 @@ export type IndexMaterialProps = {
   cardsEnabled?: boolean
 }
 
-const indexError = (message: string): IndexError => ({ type: "index_error", message })
+const indexError = (message: string): IndexError => {
+  return { type: "index_error", message }
+}
 
 const markFailed = async (tx: Transaction, id: string, reason: string): Promise<void> => {
   await updateMaterialStatus({ tx, id, status: "failed", errorMessage: reason })
@@ -66,7 +68,9 @@ const runCardExtraction = async (props: IndexMaterialProps, body: string): Promi
     } else {
       return
     }
-    if (items.length === 0) return
+    if (items.length === 0) {
+      return
+    }
 
     const embedded = await embedKnowledgeBatch(items.map((c) => c.body))
     const vectors = embedded.isOk() ? embedded.value : null
@@ -82,8 +86,8 @@ const runCardExtraction = async (props: IndexMaterialProps, body: string): Promi
     if (upserted.isErr()) {
       console.warn(`index: cards upsert failed for ${material.id}: ${upserted.error.message}`)
     }
-  } catch (e) {
-    console.warn(`index: card extraction crashed for ${material.id}: ${String(e)}`)
+  } catch (error) {
+    console.warn(`index: card extraction crashed for ${material.id}: ${String(error)}`)
   }
 }
 
@@ -99,7 +103,9 @@ const runIndex = async (props: IndexMaterialProps): Promise<{ chunkCount: number
   }
 
   const toChunking = await updateMaterialStatus({ tx, id: material.id, status: "chunking" })
-  if (toChunking.isErr()) throw indexError(`status→chunking: ${toChunking.error.message}`)
+  if (toChunking.isErr()) {
+    throw indexError(`status→chunking: ${toChunking.error.message}`)
+  }
 
   const pieces = splitText(body)
   if (pieces.length === 0) {
@@ -108,7 +114,9 @@ const runIndex = async (props: IndexMaterialProps): Promise<{ chunkCount: number
   }
 
   const toEmbedding = await updateMaterialStatus({ tx, id: material.id, status: "embedding" })
-  if (toEmbedding.isErr()) throw indexError(`status→embedding: ${toEmbedding.error.message}`)
+  if (toEmbedding.isErr()) {
+    throw indexError(`status→embedding: ${toEmbedding.error.message}`)
+  }
 
   const embedded = await embedKnowledgeBatch(pieces)
   if (embedded.isErr()) {
@@ -122,13 +130,15 @@ const runIndex = async (props: IndexMaterialProps): Promise<{ chunkCount: number
     throw indexError(msg)
   }
 
-  const items = pieces.map((body_, k) => ({
-    ordinal: k,
-    body: body_,
-    tokenCount: approxTokens(body_),
-    embedding: vectors[k] ?? null,
-    embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
-  }))
+  const items = pieces.map((body_, k) => {
+    return {
+      ordinal: k,
+      body: body_,
+      tokenCount: approxTokens(body_),
+      embedding: vectors[k] ?? null,
+      embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
+    }
+  })
   const persisted = await upsertChunks({ tx, materialId: material.id, items })
   if (persisted.isErr()) {
     await markFailed(tx, material.id, `persist: ${persisted.error.message}`)
@@ -138,7 +148,7 @@ const runIndex = async (props: IndexMaterialProps): Promise<{ chunkCount: number
   await updateMaterialStatus({ tx, id: material.id, status: "embedded" })
 
   // Best-effort Tier-1 cards. Skip graphrag for tabular materials (handled
-  // separately). Graph extraction is wired in a later brick.
+  // Separately). Graph extraction is wired in a later brick.
   await runCardExtraction(props, body)
 
   return { chunkCount: items.length }

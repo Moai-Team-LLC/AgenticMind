@@ -13,7 +13,9 @@ const MCP_TOKEN_TYP = "mcp"
 
 const secretKey = (): Uint8Array | null => {
   const secret = mcpSettings.AUTH_SECRET
-  if (secret === undefined || secret.length === 0) return null
+  if (secret === undefined || secret.length === 0) {
+    return null
+  }
   return new TextEncoder().encode(secret)
 }
 
@@ -25,7 +27,9 @@ export const mintMcpToken = async (props: {
   ttlDays: number
 }): Promise<MintedMcpToken | null> => {
   const key = secretKey()
-  if (key === null) return null
+  if (key === null) {
+    return null
+  }
   const jti = randomUUID()
   const expiresAt = new Date(Date.now() + props.ttlDays * 24 * 60 * 60 * 1000)
   const token = await new SignJWT({ typ: MCP_TOKEN_TYP, role: "knowledge_admin" })
@@ -47,13 +51,19 @@ export type VerifiedMcpToken = { userUuid: string; jti: string }
  */
 export const verifyMcpToken = async (bearer: string): Promise<VerifiedMcpToken | null> => {
   const key = secretKey()
-  if (key === null) return null
+  if (key === null) {
+    return null
+  }
   try {
     const { payload } = await jwtVerify(bearer, key, { algorithms: ["HS256"] })
-    if (payload.typ !== MCP_TOKEN_TYP) return null
+    if (payload.typ !== MCP_TOKEN_TYP) {
+      return null
+    }
     const userUuid = typeof payload.sub === "string" ? payload.sub : ""
     const jti = typeof payload.jti === "string" ? payload.jti : ""
-    if (userUuid === "" || jti === "") return null
+    if (userUuid === "" || jti === "") {
+      return null
+    }
     return { userUuid, jti }
   } catch {
     return null

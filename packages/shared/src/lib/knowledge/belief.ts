@@ -19,7 +19,7 @@ export type BeliefClaim = {
 }
 
 /** Collapse case + all whitespace so "12.5 %" and "12.5%" compare equal. */
-const norm = (s: string): string => s.trim().toLowerCase().replace(/\s+/gu, "")
+const norm = (s: string): string => s.trim().toLowerCase().replaceAll(/\s+/gu, "")
 
 /** Stable identity of "what this belief is about" — the revision/conflict key. */
 export const beliefKey = (subject: string, predicate: string): string =>
@@ -53,21 +53,28 @@ export const detectConflicts = (claims: readonly BeliefClaim[]): ConflictGroup[]
     }
     const ok = objectKey(c.object)
     const list = group.objects.get(ok)
-    if (list === undefined) group.objects.set(ok, [c])
-    else list.push(c)
+    if (list === undefined) {
+      group.objects.set(ok, [c])
+    } else {
+      list.push(c)
+    }
   }
 
   const conflicts: ConflictGroup[] = []
   for (const [key, group] of byKey) {
-    if (group.objects.size < 2) continue
+    if (group.objects.size < 2) {
+      continue
+    }
     conflicts.push({
       key,
       subject: group.subject,
       predicate: group.predicate,
-      variants: [...group.objects.values()].map((claims) => ({
-        object: claims[0]!.object,
-        claims,
-      })),
+      variants: [...group.objects.values()].map((groupClaims) => {
+        return {
+          object: groupClaims[0]?.object ?? "",
+          claims: groupClaims,
+        }
+      }),
     })
   }
   return conflicts
@@ -85,14 +92,19 @@ export const detectConflicts = (claims: readonly BeliefClaim[]): ConflictGroup[]
 export const resolveConflict = (
   claims: readonly BeliefClaim[],
 ): { object: string; confidence: number; corroborators: number } | null => {
-  if (claims.length === 0) return null
+  if (claims.length === 0) {
+    return null
+  }
 
   const byObject = new Map<string, BeliefClaim[]>()
   for (const c of claims) {
     const ok = objectKey(c.object)
     const list = byObject.get(ok)
-    if (list === undefined) byObject.set(ok, [c])
-    else list.push(c)
+    if (list === undefined) {
+      byObject.set(ok, [c])
+    } else {
+      list.push(c)
+    }
   }
 
   let best: { object: string; actors: number; sumConf: number; latest: number } | null = null
@@ -100,7 +112,7 @@ export const resolveConflict = (
     const actors = new Set(list.map((c) => c.actorUuid ?? "shared")).size
     const sumConf = list.reduce((s, c) => s + c.confidence, 0)
     const latest = Math.max(...list.map((c) => c.recordedAt?.getTime() ?? 0))
-    const cand = { object: list[0]!.object, actors, sumConf, latest }
+    const cand = { object: list[0]?.object ?? "", actors, sumConf, latest }
     if (
       best === null ||
       cand.actors > best.actors ||
@@ -110,12 +122,14 @@ export const resolveConflict = (
       best = cand
     }
   }
-  if (best === null) return null
+  if (best === null) {
+    return null
+  }
 
-  const winningClaims = claims.filter((c) => objectKey(c.object) === objectKey(best!.object))
+  const winningClaims = claims.filter((c) => objectKey(c.object) === objectKey(best.object))
   // Confidence rises with corroboration (1 - 0.5^actors), blended 50/50 with
-  // the average confidence of the winning claims.
-  const corroborationBoost = 1 - Math.pow(0.5, best.actors)
+  // The average confidence of the winning claims.
+  const corroborationBoost = 1 - 0.5 ** best.actors
   const avgConf = best.sumConf / winningClaims.length
   const confidence = Math.min(1, Math.max(0, 0.5 * corroborationBoost + 0.5 * avgConf))
   return { object: best.object, confidence, corroborators: best.actors }

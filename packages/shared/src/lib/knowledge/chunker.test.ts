@@ -18,7 +18,7 @@ describe("splitText", () => {
     const out = splitText(body, { maxRunes: 50, overlap: 5 })
     expect(out.length).toBeGreaterThan(1)
     for (const ch of out) {
-      // soft cap: allow +25% when a boundary refuses to break mid-sentence
+      // Soft cap: allow +25% when a boundary refuses to break mid-sentence
       expect(Array.from(ch).length).toBeLessThanOrEqual(Math.floor((50 * 5) / 4))
       expect(ch.trim()).not.toBe("")
     }
@@ -68,7 +68,9 @@ We charge by the seat. Annual prepay gets 15% off.
     const body = "Sentence one. Sentence two. ".repeat(30)
     const out = splitText(body, { maxRunes: 200, overlap: 30 })
     expect(out.length).toBeGreaterThan(1)
-    for (const ch of out) expect(ch.startsWith("#")).toBe(false)
+    for (const ch of out) {
+      expect(ch.startsWith("#")).toBe(false)
+    }
   })
 
   it("keeps the prologue before the first heading", () => {
@@ -82,7 +84,9 @@ We charge by the seat. Annual prepay gets 15% off.
     const long = "Long sentence describing the section. ".repeat(30)
     const out = splitText(`## Pricing\n${long}`, { maxRunes: 300, overlap: 30 })
     expect(out.length).toBeGreaterThan(1)
-    for (const ch of out) expect(ch.startsWith("## Pricing")).toBe(true)
+    for (const ch of out) {
+      expect(ch.startsWith("## Pricing")).toBe(true)
+    }
   })
 })
 

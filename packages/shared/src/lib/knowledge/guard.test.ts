@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { detectInjection, findPii, guardInput, redactPii } from "./guard"
+import { detectInjection, detectOutputLeak, findPii, guardInput, redactPii } from "./guard"
 
 describe("injection detection", () => {
   it("flags injection, passes clean queries", () => {
@@ -36,8 +36,6 @@ describe("guardInput", () => {
     expect(guardInput("how do I register a company in Estonia?").ok).toBe(true)
   })
 })
-
-import { detectOutputLeak } from "./guard"
 
 describe("detectOutputLeak", () => {
   const sys =

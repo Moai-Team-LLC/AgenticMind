@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import { sanitizeForText } from "./sanitize"
 
-const ctl = (code: number) => String.fromCharCode(code)
+const ctl = (code: number) => String.fromCodePoint(code)
 
 describe("sanitizeForText", () => {
   it("strips NUL and stray control characters", () => {
@@ -19,7 +19,7 @@ describe("sanitizeForText", () => {
   })
 
   it("replaces a lone surrogate with the replacement char", () => {
-    expect(sanitizeForText("a\ud800b")).toBe("a�b")
+    expect(sanitizeForText("a\uD800b")).toBe("a�b")
   })
 
   it("preserves valid surrogate pairs", () => {

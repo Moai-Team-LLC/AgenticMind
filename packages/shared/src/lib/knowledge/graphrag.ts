@@ -16,7 +16,7 @@ export const GRAPHRAG_MAX_BODY_CHARS = 16_000
 export const GRAPHRAG_TIMEOUT_MS = 60_000
 
 export type Entity = {
-  /** sha1(canonical_name|type) truncated to 32 hex chars — deterministic. */
+  /** Sha1(canonical_name|type) truncated to 32 hex chars — deterministic. */
   entityId: string
   canonicalName: string
   /** Free-form lowercase type (concept|company|person|technology|…). */
@@ -57,9 +57,9 @@ export type Neighbor = {
 
 export type Hop = {
   predicate: string
-  /** ontology_type required on the target entity. */
+  /** Ontology_type required on the target entity. */
   targetType: string
-  /** optional canonical_name filter; "" matches any. */
+  /** Optional canonical_name filter; "" matches any. */
   targetName: string
 }
 
@@ -110,23 +110,33 @@ export type RawEntity = {
  */
 export const normalizeEntity = (e: RawEntity): Entity | null => {
   const canonicalName = e.canonicalName.trim()
-  if (canonicalName === "") return null
+  if (canonicalName === "") {
+    return null
+  }
   const type = (e.type ?? "").trim().toLowerCase() || "concept"
 
   const seen = new Set<string>([canonicalName.toLowerCase()])
   const aliases: string[] = []
   for (const raw of e.aliases ?? []) {
     const a = raw.trim()
-    if (a === "") continue
+    if (a === "") {
+      continue
+    }
     const lk = a.toLowerCase()
-    if (seen.has(lk)) continue
+    if (seen.has(lk)) {
+      continue
+    }
     seen.add(lk)
     aliases.push(a)
   }
 
   let confidence = e.confidence ?? 0
-  if (confidence < 0) confidence = 0
-  if (confidence > 1) confidence = 1
+  if (confidence < 0) {
+    confidence = 0
+  }
+  if (confidence > 1) {
+    confidence = 1
+  }
 
   return {
     entityId: canonicalEntityId(canonicalName, type),

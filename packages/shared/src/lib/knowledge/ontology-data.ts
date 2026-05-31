@@ -139,7 +139,7 @@ export const ENTITY_TYPES: readonly EntityType[] = [
 ]
 
 export const PREDICATES: readonly Predicate[] = [
-  // identity & membership
+  // Identity & membership
   {
     name: "works_at",
     group: "identity",
@@ -180,7 +180,7 @@ export const PREDICATES: readonly Predicate[] = [
     objectTypes: ["Program"],
     description: "Member or Company went through Program",
   },
-  // domain & expertise
+  // Domain & expertise
   {
     name: "focuses_on",
     group: "domain",
@@ -229,7 +229,7 @@ export const PREDICATES: readonly Predicate[] = [
     objectTypes: [],
     description: "Customer segment (B2C / B2B / B2G / SMB / Enterprise)",
   },
-  // location
+  // Location
   {
     name: "located_in",
     group: "location",
@@ -254,7 +254,7 @@ export const PREDICATES: readonly Predicate[] = [
     objectTypes: ["Location"],
     description: "Event takes place in Location",
   },
-  // relations
+  // Relations
   {
     name: "connected_to",
     group: "relations",
@@ -288,7 +288,7 @@ export const PREDICATES: readonly Predicate[] = [
     objectTypes: ["Event"],
     description: "Member attended Event",
   },
-  // business & deals
+  // Business & deals
   {
     name: "offers_deal",
     group: "business",
@@ -321,7 +321,7 @@ export const PREDICATES: readonly Predicate[] = [
     objectTypes: ["Provider", "Hub"],
     description: "Provider has a partnership with another Provider or Hub",
   },
-  // goals & challenges
+  // Goals & challenges
   {
     name: "pursues_goal",
     group: "goals",
@@ -371,99 +371,99 @@ export const FREE_FORM_TYPE_MAP: Readonly<Record<string, string>> = {
  * (lowercased, separators → "_").
  */
 export const FREE_FORM_PREDICATE_MAP: Readonly<Record<string, string>> = {
-  // works_at family
+  // Works_at family
   works_at: "works_at",
   works_for: "works_at",
   employed_by: "works_at",
   is_employed_at: "works_at",
   is_employed_by: "works_at",
-  // founded
+  // Founded
   founded: "founded",
   co_founded: "founded",
   founder_of: "founded",
   established: "founded",
   started: "founded",
-  // member_of
+  // Member_of
   member_of: "member_of",
   belongs_to: "member_of",
   is_part_of: "member_of",
-  // attended_program
+  // Attended_program
   attended: "attended_program",
   attended_program: "attended_program",
   alumnus_of: "attended_program",
   went_through: "attended_program",
   graduated_from: "attended_program",
-  // focuses_on
+  // Focuses_on
   focuses_on: "focuses_on",
   focused_on: "focuses_on",
   works_in: "focuses_on",
   works_on: "focuses_on",
-  // has_skill
+  // Has_skill
   has_skill: "has_skill",
   skilled_in: "has_skill",
   expert_in: "has_skill",
   specialises_in: "has_skill",
   specializes_in: "has_skill",
-  // built_with
+  // Built_with
   built_with: "built_with",
   uses: "built_with",
   powered_by: "built_with",
   based_on: "built_with",
-  // targets_industry
+  // Targets_industry
   targets_industry: "targets_industry",
   targets: "targets_industry",
   serves: "targets_industry",
   sells_to: "targets_industry",
-  // at_stage
+  // At_stage
   at_stage: "at_stage",
   is_at_stage: "at_stage",
   raised: "at_stage",
-  // located_in
+  // Located_in
   located_in: "located_in",
   based_in: "located_in",
   headquartered_in: "located_in",
   in: "located_in",
-  // operates_in
+  // Operates_in
   operates_in: "operates_in",
   active_in: "operates_in",
   present_in: "operates_in",
-  // connected_to
+  // Connected_to
   connected_to: "connected_to",
   knows: "connected_to",
   acquainted_with: "connected_to",
-  // mentored_by
+  // Mentored_by
   mentored_by: "mentored_by",
   advised_by: "mentored_by",
   coached_by: "mentored_by",
-  // introduced_to
+  // Introduced_to
   introduced_to: "introduced_to",
   intro_to: "introduced_to",
   connected_with: "introduced_to",
-  // attended_event
+  // Attended_event
   attended_event: "attended_event",
   was_at: "attended_event",
   participated_in: "attended_event",
-  // offers_deal
+  // Offers_deal
   offers_deal: "offers_deal",
   offers: "offers_deal",
   provides: "offers_deal",
-  // claimed_deal
+  // Claimed_deal
   claimed_deal: "claimed_deal",
   used_deal: "claimed_deal",
   redeemed: "claimed_deal",
-  // partnered_with
+  // Partnered_with
   partnered_with: "partnered_with",
   partners_with: "partnered_with",
   in_partnership_with: "partnered_with",
-  // pursues_goal
+  // Pursues_goal
   pursues_goal: "pursues_goal",
   aims_for: "pursues_goal",
   wants_to: "pursues_goal",
-  // faces_challenge
+  // Faces_challenge
   faces_challenge: "faces_challenge",
   struggles_with: "faces_challenge",
   blocked_by: "faces_challenge",
-  // seeks_skill
+  // Seeks_skill
   seeks_skill: "seeks_skill",
   looking_for: "seeks_skill",
   hiring_for: "seeks_skill",

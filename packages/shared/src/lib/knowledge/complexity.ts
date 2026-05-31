@@ -18,10 +18,18 @@ export const classifyComplexity = (question: string): Complexity => {
   const questionMarks = (q.match(/\?/gu) ?? []).length
   const commas = (q.match(/,/gu) ?? []).length
 
-  if (COMPARE.test(q)) return "complex"
-  if (words > 25) return "complex"
-  if (questionMarks >= 2) return "complex"
-  if (words > 15 && commas >= 2) return "complex"
+  if (COMPARE.test(q)) {
+    return "complex"
+  }
+  if (words > 25) {
+    return "complex"
+  }
+  if (questionMarks >= 2) {
+    return "complex"
+  }
+  if (words > 15 && commas >= 2) {
+    return "complex"
+  }
   return "simple"
 }
 

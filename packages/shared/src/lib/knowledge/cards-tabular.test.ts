@@ -47,7 +47,9 @@ describe("extractFromTables", () => {
       predicates: [{ column: "skill", predicate: "has_skill", objectType: "Skill" }],
     })
     expect(schema.isOk()).toBe(true)
-    if (!schema.isOk()) return
+    if (!schema.isOk()) {
+      return
+    }
 
     const cards = extractFromTables(
       [{ name: "", headers: ["name", "skill"], rows: [["Alice", "Solidity"]] }],
@@ -69,7 +71,9 @@ describe("extractFromTables", () => {
       subjectColumn: "name",
       predicates: [],
     })
-    if (!schema.isOk()) throw new Error("schema parse failed")
+    if (!schema.isOk()) {
+      throw new Error("schema parse failed")
+    }
     const cards = extractFromTables(
       [{ name: "", headers: ["name"], rows: [[""], ["Bob"]] }],
       schema.value,

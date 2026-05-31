@@ -15,7 +15,7 @@ import { ResultAsync } from "neverthrow"
 export type AskTelemetryEvent = {
   memberId?: string | null
   questionHash: string
-  /** cache | card_synth | synth (enforced by the table check constraint). */
+  /** Cache | card_synth | synth (enforced by the table check constraint). */
   servedBy: string
   retrievalMs: number
   generationMs: number

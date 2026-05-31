@@ -11,7 +11,7 @@ describe("classifyComplexity", () => {
     expect(classifyComplexity("What is X? And what is Y?")).toBe("complex")
   })
   it("long questions are complex", () => {
-    expect(classifyComplexity(Array(30).fill("word").join(" "))).toBe("complex")
+    expect(classifyComplexity(Array.from({ length: 30 }, () => "word").join(" "))).toBe("complex")
   })
 })
 

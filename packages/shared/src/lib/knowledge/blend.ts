@@ -11,9 +11,11 @@ export type HybridWeights = {
 }
 
 /** Production blend: vector-heavy (semantic recall dominates). */
-export const defaultHybridWeights = (): HybridWeights => ({ vector: 0.7, bm25: 0.3 })
+export const defaultHybridWeights = (): HybridWeights => {
+  return { vector: 0.7, bm25: 0.3 }
+}
 
-export const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
+export const clamp01 = (v: number): number => (v < 0 ? 0 : Math.min(1, v))
 
 /** Minimal shape blendHybrid needs; the index repo's Hit type extends this. */
 export type ScoredHit = {
@@ -29,7 +31,7 @@ export type HybridHit<H extends ScoredHit> = {
 }
 
 /**
- * fused = w.vector * clamp01(vectorScore) + w.bm25 * clamp01(bm25Score),
+ * Fused = w.vector * clamp01(vectorScore) + w.bm25 * clamp01(bm25Score),
  * summed per chunk across both lists, sorted by fused score descending
  * (stable). pgvector cosine is already [0,1]; ts_rank_cd is clamped at 1.
  */
@@ -58,5 +60,5 @@ export const blendHybrid = <H extends ScoredHit>(
   }
 
   // Array.sort is stable in modern engines; ties keep insertion (vector-first) order.
-  return [...byChunk.values()].sort((a, b) => b.fusedScore - a.fusedScore)
+  return [...byChunk.values()].toSorted((a, b) => b.fusedScore - a.fusedScore)
 }

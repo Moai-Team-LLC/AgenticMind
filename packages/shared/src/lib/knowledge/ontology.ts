@@ -7,14 +7,14 @@
  * mappers to canonicalise LLM drift onto the frozen V0 vocabulary.
  */
 
+import type { EntityType, Predicate } from "@agenticmind/shared/lib/knowledge/ontology-data"
+
 import {
-  type EntityType,
   ENTITY_TYPES,
   FREE_FORM_PREDICATE_MAP,
   FREE_FORM_TYPE_MAP,
   ONTOLOGY_FROZEN_AT,
   ONTOLOGY_VERSION,
-  type Predicate,
   PREDICATES,
 } from "@agenticmind/shared/lib/knowledge/ontology-data"
 
@@ -46,8 +46,12 @@ const buildSchema = (entityTypes: readonly EntityType[], preds: readonly Predica
   const types = new Map<string, EntityType>()
   const typeOrder: string[] = []
   for (const t of entityTypes) {
-    if (t.name === "") throw new Error("ontology: type with empty name")
-    if (types.has(t.name)) throw new Error(`ontology: duplicate type "${t.name}"`)
+    if (t.name === "") {
+      throw new Error("ontology: type with empty name")
+    }
+    if (types.has(t.name)) {
+      throw new Error(`ontology: duplicate type "${t.name}"`)
+    }
     types.set(t.name, t)
     typeOrder.push(t.name)
   }
@@ -55,8 +59,12 @@ const buildSchema = (entityTypes: readonly EntityType[], preds: readonly Predica
   const predicates = new Map<string, Predicate>()
   const predicateOrder: string[] = []
   for (const p of preds) {
-    if (p.name === "") throw new Error("ontology: predicate with empty name")
-    if (predicates.has(p.name)) throw new Error(`ontology: duplicate predicate "${p.name}"`)
+    if (p.name === "") {
+      throw new Error("ontology: predicate with empty name")
+    }
+    if (predicates.has(p.name)) {
+      throw new Error(`ontology: duplicate predicate "${p.name}"`)
+    }
     for (const st of p.subjectTypes) {
       if (!types.has(st)) {
         throw new Error(`ontology: predicate "${p.name}" references unknown subject_type "${st}"`)
@@ -96,9 +104,13 @@ export const isValidPredicate = (name: string): boolean => ontologyV0.predicates
 export const getPredicate = (name: string): Predicate | undefined => ontologyV0.predicates.get(name)
 export const getType = (name: string): EntityType | undefined => ontologyV0.types.get(name)
 export const listTypes = (): EntityType[] =>
-  ontologyV0.typeOrder.map((n) => ontologyV0.types.get(n)!)
+  ontologyV0.typeOrder
+    .map((n) => ontologyV0.types.get(n))
+    .filter((t): t is EntityType => t !== undefined)
 export const listPredicates = (): Predicate[] =>
-  ontologyV0.predicateOrder.map((n) => ontologyV0.predicates.get(n)!)
+  ontologyV0.predicateOrder
+    .map((n) => ontologyV0.predicates.get(n))
+    .filter((p): p is Predicate => p !== undefined)
 
 /**
  * Validates that (subjectType, predicate, objectType) is a well-formed V0
@@ -138,8 +150,10 @@ export const validateTriple = (
  */
 export const normalisePredicate = (raw: string): string => {
   let clean = raw.trim().toLowerCase()
-  clean = clean.replace(/^[[\](),.;:!?]+|[[\](),.;:!?]+$/g, "")
-  if (clean === "") return ""
+  clean = clean.replaceAll(/^[[\](),.;:!?]+|[[\](),.;:!?]+$/g, "")
+  if (clean === "") {
+    return ""
+  }
   let out = ""
   let prevWasSep = false
   for (const r of clean) {
@@ -153,7 +167,7 @@ export const normalisePredicate = (raw: string): string => {
     out += r
     prevWasSep = false
   }
-  return out.replace(/^_+|_+$/g, "")
+  return out.replaceAll(/^_+|_+$/g, "")
 }
 
 /**
@@ -163,12 +177,18 @@ export const normalisePredicate = (raw: string): string => {
  */
 export const mapFreeFormType = (raw: string): string | undefined => {
   const clean = raw.trim()
-  if (clean === "") return undefined
+  if (clean === "") {
+    return undefined
+  }
   for (const name of ontologyV0.types.keys()) {
-    if (name.toLowerCase() === clean.toLowerCase()) return name
+    if (name.toLowerCase() === clean.toLowerCase()) {
+      return name
+    }
   }
   const mapped = FREE_FORM_TYPE_MAP[clean.toLowerCase()]
-  if (mapped !== undefined && ontologyV0.types.has(mapped)) return mapped
+  if (mapped !== undefined && ontologyV0.types.has(mapped)) {
+    return mapped
+  }
   return undefined
 }
 
@@ -180,11 +200,17 @@ export const mapFreeFormType = (raw: string): string | undefined => {
  */
 export const mapFreeFormPredicate = (raw: string): string | undefined => {
   const clean = normalisePredicate(raw)
-  if (clean === "") return undefined
+  if (clean === "") {
+    return undefined
+  }
   for (const name of ontologyV0.predicates.keys()) {
-    if (name.toLowerCase() === clean.toLowerCase()) return name
+    if (name.toLowerCase() === clean.toLowerCase()) {
+      return name
+    }
   }
   const mapped = FREE_FORM_PREDICATE_MAP[clean]
-  if (mapped !== undefined && ontologyV0.predicates.has(mapped)) return mapped
+  if (mapped !== undefined && ontologyV0.predicates.has(mapped)) {
+    return mapped
+  }
   return undefined
 }

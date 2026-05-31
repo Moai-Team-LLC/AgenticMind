@@ -26,7 +26,7 @@ export const isKnowledgeScope = (s: string): s is KnowledgeScope =>
 export const hasScope = (
   granted: readonly string[] | undefined | null,
   required: KnowledgeScope,
-): boolean => granted != null && granted.includes(required)
+): boolean => granted !== undefined && granted !== null && granted.includes(required)
 
 /** The scope each MCP tool requires. */
 export const TOOL_SCOPE: Record<string, KnowledgeScope> = {

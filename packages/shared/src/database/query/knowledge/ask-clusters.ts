@@ -54,10 +54,11 @@ const clusterColumns = {
 
 /** Closest cluster centroid to the embedding + its cosine similarity, or null when empty. */
 export const findNearestCluster = (props: { tx: Transaction; queryEmbedding: number[] }) => {
-  if (props.queryEmbedding.length === 0)
+  if (props.queryEmbedding.length === 0) {
     return ResultAsync.fromSafePromise(
       Promise.resolve<{ cluster: ClusterRow; similarity: number } | null>(null),
     )
+  }
   const literal = toVectorLiteral(props.queryEmbedding)
   return ResultAsync.fromPromise(
     props.tx
@@ -73,7 +74,9 @@ export const findNearestCluster = (props: { tx: Transaction; queryEmbedding: num
     mapDatabaseError,
   ).map((rows) => {
     const row = rows[0]
-    if (row === undefined) return null
+    if (row === undefined) {
+      return null
+    }
     const { similarity, ...cluster } = row
     return { cluster: cluster as ClusterRow, similarity }
   })

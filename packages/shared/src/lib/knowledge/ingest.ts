@@ -16,7 +16,9 @@ import { uploadManual } from "@agenticmind/shared/lib/knowledge/ingestion"
 import { ResultAsync } from "neverthrow"
 
 export type IngestError = { readonly type: "ingest_error"; readonly message: string }
-const ingestError = (message: string): IngestError => ({ type: "ingest_error", message })
+const ingestError = (message: string): IngestError => {
+  return { type: "ingest_error", message }
+}
 
 export type IngestResult = {
   materialId: string
@@ -29,9 +31,9 @@ export type IngestResult = {
 const safeFilename = (title: string): string => {
   const base = title
     .trim()
-    .replace(/[^\p{L}\p{N}._-]+/gu, "_")
+    .replaceAll(/[^\p{L}\p{N}._-]+/gu, "_")
     .slice(0, 80)
-  return (base === "" ? "material" : base) + ".txt"
+  return `${base === "" ? "material" : base}.txt`
 }
 
 /**
@@ -66,7 +68,9 @@ export const ingestText = (props: {
           body: bytes,
         },
       })
-      if (mat.isErr()) throw ingestError(`upload: ${mat.error.message}`)
+      if (mat.isErr()) {
+        throw ingestError(`upload: ${mat.error.message}`)
+      }
       const material = mat.value
 
       const indexed = await indexMaterial({
@@ -75,7 +79,9 @@ export const ingestText = (props: {
         body: text,
         cardsEnabled: props.cardsEnabled,
       })
-      if (indexed.isErr()) throw ingestError(`index: ${indexed.error.message}`)
+      if (indexed.isErr()) {
+        throw ingestError(`index: ${indexed.error.message}`)
+      }
 
       let entities = 0
       let relations = 0

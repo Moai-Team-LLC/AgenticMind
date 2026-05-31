@@ -78,7 +78,9 @@ type RawCardRow = {
   score: number
 }
 
-const toCardHit = (r: RawCardRow): CardHit => ({ ...r, predicate: r.predicate ?? "" })
+const toCardHit = (r: RawCardRow): CardHit => {
+  return { ...r, predicate: r.predicate ?? "" }
+}
 
 /** Atomically replaces a material's cards (delete + insert). Pass a tx for atomicity. */
 export const upsertCards = (props: { tx: Transaction; materialId: string; items: CardInput[] }) =>
@@ -87,30 +89,31 @@ export const upsertCards = (props: { tx: Transaction; materialId: string; items:
       await props.tx.delete(knowledgeCards).where(eq(knowledgeCards.materialId, props.materialId))
       if (props.items.length > 0) {
         await props.tx.insert(knowledgeCards).values(
-          props.items.map((c) => ({
-            materialId: props.materialId,
-            kind: c.kind,
-            subjectType: c.subjectType,
-            subjectValue: c.subjectValue,
-            predicate: emptyToNull(c.predicate),
-            value: emptyToNull(c.value),
-            body: c.body,
-            question: emptyToNull(c.question),
-            spanStart: c.spanStart ?? null,
-            spanEnd: c.spanEnd ?? null,
-            confidence: c.confidence,
-            validFrom: c.validFrom ?? null,
-            validTo: c.validTo ?? null,
-            embedding:
-              c.embedding !== undefined && c.embedding !== null && c.embedding.length > 0
-                ? c.embedding
-                : null,
-            embeddingModel: emptyToNull(c.embeddingModel),
-            extractorVersion: emptyToNull(c.extractorVersion),
-          })),
+          props.items.map((c) => {
+            return {
+              materialId: props.materialId,
+              kind: c.kind,
+              subjectType: c.subjectType,
+              subjectValue: c.subjectValue,
+              predicate: emptyToNull(c.predicate),
+              value: emptyToNull(c.value),
+              body: c.body,
+              question: emptyToNull(c.question),
+              spanStart: c.spanStart ?? null,
+              spanEnd: c.spanEnd ?? null,
+              confidence: c.confidence,
+              validFrom: c.validFrom ?? null,
+              validTo: c.validTo ?? null,
+              embedding:
+                c.embedding !== undefined && c.embedding !== null && c.embedding.length > 0
+                  ? c.embedding
+                  : null,
+              embeddingModel: emptyToNull(c.embeddingModel),
+              extractorVersion: emptyToNull(c.extractorVersion),
+            }
+          }),
         )
       }
-      return undefined
     })(),
     mapDatabaseError,
   )
@@ -209,7 +212,7 @@ export const searchCards = (
       .limit(limit)
       .offset(offset),
     mapDatabaseError,
-  ).map((rows) => rows.map(toCardHit))
+  ).map((rows) => rows.map((r) => toCardHit(r)))
 }
 
 /** BM25 search over the dual-config body_tsv with the same filters as searchCards. */
@@ -222,7 +225,9 @@ export const searchCardsBm25 = (
   } & RetrievalFilters,
 ) => {
   const variants = dedupeVariants(props.query, props.variants)
-  if (variants.length === 0) return ResultAsync.fromSafePromise(Promise.resolve<CardHit[]>([]))
+  if (variants.length === 0) {
+    return ResultAsync.fromSafePromise(Promise.resolve<CardHit[]>([]))
+  }
   const limit =
     props.limit !== undefined && props.limit > 0 && props.limit <= 100 ? props.limit : 10
   const tsQuery = variantTsQuery(variants)
@@ -237,7 +242,7 @@ export const searchCardsBm25 = (
       .orderBy(sql`ts_rank_cd(body_tsv, ${tsQuery}) DESC`)
       .limit(limit),
     mapDatabaseError,
-  ).map((rows) => rows.map(toCardHit))
+  ).map((rows) => rows.map((r) => toCardHit(r)))
 }
 
 export type CardFilter = {
@@ -300,10 +305,12 @@ export const filterCards = (props: { tx: Transaction } & CardFilter) => {
         .offset(offset),
       mapDatabaseError,
     ),
-  ]).map(([countRows, rows]) => ({
-    total: countRows[0]?.count ?? 0,
-    hits: rows.map(toCardHit),
-  }))
+  ]).map(([countRows, rows]) => {
+    return {
+      total: countRows[0]?.count ?? 0,
+      hits: rows.map((r) => toCardHit(r)),
+    }
+  })
 }
 
 /** Up to `limit` materials with zero cards (re-extraction backlog). */

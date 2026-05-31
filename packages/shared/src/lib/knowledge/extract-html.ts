@@ -82,11 +82,17 @@ const isSkip = (n: DomNode): boolean =>
   n.type === "script" || n.type === "style" || (isElement(n) && SKIP_TAGS.has(tagName(n)))
 
 const findFirstElement = (n: DomNode, tag: string): DomNode | null => {
-  if (isElement(n) && SKIP_TAGS.has(tagName(n))) return null
-  if (isElement(n) && tagName(n) === tag) return n
+  if (isElement(n) && SKIP_TAGS.has(tagName(n))) {
+    return null
+  }
+  if (isElement(n) && tagName(n) === tag) {
+    return n
+  }
   for (const c of n.children ?? []) {
     const found = findFirstElement(c, tag)
-    if (found !== null) return found
+    if (found !== null) {
+      return found
+    }
   }
   return null
 }
@@ -96,23 +102,35 @@ const selectMainContent = (doc: DomNode): DomNode =>
 
 const walk = (n: DomNode, out: string[], inSkip: boolean): void => {
   let skip = inSkip
-  if (isSkip(n)) skip = true
+  if (isSkip(n)) {
+    skip = true
+  }
   const block = isElement(n) && BLOCK_TAGS.has(tagName(n))
-  if (!skip && block) out.push("\n")
-  if (!skip && n.type === "text" && n.data !== undefined) out.push(n.data)
-  for (const c of n.children ?? []) walk(c, out, skip)
-  if (!skip && block) out.push("\n")
+  if (!skip && block) {
+    out.push("\n")
+  }
+  if (!skip && n.type === "text" && n.data !== undefined) {
+    out.push(n.data)
+  }
+  for (const c of n.children ?? []) {
+    walk(c, out, skip)
+  }
+  if (!skip && block) {
+    out.push("\n")
+  }
 }
 
 /** Collapses whitespace: space/tab runs → one space, ≥2 newlines → paragraph break. */
 export const collapseWhitespace = (s: string): string => {
   let out = ""
   let prevSpace = true
-  let prevNewlines = 2 // suppress leading blank lines
+  let prevNewlines = 2 // Suppress leading blank lines
   for (const r of s) {
     if (r === "\n") {
       prevNewlines++
-      if (prevNewlines === 2) out += "\n\n"
+      if (prevNewlines === 2) {
+        out += "\n\n"
+      }
       prevSpace = true
     } else if (r === " " || r === "\t" || r === "\r") {
       if (!prevSpace) {
@@ -135,10 +153,14 @@ const isBoilerplateLine = (line: string): boolean => {
 
 /** Drops short (<120 char) footer/CTA/boilerplate lines; keeps long content. */
 export const prunePostExtractNoise = (s: string): string => {
-  if (s === "") return s
+  if (s === "") {
+    return s
+  }
   const kept = s.split("\n").filter((l) => {
     const trimmed = l.trim()
-    if (trimmed === "") return true
+    if (trimmed === "") {
+      return true
+    }
     return !(trimmed.length < 120 && isBoilerplateLine(trimmed))
   })
   return collapseWhitespace(kept.join("\n"))

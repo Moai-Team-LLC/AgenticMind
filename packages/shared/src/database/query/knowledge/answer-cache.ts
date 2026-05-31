@@ -61,20 +61,22 @@ type CacheRow = {
   last_hit_at: Date | null
 }
 
-const toCachedAnswer = (r: CacheRow): CachedAnswer => ({
-  id: r.id,
-  questionHash: r.question_hash,
-  questionText: r.question_text,
-  answerText: r.answer_text,
-  citations: r.citations_json ?? [],
-  sourceMaterialIds: r.source_material_ids ?? [],
-  sourceFingerprint: r.source_fingerprint,
-  answerModel: r.answer_model,
-  ttlSeconds: r.ttl_seconds,
-  createdAt: r.created_at,
-  hitCount: r.hit_count,
-  lastHitAt: r.last_hit_at,
-})
+const toCachedAnswer = (r: CacheRow): CachedAnswer => {
+  return {
+    id: r.id,
+    questionHash: r.question_hash,
+    questionText: r.question_text,
+    answerText: r.answer_text,
+    citations: r.citations_json ?? [],
+    sourceMaterialIds: r.source_material_ids ?? [],
+    sourceFingerprint: r.source_fingerprint,
+    answerModel: r.answer_model,
+    ttlSeconds: r.ttl_seconds,
+    createdAt: r.created_at,
+    hitCount: r.hit_count,
+    lastHitAt: r.last_hit_at,
+  }
+}
 
 /**
  * Two-stage lookup. Returns the cached answer or null on miss. A hit requires
@@ -131,7 +133,9 @@ export const lookupAnswer = (props: {
       `)
       const rows = result as unknown as CacheRow[]
       const row = rows[0]
-      if (row === undefined) return null
+      if (row === undefined) {
+        return null
+      }
       await props.tx.execute(
         sql`UPDATE answer_cache SET hit_count = hit_count + 1, last_hit_at = now() WHERE id = ${row.id}`,
       )
@@ -186,4 +190,6 @@ export const answerCacheStats = (props: { tx: Transaction }) =>
       })
       .from(answerCache),
     mapDatabaseError,
-  ).map((rows) => ({ activeRows: rows[0]?.active ?? 0, totalRows: rows[0]?.total ?? 0 }))
+  ).map((rows) => {
+    return { activeRows: rows[0]?.active ?? 0, totalRows: rows[0]?.total ?? 0 }
+  })

@@ -40,7 +40,7 @@ const answerCache = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),
-    ttlSeconds: integer("ttl_seconds").notNull().default(604800),
+    ttlSeconds: integer("ttl_seconds").notNull().default(604_800),
     hitCount: integer("hit_count").notNull().default(0),
     lastHitAt: timestamp("last_hit_at", { withTimezone: true }),
     invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),

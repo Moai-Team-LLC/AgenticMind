@@ -236,12 +236,8 @@
           "name": "ask_cluster_members_cluster_id_ask_clusters_id_fk",
           "tableFrom": "ask_cluster_members",
           "tableTo": "ask_clusters",
-          "columnsFrom": [
-            "cluster_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["cluster_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -249,12 +245,8 @@
           "name": "ask_cluster_members_ask_id_ask_telemetry_id_fk",
           "tableFrom": "ask_cluster_members",
           "tableTo": "ask_telemetry",
-          "columnsFrom": [
-            "ask_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ask_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -262,10 +254,7 @@
       "compositePrimaryKeys": {
         "ask_cluster_members_cluster_id_ask_id_pk": {
           "name": "ask_cluster_members_cluster_id_ask_id_pk",
-          "columns": [
-            "cluster_id",
-            "ask_id"
-          ]
+          "columns": ["cluster_id", "ask_id"]
         }
       },
       "uniqueConstraints": {},
@@ -428,12 +417,8 @@
           "name": "ask_clusters_promoted_card_id_knowledge_cards_id_fk",
           "tableFrom": "ask_clusters",
           "tableTo": "knowledge_cards",
-          "columnsFrom": [
-            "promoted_card_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["promoted_card_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -563,12 +548,8 @@
           "name": "ask_feedback_ask_id_ask_telemetry_id_fk",
           "tableFrom": "ask_feedback",
           "tableTo": "ask_telemetry",
-          "columnsFrom": [
-            "ask_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ask_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1112,12 +1093,8 @@
           "name": "chunks_material_id_materials_id_fk",
           "tableFrom": "chunks",
           "tableTo": "materials",
-          "columnsFrom": [
-            "material_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["material_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1282,12 +1259,8 @@
           "name": "kg_mentions_material_id_materials_id_fk",
           "tableFrom": "kg_mentions",
           "tableTo": "materials",
-          "columnsFrom": [
-            "material_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["material_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1295,12 +1268,8 @@
           "name": "kg_mentions_entity_id_kg_entities_entity_id_fk",
           "tableFrom": "kg_mentions",
           "tableTo": "kg_entities",
-          "columnsFrom": [
-            "entity_id"
-          ],
-          "columnsTo": [
-            "entity_id"
-          ],
+          "columnsFrom": ["entity_id"],
+          "columnsTo": ["entity_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1308,10 +1277,7 @@
       "compositePrimaryKeys": {
         "kg_mentions_material_id_entity_id_pk": {
           "name": "kg_mentions_material_id_entity_id_pk",
-          "columns": [
-            "material_id",
-            "entity_id"
-          ]
+          "columns": ["material_id", "entity_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1405,12 +1371,8 @@
           "name": "kg_relations_from_entity_kg_entities_entity_id_fk",
           "tableFrom": "kg_relations",
           "tableTo": "kg_entities",
-          "columnsFrom": [
-            "from_entity"
-          ],
-          "columnsTo": [
-            "entity_id"
-          ],
+          "columnsFrom": ["from_entity"],
+          "columnsTo": ["entity_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1418,12 +1380,8 @@
           "name": "kg_relations_to_entity_kg_entities_entity_id_fk",
           "tableFrom": "kg_relations",
           "tableTo": "kg_entities",
-          "columnsFrom": [
-            "to_entity"
-          ],
-          "columnsTo": [
-            "entity_id"
-          ],
+          "columnsFrom": ["to_entity"],
+          "columnsTo": ["entity_id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1431,11 +1389,7 @@
       "compositePrimaryKeys": {
         "kg_relations_from_entity_to_entity_predicate_pk": {
           "name": "kg_relations_from_entity_to_entity_predicate_pk",
-          "columns": [
-            "from_entity",
-            "to_entity",
-            "predicate"
-          ]
+          "columns": ["from_entity", "to_entity", "predicate"]
         }
       },
       "uniqueConstraints": {},
@@ -1778,12 +1732,8 @@
           "name": "knowledge_cards_material_id_materials_id_fk",
           "tableFrom": "knowledge_cards",
           "tableTo": "materials",
-          "columnsFrom": [
-            "material_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["material_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2219,11 +2169,7 @@
     "public.principal_kind": {
       "name": "principal_kind",
       "schema": "public",
-      "values": [
-        "agent",
-        "service",
-        "human"
-      ]
+      "values": ["agent", "service", "human"]
     }
   },
   "schemas": {},

@@ -9,7 +9,7 @@ export const databaseSettings = createEnv({
     DATABASE_URL: z.url(),
     DATABASE_POOL_MAX: z.coerce.number().int().positive().default(32),
     // Off by default so a plain local Postgres (no TLS) connects. Set true for
-    // managed Postgres (Supabase, RDS, …) that requires SSL.
+    // Managed Postgres (Supabase, RDS, …) that requires SSL.
     DATABASE_SSL: z
       .enum(["true", "false"])
       .default("false")

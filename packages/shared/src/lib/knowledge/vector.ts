@@ -1,5 +1,5 @@
 /**
- * pgvector helpers for the knowledge retrieval layer. Pure (no env / network)
+ * Pgvector helpers for the knowledge retrieval layer. Pure (no env / network)
  * so it can be imported by the hybrid-search SQL builders and unit-tested
  * without pulling in the AI client.
  */

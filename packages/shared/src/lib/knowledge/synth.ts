@@ -92,7 +92,7 @@ export type Answer = {
   graphContextRows?: number
   /** Per-phase latency breakdown (embed/cache/retrieve/rerank/synth/output_filter). */
   phases?: { phase: string; ms: number }[]
-  /** ask_telemetry row id, set after the best-effort telemetry write. */
+  /** Ask_telemetry row id, set after the best-effort telemetry write. */
   telemetryId?: string
 }
 
@@ -126,10 +126,12 @@ Q: "What is Y Combinator?"
 A: "Y Combinator is a startup accelerator founded in 2005 [1]. The program
 runs for 3 months and includes funding in exchange for 7% equity [2]."`
 
-export const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
+export const clamp01 = (v: number): number => (v < 0 ? 0 : Math.min(1, v))
 
 const isCallerContextEmpty = (c: CallerContext | null | undefined): boolean => {
-  if (c === null || c === undefined) return true
+  if (c === null || c === undefined) {
+    return true
+  }
   return (
     (c.intent ?? "") === "" &&
     (c.facts?.length ?? 0) === 0 &&
@@ -145,7 +147,9 @@ const isCallerContextEmpty = (c: CallerContext | null | undefined): boolean => {
 
 /** SYSTEM_PROMPT + an optional caller-context block (in the system message). */
 export const buildSystemPromptWithContext = (c: CallerContext | null | undefined): string => {
-  if (isCallerContextEmpty(c)) return SYSTEM_PROMPT
+  if (isCallerContextEmpty(c)) {
+    return SYSTEM_PROMPT
+  }
   const m = c as CallerContext
   const lines: string[] = [
     SYSTEM_PROMPT,
@@ -156,18 +160,35 @@ export const buildSystemPromptWithContext = (c: CallerContext | null | undefined
     "",
     "[user context]",
   ]
-  if ((m.intent ?? "") !== "") lines.push(`- goal: ${m.intent}`)
-  for (const f of m.facts ?? []) {
-    if (f.label !== "" && f.value !== "") lines.push(`- ${f.label}: ${f.value}`)
+  if ((m.intent ?? "") !== "") {
+    lines.push(`- goal: ${m.intent}`)
   }
-  if ((m.industry ?? "") !== "") lines.push(`- industry: ${m.industry}`)
-  if ((m.stage ?? "") !== "") lines.push(`- stage: ${m.stage}`)
-  if ((m.expertise?.length ?? 0) > 0) lines.push(`- expertise: ${m.expertise!.join(", ")}`)
-  if ((m.challenges?.length ?? 0) > 0)
-    lines.push(`- current challenges: ${m.challenges!.join(", ")}`)
-  if ((m.customTags?.length ?? 0) > 0) lines.push(`- tags: ${m.customTags!.join(", ")}`)
-  if ((m.partnershipInterests?.length ?? 0) > 0) {
-    lines.push(`- looking for: ${m.partnershipInterests!.join(", ")}`)
+  for (const f of m.facts ?? []) {
+    if (f.label !== "" && f.value !== "") {
+      lines.push(`- ${f.label}: ${f.value}`)
+    }
+  }
+  if ((m.industry ?? "") !== "") {
+    lines.push(`- industry: ${m.industry}`)
+  }
+  if ((m.stage ?? "") !== "") {
+    lines.push(`- stage: ${m.stage}`)
+  }
+  const expertise = m.expertise ?? []
+  if (expertise.length > 0) {
+    lines.push(`- expertise: ${expertise.join(", ")}`)
+  }
+  const challenges = m.challenges ?? []
+  if (challenges.length > 0) {
+    lines.push(`- current challenges: ${challenges.join(", ")}`)
+  }
+  const customTags = m.customTags ?? []
+  if (customTags.length > 0) {
+    lines.push(`- tags: ${customTags.join(", ")}`)
+  }
+  const partnershipInterests = m.partnershipInterests ?? []
+  if (partnershipInterests.length > 0) {
+    lines.push(`- looking for: ${partnershipInterests.join(", ")}`)
   }
   let out = lines.join("\n")
   if ((m.recentJourney ?? "") !== "") {
@@ -178,7 +199,9 @@ export const buildSystemPromptWithContext = (c: CallerContext | null | undefined
 
 /** " (updated YYYY-MM-DD)" for a known date, else "". */
 export const formatUpdatedAnnotation = (date: Date | null | undefined): string => {
-  if (date === null || date === undefined) return ""
+  if (date === null || date === undefined) {
+    return ""
+  }
   return ` (updated ${date.toISOString().slice(0, 10)})`
 }
 
@@ -198,7 +221,9 @@ export const buildPromptWithGraphContext = (
     parts.push(
       "Graph context (supplementary, NOT a citable source — only the numbered Sources below count):",
     )
-    for (const g of graphContext) parts.push(`- ${g.body}`)
+    for (const g of graphContext) {
+      parts.push(`- ${g.body}`)
+    }
     parts.push("")
   }
   if (sources.length === 0) {
@@ -222,16 +247,22 @@ const CITATION_RE = /\[(\d+)\]/g
 /** Finds [N] markers, returns matching sources deduped + sorted by number. */
 export const parseCitations = (answerText: string, sources: Source[]): Citation[] => {
   const bySource = new Map<number, Source>()
-  for (const s of sources) bySource.set(s.number, s)
+  for (const s of sources) {
+    bySource.set(s.number, s)
+  }
 
   const seen = new Set<number>()
   const out: Citation[] = []
   for (const match of answerText.matchAll(CITATION_RE)) {
-    const n = Number.parseInt(match[1]!, 10)
-    if (Number.isNaN(n) || seen.has(n)) continue
+    const n = Number.parseInt(match[1] ?? "", 10)
+    if (Number.isNaN(n) || seen.has(n)) {
+      continue
+    }
     seen.add(n)
     const src = bySource.get(n)
-    if (src === undefined) continue
+    if (src === undefined) {
+      continue
+    }
     out.push({
       number: src.number,
       materialId: src.materialId,
@@ -249,13 +280,19 @@ export const parseCitations = (answerText: string, sources: Source[]): Citation[
   return out
 }
 
-/** card_synth when any cited source is a card; else synth. */
+/** Card_synth when any cited source is a card; else synth. */
 export const classifyServedBy = (citations: Citation[], sources: Source[]): string => {
-  if (citations.length === 0) return SERVED_BY_SYNTH
+  if (citations.length === 0) {
+    return SERVED_BY_SYNTH
+  }
   const originById = new Map<string, string>()
-  for (const s of sources) originById.set(s.chunkId, s.origin)
+  for (const s of sources) {
+    originById.set(s.chunkId, s.origin)
+  }
   for (const c of citations) {
-    if (originById.get(c.chunkId) === SOURCE_ORIGIN_CARD) return SERVED_BY_CARD
+    if (originById.get(c.chunkId) === SOURCE_ORIGIN_CARD) {
+      return SERVED_BY_CARD
+    }
   }
   return SERVED_BY_SYNTH
 }

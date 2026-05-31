@@ -1,15 +1,17 @@
 import { describe, expect, it } from "vitest"
 
-import { calibrateJudge, computeCalibration, type LabeledExample } from "./judge-calibration"
+import type { LabeledExample } from "./judge-calibration"
+
+import { calibrateJudge, computeCalibration } from "./judge-calibration"
 
 describe("computeCalibration", () => {
   it("computes TPR/TNR/accuracy + confusion matrix", () => {
     const r = computeCalibration([
-      { id: "1", expected: true, got: true }, // tp
-      { id: "2", expected: true, got: false }, // fn
-      { id: "3", expected: false, got: false }, // tn
-      { id: "4", expected: false, got: true }, // fp
-      { id: "5", expected: true, got: true }, // tp
+      { id: "1", expected: true, got: true }, // Tp
+      { id: "2", expected: true, got: false }, // Fn
+      { id: "3", expected: false, got: false }, // Tn
+      { id: "4", expected: false, got: true }, // Fp
+      { id: "5", expected: true, got: true }, // Tp
     ])
     expect(r.tp).toBe(2)
     expect(r.fn).toBe(1)
@@ -48,7 +50,9 @@ describe("calibrateJudge", () => {
       { id: "2", input: "boom", expected: true },
     ]
     const judge = async (ex: LabeledExample) => {
-      if (ex.input === "boom") throw new Error("judge error")
+      if (ex.input === "boom") {
+        throw new Error("judge error")
+      }
       return true
     }
     const r = await calibrateJudge(examples, judge)

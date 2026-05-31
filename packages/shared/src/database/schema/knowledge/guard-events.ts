@@ -17,9 +17,9 @@ const guardEvents = pgTable(
     actorUuid: text("actor_uuid"),
     /** The tool the block happened in (kl_ask_global, mem_write, …). */
     tool: text("tool").notNull(),
-    /** injection | pii_redacted | rate_limited | output_leak | too_long */
+    /** Injection | pii_redacted | rate_limited | output_leak | too_long */
     reason: text("reason").notNull(),
-    /** sha256 of the offending input — never the raw text. */
+    /** Sha256 of the offending input — never the raw text. */
     inputHash: text("input_hash"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`now()`)

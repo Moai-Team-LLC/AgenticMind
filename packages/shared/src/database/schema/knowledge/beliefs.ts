@@ -27,18 +27,18 @@ const beliefs = pgTable(
     /** Holder of the belief. NULL = shared/collective memory. */
     actorUuid: text("actor_uuid"),
 
-    // subject-predicate-object (free text; mirrors the card/graph ontology)
+    // Subject-predicate-object (free text; mirrors the card/graph ontology)
     subject: text("subject").notNull(),
     predicate: text("predicate").notNull(),
     object: text("object").notNull(),
 
-    // valid time (world)
+    // Valid time (world)
     validFrom: timestamp("valid_from", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),
     validTo: timestamp("valid_to", { withTimezone: true }),
 
-    // transaction time (knowledge)
+    // Transaction time (knowledge)
     recordedAt: timestamp("recorded_at", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),
@@ -49,8 +49,8 @@ const beliefs = pgTable(
 
     confidence: real("confidence").notNull().default(0.5),
 
-    // provenance
-    /** material | agent | judge | consolidation */
+    // Provenance
+    /** Material | agent | judge | consolidation */
     sourceKind: text("source_kind").notNull().default("agent"),
     sourceId: text("source_id"),
 
@@ -68,7 +68,7 @@ const beliefs = pgTable(
     // "current beliefs for an actor about a subject" — the hot recall path.
     index("beliefs_actor_subject_idx").on(table.actorUuid, table.subject),
     index("beliefs_subject_predicate_idx").on(table.subject, table.predicate),
-    // current = invalidated_at IS NULL AND valid_to IS NULL
+    // Current = invalidated_at IS NULL AND valid_to IS NULL
     index("beliefs_current_idx").on(table.invalidatedAt, table.validTo),
     index("beliefs_embedding_idx").using("diskann", table.embedding.op("vector_cosine_ops")),
     index("beliefs_object_tsv_idx").using("gin", table.objectTsv),

@@ -5,16 +5,17 @@
  * Needs OPENROUTER_API_KEY. Run: bun run calibrate
  */
 
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
+import type { LabeledExample } from "@agenticmind/shared/lib/eval/judge-calibration"
 
-import { calibrateJudge, type LabeledExample } from "@agenticmind/shared/lib/eval/judge-calibration"
+import { calibrateJudge } from "@agenticmind/shared/lib/eval/judge-calibration"
 import {
   JUDGE_SYSTEM,
   judgeAllowsPromotion,
   parseJudgeResponse,
 } from "@agenticmind/shared/lib/knowledge/feedback-judge"
 import { completeKnowledge } from "@agenticmind/shared/lib/knowledge/llm"
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 
 const labels = JSON.parse(
   readFileSync(join(import.meta.dir, "..", "eval", "judge-labels.json"), "utf8"),
@@ -27,7 +28,9 @@ const judge = async (ex: LabeledExample): Promise<boolean> => {
     model: "openai/gpt-5-mini",
     purpose: "judge calibration",
   })
-  if (res.isErr()) return false
+  if (res.isErr()) {
+    return false
+  }
   return judgeAllowsPromotion(parseJudgeResponse(res.value).verdict)
 }
 
@@ -37,5 +40,7 @@ console.log(
     `acc=${(r.accuracy * 100).toFixed(0)}% calibrated=${r.calibrated}`,
 )
 console.log(`  confusion: tp=${r.tp} fp=${r.fp} tn=${r.tn} fn=${r.fn}`)
-for (const m of r.misses) console.log(`  miss ${m.id}: expected=${m.expected} got=${m.got}`)
+for (const m of r.misses) {
+  console.log(`  miss ${m.id}: expected=${m.expected} got=${m.got}`)
+}
 process.exit(r.calibrated ? 0 : 1)

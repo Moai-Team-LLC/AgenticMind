@@ -8,9 +8,10 @@
 
 import type { CardInput } from "@agenticmind/shared/database/query/knowledge/cards"
 import type { Table } from "@agenticmind/shared/lib/knowledge/extract-tabular"
+import type { Result } from "neverthrow"
 
 import { isValidPredicate, isValidSubjectType } from "@agenticmind/shared/lib/knowledge/ontology"
-import { err, ok, type Result } from "neverthrow"
+import { err, ok } from "neverthrow"
 
 const TABULAR_EXTRACTOR_VERSION = "tabular-v1"
 
@@ -37,17 +38,25 @@ const asString = (v: unknown): string => (typeof v === "string" ? v.trim() : "")
  * — no partial schemas.
  */
 export const parseTabularSchema = (raw: unknown): Result<TabularSchema, string> => {
-  if (raw === null || raw === undefined) return err("cards: no tabular schema on material")
-  if (typeof raw !== "object" || Array.isArray(raw)) return err("tabular schema: expected object")
+  if (raw === null || raw === undefined) {
+    return err("cards: no tabular schema on material")
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    return err("tabular schema: expected object")
+  }
   const mp = raw as Record<string, unknown>
 
   const subjectType = asString(mp.subjectType)
-  if (subjectType === "") return err("tabular schema: subjectType is required")
+  if (subjectType === "") {
+    return err("tabular schema: subjectType is required")
+  }
   if (!isValidSubjectType(subjectType)) {
     return err(`tabular schema: subjectType "${subjectType}" not in ontology V0`)
   }
   const subjectColumn = asString(mp.subjectColumn)
-  if (subjectColumn === "") return err("tabular schema: subjectColumn is required")
+  if (subjectColumn === "") {
+    return err("tabular schema: subjectColumn is required")
+  }
 
   const predicates: TabularPredicateMap[] = []
   if (Array.isArray(mp.predicates)) {
@@ -76,20 +85,28 @@ export const parseTabularSchema = (raw: unknown): Result<TabularSchema, string> 
   const skipColumns: string[] = []
   if (Array.isArray(mp.skipColumns)) {
     for (const s of mp.skipColumns) {
-      if (typeof s === "string") skipColumns.push(s.trim())
+      if (typeof s === "string") {
+        skipColumns.push(s.trim())
+      }
     }
   }
 
   let minConfidence = typeof mp.minConfidence === "number" ? mp.minConfidence : 0
-  if (minConfidence <= 0) minConfidence = 0.95
-  if (minConfidence > 1) minConfidence = 1
+  if (minConfidence <= 0) {
+    minConfidence = 0.95
+  }
+  if (minConfidence > 1) {
+    minConfidence = 1
+  }
 
   return ok({ subjectType, subjectColumn, predicates, skipColumns, minConfidence })
 }
 
 const buildColumnIndex = (headers: string[]): Map<string, number> => {
   const out = new Map<string, number>()
-  headers.forEach((h, i) => out.set(h.trim().toLowerCase(), i))
+  for (const [i, h] of headers.entries()) {
+    out.set(h.trim().toLowerCase(), i)
+  }
   return out
 }
 
@@ -103,18 +120,26 @@ const buildRowSummary = (
   const parts: string[] = []
   let subject = ""
   for (let i = 0; i < table.headers.length && i < row.length; i++) {
-    const key = table.headers[i]!.trim().toLowerCase()
-    const val = row[i]!.trim()
-    if (val === "") continue
+    const key = table.headers[i]?.trim().toLowerCase() ?? ""
+    const val = row[i]?.trim() ?? ""
+    if (val === "") {
+      continue
+    }
     if (key === subjectColLower) {
       subject = val
       continue
     }
-    if (skipCols.has(key)) continue
+    if (skipCols.has(key)) {
+      continue
+    }
     parts.push(`${table.headers[i]}: ${val}`)
   }
-  if (subject === "") return ""
-  if (parts.length === 0) return subject
+  if (subject === "") {
+    return ""
+  }
+  if (parts.length === 0) {
+    return subject
+  }
   return `${subject} — ${parts.join(", ")}.`
 }
 
@@ -124,23 +149,31 @@ const buildRowSummary = (
  * subject value. Embeddings are added by the caller before upsert.
  */
 export const extractFromTables = (tables: Table[], schema: TabularSchema): CardInput[] => {
-  if (tables.length === 0) return []
+  if (tables.length === 0) {
+    return []
+  }
   const skipCols = new Set(schema.skipColumns.map((c) => c.toLowerCase()))
   const out: CardInput[] = []
 
   for (const table of tables) {
     const colIdx = buildColumnIndex(table.headers)
     const subjectIdx = colIdx.get(schema.subjectColumn.toLowerCase())
-    if (subjectIdx === undefined) continue // sheet lacks the subject column
+    if (subjectIdx === undefined) {
+      continue
+    } // Sheet lacks the subject column
 
-    const resolved = schema.predicates.map((pred) => ({
-      pred,
-      col: colIdx.get(pred.column.toLowerCase()),
-    }))
+    const resolved = schema.predicates.map((pred) => {
+      return {
+        pred,
+        col: colIdx.get(pred.column.toLowerCase()),
+      }
+    })
 
     for (const row of table.rows) {
-      const subjectValue = subjectIdx < row.length ? row[subjectIdx]!.trim() : ""
-      if (subjectValue === "") continue
+      const subjectValue = subjectIdx < row.length ? (row[subjectIdx]?.trim() ?? "") : ""
+      if (subjectValue === "") {
+        continue
+      }
 
       const summary = buildRowSummary(table, row, schema.subjectColumn, skipCols)
       if (summary !== "") {
@@ -156,9 +189,13 @@ export const extractFromTables = (tables: Table[], schema: TabularSchema): CardI
       }
 
       for (const { pred, col } of resolved) {
-        if (col === undefined || col >= row.length) continue
-        const value = row[col]!.trim()
-        if (value === "") continue
+        if (col === undefined || col >= row.length) {
+          continue
+        }
+        const value = row[col]?.trim() ?? ""
+        if (value === "") {
+          continue
+        }
         out.push({
           kind: "fact",
           subjectType: schema.subjectType,

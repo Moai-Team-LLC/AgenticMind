@@ -53,17 +53,27 @@ const TRIM_PUNCT = /^[.,;:!?"'(){}[\]]+|[.,;:!?"'(){}[\]]+$/gu
  */
 export const normaliseQuery = (input: string): string => {
   const q = input.trim()
-  if (q === "") return ""
+  if (q === "") {
+    return ""
+  }
   const words = q.split(/\s+/u).filter((w) => w !== "")
-  if (words.length <= 1) return q
+  if (words.length <= 1) {
+    return q
+  }
   const kept: string[] = []
   for (const w of words) {
     const lw = w.replace(TRIM_PUNCT, "").toLowerCase()
-    if (lw === "") continue
-    if (EN_STOPWORDS_LIGHT.has(lw)) continue
+    if (lw === "") {
+      continue
+    }
+    if (EN_STOPWORDS_LIGHT.has(lw)) {
+      continue
+    }
     kept.push(w)
   }
-  if (kept.length === 0) return q
+  if (kept.length === 0) {
+    return q
+  }
   return kept.join(" ")
 }
 

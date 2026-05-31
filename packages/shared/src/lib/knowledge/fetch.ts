@@ -33,69 +33,110 @@ export type FetchConfig = {
   resolveHost?: (host: string) => Promise<string[]>
 }
 
-const fetchError = (message: string): FetchError => ({ type: "fetch_error", message })
+const fetchError = (message: string): FetchError => {
+  return { type: "fetch_error", message }
+}
 
 /** Reports whether an IP literal is loopback / private / link-local / CGNAT / etc. */
 export const isPrivateIp = (ip: string): boolean => {
   const addr = ip.trim().toLowerCase()
-  if (addr === "") return true
+  if (addr === "") {
+    return true
+  }
 
   // IPv4 (incl. IPv4-mapped IPv6 ::ffff:a.b.c.d)
   const v4 = addr.startsWith("::ffff:") ? addr.slice("::ffff:".length) : addr
   const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(v4)
   if (m !== null) {
     const o = m.slice(1, 5).map(Number)
-    if (o.some((n) => n > 255)) return true // malformed → refuse
+    if (o.some((n) => n > 255)) {
+      return true
+    } // Malformed → refuse
     const [a, b] = o as [number, number, number, number]
-    if (a === 0) return true // unspecified / "this network"
-    if (a === 127) return true // loopback
-    if (a === 10) return true // RFC1918
-    if (a === 172 && b >= 16 && b <= 31) return true // RFC1918
-    if (a === 192 && b === 168) return true // RFC1918
-    if (a === 169 && b === 254) return true // link-local
-    if (a === 100 && b >= 64 && b <= 127) return true // CGNAT 100.64/10
-    if (a >= 224) return true // multicast / reserved
+    if (a === 0) {
+      return true
+    } // Unspecified / "this network"
+    if (a === 127) {
+      return true
+    } // Loopback
+    if (a === 10) {
+      return true
+    } // RFC1918
+    if (a === 172 && b >= 16 && b <= 31) {
+      return true
+    } // RFC1918
+    if (a === 192 && b === 168) {
+      return true
+    } // RFC1918
+    if (a === 169 && b === 254) {
+      return true
+    } // Link-local
+    if (a === 100 && b >= 64 && b <= 127) {
+      return true
+    } // CGNAT 100.64/10
+    if (a >= 224) {
+      return true
+    } // Multicast / reserved
     return false
   }
 
   // IPv6
-  if (addr === "::" || addr === "::1") return true // unspecified / loopback
+  if (addr === "::" || addr === "::1") {
+    return true
+  } // Unspecified / loopback
   if (
     addr.startsWith("fe80") ||
     addr.startsWith("fe9") ||
     addr.startsWith("fea") ||
     addr.startsWith("feb")
-  )
-    return true // link-local fe80::/10
-  if (addr.startsWith("fc") || addr.startsWith("fd")) return true // ULA fc00::/7
-  if (addr.startsWith("ff")) return true // multicast ff00::/8
+  ) {
+    return true
+  } // Link-local fe80::/10
+  if (addr.startsWith("fc") || addr.startsWith("fd")) {
+    return true
+  } // ULA fc00::/7
+  if (addr.startsWith("ff")) {
+    return true
+  } // Multicast ff00::/8
   return false
 }
 
 const resolveIps = async (host: string, config: FetchConfig): Promise<string[]> => {
-  if (config.resolveHost !== undefined) return config.resolveHost(host)
+  if (config.resolveHost !== undefined) {
+    return config.resolveHost(host)
+  }
   // Literal IPs resolve to themselves; otherwise resolve all A/AAAA records.
   const records = await lookup(host, { all: true })
   return records.map((r) => r.address)
 }
 
 const guardHost = async (host: string, config: FetchConfig): Promise<void> => {
-  if (config.allowPrivate === true) return
+  if (config.allowPrivate === true) {
+    return
+  }
   const ips = await resolveIps(host, config)
-  if (ips.length === 0) throw new Error(`fetch: dns resolved no addresses for ${host}`)
+  if (ips.length === 0) {
+    throw new Error(`fetch: dns resolved no addresses for ${host}`)
+  }
   for (const ip of ips) {
-    if (isPrivateIp(ip))
+    if (isPrivateIp(ip)) {
       throw new Error(`fetch: refusing private/loopback address ${ip} (host ${host})`)
+    }
   }
 }
 
 const sniffContentType = (body: Uint8Array): string => {
   const head = body.subarray(0, 5)
-  const ascii = String.fromCharCode(...body.subarray(0, Math.min(64, body.length))).toLowerCase()
-  if (head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46)
-    return "application/pdf" // %PDF
-  if (head[0] === 0x50 && head[1] === 0x4b) return "application/zip" // PK.. (docx/xlsx)
-  if (ascii.includes("<!doctype html") || ascii.includes("<html")) return "text/html"
+  const ascii = String.fromCodePoint(...body.subarray(0, Math.min(64, body.length))).toLowerCase()
+  if (head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46) {
+    return "application/pdf"
+  } // %PDF
+  if (head[0] === 0x50 && head[1] === 0x4b) {
+    return "application/zip"
+  } // PK.. (docx/xlsx)
+  if (ascii.includes("<!doctype html") || ascii.includes("<html")) {
+    return "text/html"
+  }
   return "application/octet-stream"
 }
 
@@ -112,7 +153,9 @@ const fetchOnce = async (url: string, config: FetchConfig): Promise<FetchResult>
     await guardHost(parsed.hostname, config)
 
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    const timer = setTimeout(() => {
+      controller.abort()
+    }, timeoutMs)
     let response: Response
     try {
       response = await fetch(current, {
@@ -130,9 +173,12 @@ const fetchOnce = async (url: string, config: FetchConfig): Promise<FetchResult>
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location")
-      if (location === null) throw new Error("fetch: redirect without Location header")
-      if (redirects >= MAX_REDIRECTS)
+      if (location === null) {
+        throw new Error("fetch: redirect without Location header")
+      }
+      if (redirects >= MAX_REDIRECTS) {
         throw new Error(`fetch: too many redirects (>${MAX_REDIRECTS})`)
+      }
       current = new URL(location, current).toString()
       continue
     }

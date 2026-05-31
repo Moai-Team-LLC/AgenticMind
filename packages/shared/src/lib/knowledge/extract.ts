@@ -7,11 +7,12 @@
  * the upload handler can leave the material at status=ingesting.
  */
 
+import type { Table } from "@agenticmind/shared/lib/knowledge/extract-tabular"
+
 import { extractHtml } from "@agenticmind/shared/lib/knowledge/extract-html"
 import {
   extractDelimited,
   renderTablesAsParagraphs,
-  type Table,
   tableFromRows,
 } from "@agenticmind/shared/lib/knowledge/extract-tabular"
 import { errAsync, okAsync, ResultAsync } from "neverthrow"
@@ -34,28 +35,40 @@ export type ExtractError = {
   readonly message: string
 }
 
-const extractError = (code: ExtractError["code"], message: string): ExtractError => ({
-  type: "extract_error",
-  code,
-  message,
-})
+const extractError = (code: ExtractError["code"], message: string): ExtractError => {
+  return {
+    type: "extract_error",
+    code,
+    message,
+  }
+}
 
 /** Maps a Content-Type onto a coarse MimeKind. Case-insensitive, ignores params. */
 export const classify = (mime: string): MimeKind => {
   let m = mime.toLowerCase().trim()
   const semi = m.indexOf(";")
-  if (semi >= 0) m = m.slice(0, semi).trim()
+  if (semi !== -1) {
+    m = m.slice(0, semi).trim()
+  }
 
-  if (m === "text/html" || m === "application/xhtml+xml") return "html"
-  if (m === "text/csv" || m === "application/csv") return "csv"
-  if (m === "text/tab-separated-values" || m === "text/tsv") return "tsv"
+  if (m === "text/html" || m === "application/xhtml+xml") {
+    return "html"
+  }
+  if (m === "text/csv" || m === "application/csv") {
+    return "csv"
+  }
+  if (m === "text/tab-separated-values" || m === "text/tsv") {
+    return "tsv"
+  }
   if (
     m === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
     m === "application/vnd.ms-excel"
   ) {
     return "xlsx"
   }
-  if (m.startsWith("text/")) return "text"
+  if (m.startsWith("text/")) {
+    return "text"
+  }
   if (
     m === "application/json" ||
     m === "application/xml" ||
@@ -64,8 +77,12 @@ export const classify = (mime: string): MimeKind => {
   ) {
     return "text"
   }
-  if (m === "application/pdf") return "pdf"
-  if (m === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "docx"
+  if (m === "application/pdf") {
+    return "pdf"
+  }
+  if (m === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
+    return "docx"
+  }
   return "unknown"
 }
 
@@ -86,8 +103,10 @@ const extractTabular = (
       pages: 0,
       tables: [table],
     })
-  } catch (e) {
-    return errAsync(extractError("empty", e instanceof Error ? e.message : "tabular parse failed"))
+  } catch (error) {
+    return errAsync(
+      extractError("empty", error instanceof Error ? error.message : "tabular parse failed"),
+    )
   }
 }
 
@@ -120,18 +139,36 @@ const extractXlsx = (body: Uint8Array): ResultAsync<ExtractResult, ExtractError>
       const tables: Table[] = []
       for (const name of wb.SheetNames) {
         const sheet = wb.Sheets[name]
-        if (sheet === undefined) continue
+        if (sheet === undefined) {
+          continue
+        }
         const raw = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
           header: 1,
           raw: false,
           defval: "",
         })
-        const rows = raw.map((r) => r.map((c) => (c === null || c === undefined ? "" : String(c))))
-        if (rows.length === 0) continue
+        const rows = raw.map((r) =>
+          r.map((c) => {
+            if (typeof c === "string") {
+              return c
+            }
+            if (typeof c === "number" || typeof c === "boolean") {
+              return String(c)
+            }
+            return ""
+          }),
+        )
+        if (rows.length === 0) {
+          continue
+        }
         const table = tableFromRows(name, rows)
-        if (table.rows.length > 0) tables.push(table)
+        if (table.rows.length > 0) {
+          tables.push(table)
+        }
       }
-      if (tables.length === 0) throw new Error("all sheets empty")
+      if (tables.length === 0) {
+        throw new Error("all sheets empty")
+      }
       return {
         text: renderTablesAsParagraphs(tables),
         kind: "xlsx",
@@ -148,12 +185,15 @@ export const extract = (
   mime: string,
   body: Uint8Array,
 ): ResultAsync<ExtractResult, ExtractError> => {
-  if (body.byteLength === 0) return errAsync(extractError("empty", "extract: empty body"))
+  if (body.byteLength === 0) {
+    return errAsync(extractError("empty", "extract: empty body"))
+  }
   const kind = classify(mime)
   switch (kind) {
-    case "text":
+    case "text": {
       return okAsync({ text: decode(body), kind, bytes: body.byteLength, pages: 0, tables: [] })
-    case "html":
+    }
+    case "html": {
       return okAsync({
         text: extractHtml(decode(body)),
         kind,
@@ -161,19 +201,27 @@ export const extract = (
         pages: 0,
         tables: [],
       })
-    case "csv":
+    }
+    case "csv": {
       return extractTabular(body, "csv")
-    case "tsv":
+    }
+    case "tsv": {
       return extractTabular(body, "tsv")
-    case "pdf":
+    }
+    case "pdf": {
       return extractPdf(body)
-    case "docx":
+    }
+    case "docx": {
       return extractDocx(body)
-    case "xlsx":
+    }
+    case "xlsx": {
       return extractXlsx(body)
-    default:
-      return errAsync(extractError("unsupported", `extract: unsupported MIME ${mime}`))
+    }
+    case "unknown": {
+      break
+    }
   }
+  return errAsync(extractError("unsupported", `extract: unsupported MIME ${mime}`))
 }
 
 export type { Table } from "@agenticmind/shared/lib/knowledge/extract-tabular"

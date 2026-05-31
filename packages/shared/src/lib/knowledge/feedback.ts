@@ -22,9 +22,9 @@ export const FEEDBACK_SIGNALS = [
   "admin_marked_wrong",
   "admin_marked_helpful",
   // Programmatic signals (agents / evals / verifiers) — these let the
-  // compounding loop self-improve WITHOUT a human in the loop: an agent or
-  // an eval emits them, and they drive the same clustering → judge →
-  // resolution-card promotion path that human thumbs do.
+  // Compounding loop self-improve WITHOUT a human in the loop: an agent or
+  // An eval emits them, and they drive the same clustering → judge →
+  // Resolution-card promotion path that human thumbs do.
   "verified_supported",
   "verification_failed",
   "eval_passed",
@@ -64,9 +64,9 @@ export const isAgentSignal = (s: FeedbackSignal): boolean => AGENT_SIGNALS.has(s
 
 const STRENGTHS: Record<FeedbackSignal, number> = {
   // Human
-  claimed_deal: 1.0,
-  requested_intro: 1.0,
-  admin_marked_helpful: 1.0,
+  claimed_deal: 1,
+  requested_intro: 1,
+  admin_marked_helpful: 1,
   forwarded_answer: 0.8,
   thumb_up: 0.7,
   thanks_message: 0.7,
@@ -76,15 +76,15 @@ const STRENGTHS: Record<FeedbackSignal, number> = {
   reformulated_immediately: -0.6,
   thumb_down: -0.7,
   escalated_to_admin: -0.8,
-  admin_marked_wrong: -1.0,
+  admin_marked_wrong: -1,
   // Programmatic (agents / evals / verifiers)
-  verified_supported: 1.0,
+  verified_supported: 1,
   eval_passed: 0.9,
   downstream_success: 0.8,
   used_in_generation: 0.5,
   downstream_failure: -0.7,
   eval_failed: -0.9,
-  verification_failed: -1.0,
+  verification_failed: -1,
 }
 
 /**
@@ -95,4 +95,4 @@ const STRENGTHS: Record<FeedbackSignal, number> = {
 export const defaultStrengthFor = (s: FeedbackSignal): number => STRENGTHS[s]
 
 /** Clamps an arbitrary upstream strength into [-1, 1]. */
-export const clampStrength = (v: number): number => (v < -1 ? -1 : v > 1 ? 1 : v)
+export const clampStrength = (v: number): number => (v < -1 ? -1 : Math.min(1, v))

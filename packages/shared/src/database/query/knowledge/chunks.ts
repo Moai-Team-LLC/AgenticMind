@@ -8,11 +8,12 @@
 
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { ScoredHit } from "@agenticmind/shared/lib/knowledge/blend"
+import type { SQL } from "drizzle-orm"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { chunks } from "@agenticmind/shared/database/schema"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
-import { asc, eq, isNotNull, type SQL, sql } from "drizzle-orm"
+import { asc, eq, isNotNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 /** A chunk to persist. embedding is null until the embedder fills it in. */
@@ -38,17 +39,18 @@ export const upsertChunks = (props: { tx: Transaction; materialId: string; items
       await props.tx.delete(chunks).where(eq(chunks.materialId, props.materialId))
       if (props.items.length > 0) {
         await props.tx.insert(chunks).values(
-          props.items.map((c) => ({
-            materialId: props.materialId,
-            ordinal: c.ordinal,
-            body: c.body,
-            tokenCount: c.tokenCount ?? null,
-            embedding: c.embedding ?? null,
-            embeddingModel: c.embeddingModel ?? null,
-          })),
+          props.items.map((c) => {
+            return {
+              materialId: props.materialId,
+              ordinal: c.ordinal,
+              body: c.body,
+              tokenCount: c.tokenCount ?? null,
+              embedding: c.embedding ?? null,
+              embeddingModel: c.embeddingModel ?? null,
+            }
+          }),
         )
       }
-      return undefined
     })(),
     mapDatabaseError,
   )
@@ -133,7 +135,9 @@ export const dedupeVariants = (query: string, variants: string[] | undefined): s
   const out: string[] = []
   for (const v of source) {
     const trimmed = v.trim()
-    if (trimmed === "" || seen.has(trimmed)) continue
+    if (trimmed === "" || seen.has(trimmed)) {
+      continue
+    }
     seen.add(trimmed)
     out.push(trimmed)
   }
@@ -164,7 +168,9 @@ export const searchChunksBm25 = (props: {
   limit?: number
 }): ResultAsync<KnowledgeHit[], ReturnType<typeof mapDatabaseError>> => {
   const variants = dedupeVariants(props.query, props.variants)
-  if (variants.length === 0) return ResultAsync.fromSafePromise(Promise.resolve<KnowledgeHit[]>([]))
+  if (variants.length === 0) {
+    return ResultAsync.fromSafePromise(Promise.resolve<KnowledgeHit[]>([]))
+  }
   const limit =
     props.limit !== undefined && props.limit > 0 && props.limit <= 100 ? props.limit : 10
 

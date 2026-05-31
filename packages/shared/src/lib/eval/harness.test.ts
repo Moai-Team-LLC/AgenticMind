@@ -1,20 +1,17 @@
 import { describe, expect, it } from "vitest"
 
-import {
-  evaluateCase,
-  isRegression,
-  runEvalSuite,
-  type AskForEval,
-  type EvalCase,
-  type EvalObservation,
-} from "./harness"
+import type { AskForEval, EvalCase, EvalObservation } from "./harness"
 
-const obs = (o: Partial<EvalObservation>): EvalObservation => ({
-  blocked: false,
-  answer: "",
-  citations: [],
-  ...o,
-})
+import { evaluateCase, isRegression, runEvalSuite } from "./harness"
+
+const obs = (o: Partial<EvalObservation>): EvalObservation => {
+  return {
+    blocked: false,
+    answer: "",
+    citations: [],
+    ...o,
+  }
+}
 
 describe("evaluateCase (Level-1 assertions)", () => {
   it("passes a grounded factual answer", async () => {
@@ -85,8 +82,12 @@ describe("runEvalSuite", () => {
       },
     ]
     const ask: AskForEval = async (q) => {
-      if (q === "boom") throw new Error("kaboom")
-      if (q === "ok") return obs({ citations: [{ title: "t", materialId: "m" }] })
+      if (q === "boom") {
+        throw new Error("kaboom")
+      }
+      if (q === "ok") {
+        return obs({ citations: [{ title: "t", materialId: "m" }] })
+      }
       return obs({ citations: [] })
     }
     const report = await runEvalSuite(cases, ask)

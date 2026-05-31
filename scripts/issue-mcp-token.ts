@@ -13,15 +13,14 @@
  * in plaintext anywhere.
  */
 
-import { createHmac, randomUUID } from "node:crypto"
-
 import { createClient } from "@agenticmind/shared/database/client"
 import { issueMcpToken } from "@agenticmind/shared/database/query/knowledge/mcp-tokens"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
+import { createHmac, randomUUID } from "node:crypto"
 
-/** base64url-encode (RFC 7515): standard base64 with +/→-_ and padding stripped. */
+/** Base64url-encode (RFC 7515): standard base64 with +/→-_ and padding stripped. */
 const b64url = (input: string | Buffer): string =>
-  Buffer.from(input).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+  Buffer.from(input).toString("base64").replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "")
 
 /** Sign an HS256 JWT — no external dep so the CLI stays portable. */
 const signHs256 = (payload: Record<string, unknown>, secret: string): string => {
@@ -34,8 +33,8 @@ const signHs256 = (payload: Record<string, unknown>, secret: string): string => 
 
 const argv = process.argv.slice(2)
 const arg = (name: string): string | undefined => {
-  const i = argv.indexOf("--" + name)
-  return i >= 0 ? argv[i + 1] : undefined
+  const i = argv.indexOf(`--${name}`)
+  return i !== -1 ? argv[i + 1] : undefined
 }
 
 const secret = process.env.AUTH_SECRET
@@ -47,7 +46,9 @@ if (secret === undefined || secret.length === 0) {
 const label = arg("label") ?? "mcp-client"
 const ttlDays = Number(arg("ttl-days") ?? "365")
 const userUuid = arg("principal") ?? randomUUID()
-const scopes = (arg("scopes") ?? "knowledge:read,knowledge:write,knowledge:signal,memory:read,memory:write")
+const scopes = (
+  arg("scopes") ?? "knowledge:read,knowledge:write,knowledge:signal,memory:read,memory:write"
+)
   .split(",")
   .map((s) => s.trim())
   .filter((s) => s.length > 0)

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 
-import { beliefKey, detectConflicts, resolveConflict, type BeliefClaim } from "./belief"
+import type { BeliefClaim } from "./belief"
+
+import { beliefKey, detectConflicts, resolveConflict } from "./belief"
 
 const claim = (
   actor: string | null,
@@ -8,13 +10,15 @@ const claim = (
   predicate: string,
   object: string,
   confidence = 0.7,
-): BeliefClaim => ({
-  actorUuid: actor,
-  subject,
-  predicate,
-  object,
-  confidence,
-})
+): BeliefClaim => {
+  return {
+    actorUuid: actor,
+    subject,
+    predicate,
+    object,
+    confidence,
+  }
+}
 
 describe("belief identity", () => {
   it("is case/whitespace-insensitive on subject+predicate", () => {
@@ -30,7 +34,7 @@ describe("detectConflicts", () => {
     const conflicts = detectConflicts([
       claim("a", "Cyprus", "tax", "12.5%"),
       claim("b", "Cyprus", "tax", "10%"),
-      claim("a", "Estonia", "tax", "20%"), // no conflict — single object
+      claim("a", "Estonia", "tax", "20%"), // No conflict — single object
     ])
     expect(conflicts).toHaveLength(1)
     expect(conflicts[0]!.subject).toBe("Cyprus")
@@ -40,7 +44,7 @@ describe("detectConflicts", () => {
   it("treats same object from many actors as agreement, not conflict", () => {
     const conflicts = detectConflicts([
       claim("a", "Cyprus", "tax", "12.5%"),
-      claim("b", "Cyprus", "tax", "12.5 %"), // same after normalise
+      claim("b", "Cyprus", "tax", "12.5 %"), // Same after normalise
     ])
     expect(conflicts).toHaveLength(0)
   })
@@ -51,7 +55,7 @@ describe("resolveConflict", () => {
     const winner = resolveConflict([
       claim("a", "Cyprus", "tax", "12.5%", 0.6),
       claim("b", "Cyprus", "tax", "12.5%", 0.6),
-      claim("c", "Cyprus", "tax", "10%", 0.95), // higher single confidence but lone
+      claim("c", "Cyprus", "tax", "10%", 0.95), // Higher single confidence but lone
     ])
     expect(winner?.object).toBe("12.5%")
     expect(winner?.corroborators).toBe(2)

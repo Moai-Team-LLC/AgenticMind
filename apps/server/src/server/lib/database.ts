@@ -5,7 +5,7 @@ import { createClient } from "@agenticmind/shared/database/client"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 
 // HMR-safe singleton: the dev server reloads modules on every edit, so cache
-// the pool on globalThis to avoid exhausting Postgres connections.
+// The pool on globalThis to avoid exhausting Postgres connections.
 declare global {
   // eslint-disable-next-line no-var
   var __agenticmindDb: NodePgDatabase<typeof schema> | undefined

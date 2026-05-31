@@ -8,10 +8,10 @@
  */
 
 import type { CardInput } from "@agenticmind/shared/database/query/knowledge/cards"
+import type { CardKind } from "@agenticmind/shared/lib/knowledge/card"
 
 import {
   CARDS_MAX_BODY_CHARS,
-  type CardKind,
   CURRENT_EXTRACTOR_VERSION,
   isCardKind,
   MAX_CARDS_PER_MATERIAL,
@@ -131,16 +131,28 @@ const predicateAcceptsSubject = (predicate: string, subjectType: string): boolea
  * to drop. Mirrors validateOne in extract.go.
  */
 export const validateRawCard = (rc: RawCard): CardInput | null => {
-  if (!isCardKind(rc.kind)) return null
-  if (!isValidSubjectType(rc.subject_type)) return null
+  if (!isCardKind(rc.kind)) {
+    return null
+  }
+  if (!isValidSubjectType(rc.subject_type)) {
+    return null
+  }
   const subjectValue = rc.subject_value.trim()
-  if (subjectValue === "") return null
+  if (subjectValue === "") {
+    return null
+  }
   const body = rc.body.trim()
-  if (body === "") return null
+  if (body === "") {
+    return null
+  }
 
   let confidence = rc.confidence ?? 0
-  if (confidence < 0.5) return null
-  if (confidence > 1) confidence = 1
+  if (confidence < 0.5) {
+    return null
+  }
+  if (confidence > 1) {
+    confidence = 1
+  }
 
   const kind: CardKind = rc.kind
   const base: CardInput = {
@@ -157,20 +169,27 @@ export const validateRawCard = (rc: RawCard): CardInput | null => {
   if (kind === "fact" || kind === "metric") {
     const predicate = (rc.predicate ?? "").trim()
     const value = (rc.value ?? "").trim()
-    if (predicate === "" || value === "") return null
-    // value is free-text in V0, so we pass "" as objectType. If the strict
-    // triple check fails, fall back to requiring only subject acceptance.
-    if (validateTriple(rc.subject_type, predicate, "") !== null) {
-      if (!predicateAcceptsSubject(predicate, rc.subject_type)) return null
+    if (predicate === "" || value === "") {
+      return null
+    }
+    // Value is free-text in V0, so we pass "" as objectType. If the strict
+    // Triple check fails, fall back to requiring only subject acceptance.
+    if (
+      validateTriple(rc.subject_type, predicate, "") !== null &&
+      !predicateAcceptsSubject(predicate, rc.subject_type)
+    ) {
+      return null
     }
     return { ...base, predicate, value }
   }
   if (kind === "qa") {
     const question = (rc.question ?? "").trim()
-    if (question === "") return null
+    if (question === "") {
+      return null
+    }
     return { ...base, question }
   }
-  // definition / procedure / resolution: no extra shape requirements.
+  // Definition / procedure / resolution: no extra shape requirements.
   return base
 }
 
@@ -179,8 +198,12 @@ export const validateExtraction = (raw: { cards: RawCard[] }): CardInput[] => {
   const out: CardInput[] = []
   for (const rc of raw.cards) {
     const card = validateRawCard(rc)
-    if (card !== null) out.push(card)
-    if (out.length >= MAX_CARDS_PER_MATERIAL) break
+    if (card !== null) {
+      out.push(card)
+    }
+    if (out.length >= MAX_CARDS_PER_MATERIAL) {
+      break
+    }
   }
   return out
 }
@@ -198,10 +221,14 @@ export const extractCards = (props: {
   body: string
 }): ResultAsync<CardInput[], CardsExtractError> => {
   const body = props.body.trim()
-  if (body === "") return okAsync<CardInput[], CardsExtractError>([])
+  if (body === "") {
+    return okAsync<CardInput[], CardsExtractError>([])
+  }
   return ResultAsync.fromPromise(
     import("@agenticmind/shared/lib/knowledge/llm"),
-    (e): CardsExtractError => ({ type: "import_error", message: String(e) }),
+    (e): CardsExtractError => {
+      return { type: "import_error", message: String(e) }
+    },
   ).andThen((m) =>
     m
       .completeKnowledgeJson({
@@ -211,6 +238,8 @@ export const extractCards = (props: {
         purpose: "knowledge cards extraction",
       })
       .map((raw) => validateExtraction(raw))
-      .mapErr((e): CardsExtractError => ({ type: e.type, message: e.message })),
+      .mapErr((e): CardsExtractError => {
+        return { type: e.type, message: e.message }
+      }),
   )
 }

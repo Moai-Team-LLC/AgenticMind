@@ -17,16 +17,19 @@ import type {
   MultiHopSpec,
   Neighbor,
 } from "@agenticmind/shared/lib/knowledge/graphrag"
+import type { SQL } from "drizzle-orm"
 
 import {
   kgEntities,
   kgMentions,
   kgRelations,
 } from "@agenticmind/shared/database/schema/knowledge/graph"
-import { asc, eq, sql, type SQL } from "drizzle-orm"
+import { asc, eq, sql } from "drizzle-orm"
 import { ResultAsync, okAsync } from "neverthrow"
 
-const pgGraphError = (message: string): GraphError => ({ type: "pg_graph_error", message })
+const pgGraphError = (message: string): GraphError => {
+  return { type: "pg_graph_error", message }
+}
 
 const nullIfEmpty = (s: string): string | null => (s === "" ? null : s)
 
@@ -46,10 +49,12 @@ const buildMultiHopSql = (spec: MultiHopSpec, limit: number): SQL => {
   if (spec.startName !== undefined && spec.startName !== "") {
     conds.push(sql`n0.canonical_name = ${spec.startName}`)
   }
-  if (minConf > 0) conds.push(sql`n0.confidence >= ${minConf}`)
+  if (minConf > 0) {
+    conds.push(sql`n0.confidence >= ${minConf}`)
+  }
 
   const joins: SQL[] = []
-  spec.hops.forEach((h, idx) => {
+  for (const [idx, h] of spec.hops.entries()) {
     const r = idx + 1
     joins.push(
       sql.raw(
@@ -61,9 +66,13 @@ const buildMultiHopSql = (spec: MultiHopSpec, limit: number): SQL => {
       sql`(${sql.raw(`r${r}.ontology_predicate`)} = ${h.predicate} OR (${sql.raw(`r${r}.ontology_predicate`)} IS NULL AND ${sql.raw(`r${r}.predicate`)} = ${h.predicate}))`,
     )
     conds.push(sql`${sql.raw(`n${r}.ontology_type`)} = ${h.targetType}`)
-    if (h.targetName !== "") conds.push(sql`${sql.raw(`n${r}.canonical_name`)} = ${h.targetName}`)
-    if (minConf > 0) conds.push(sql`${sql.raw(`n${r}.confidence`)} >= ${minConf}`)
-  })
+    if (h.targetName !== "") {
+      conds.push(sql`${sql.raw(`n${r}.canonical_name`)} = ${h.targetName}`)
+    }
+    if (minConf > 0) {
+      conds.push(sql`${sql.raw(`n${r}.confidence`)} >= ${minConf}`)
+    }
+  }
 
   const pathLen = spec.hops.length + 1
   const idCols: string[] = []
@@ -91,11 +100,13 @@ const buildMultiHopSql = (spec: MultiHopSpec, limit: number): SQL => {
 }
 
 export const createPostgresGraphStore = (db: Transaction): GraphStore => {
-  const ensureSchema = () => okAsync<void, GraphError>(undefined)
+  const ensureSchema = (): ResultAsync<void, GraphError> => okAsync()
 
   const upsertExtraction = (graph: ExtractedGraph) =>
     wrap(async () => {
-      if (graph.materialId === "") throw new Error("nil graph or zero material id")
+      if (graph.materialId === "") {
+        throw new Error("nil graph or zero material id")
+      }
       const now = new Date()
       const entityIds = new Set(graph.entities.map((e) => e.entityId))
 
@@ -150,7 +161,9 @@ export const createPostgresGraphStore = (db: Transaction): GraphStore => {
 
         for (const rel of graph.relations) {
           // FK-safe: skip relations whose endpoints weren't extracted.
-          if (!entityIds.has(rel.from) || !entityIds.has(rel.to)) continue
+          if (!entityIds.has(rel.from) || !entityIds.has(rel.to)) {
+            continue
+          }
           await tx
             .insert(kgRelations)
             .values({
@@ -191,14 +204,16 @@ export const createPostgresGraphStore = (db: Transaction): GraphStore => {
         .where(eq(kgMentions.materialId, materialId))
         .orderBy(asc(kgEntities.canonicalName))
 
-      return rows.map((r) => ({
-        entityId: r.entityId,
-        canonicalName: r.canonicalName,
-        type: r.type,
-        ontologyType: r.ontologyType ?? "",
-        aliases: r.aliases ?? [],
-        confidence: r.confidence,
-      }))
+      return rows.map((r) => {
+        return {
+          entityId: r.entityId,
+          canonicalName: r.canonicalName,
+          type: r.type,
+          ontologyType: r.ontologyType ?? "",
+          aliases: r.aliases ?? [],
+          confidence: r.confidence,
+        }
+      })
     })
 
   const neighbors = (materialId: string, limit = 10) =>
@@ -228,54 +243,61 @@ export const createPostgresGraphStore = (db: Transaction): GraphStore => {
         ORDER BY r.shared_count DESC, r.via_name
         LIMIT ${cap}`)
 
-      const rows = res.rows as Array<{
+      const rows = res.rows as {
         material_id: string
         via_id: string
         via_name: string
         via_type: string
         title: string
-      }>
+      }[]
 
-      return rows.map((row) => ({
-        materialId: row.material_id,
-        title: row.title ?? "",
-        entity: {
-          entityId: row.via_id,
-          canonicalName: row.via_name,
-          type: row.via_type,
-          ontologyType: "",
-          aliases: [],
-          confidence: 0,
-        },
-        distance: 1,
-      }))
+      return rows.map((row) => {
+        return {
+          materialId: row.material_id,
+          title: row.title ?? "",
+          entity: {
+            entityId: row.via_id,
+            canonicalName: row.via_name,
+            type: row.via_type,
+            ontologyType: "",
+            aliases: [],
+            confidence: 0,
+          },
+          distance: 1,
+        }
+      })
     })
 
   const multiHopQuery = (spec: MultiHopSpec) =>
     wrap(async (): Promise<MultiHopResult[]> => {
-      if (spec.startType.trim() === "")
+      if (spec.startType.trim() === "") {
         throw new Error("invalid multi-hop spec: startType required")
+      }
       const limit = spec.limit !== undefined && spec.limit > 0 ? Math.min(spec.limit, 200) : 25
       const res = await db.execute(buildMultiHopSql(spec, limit))
 
-      const rows = res.rows as Array<{
+      const rows = res.rows as {
         ids: string[]
         names: string[]
         types: string[]
         confs: number[]
-      }>
+      }[]
 
-      return rows.map((row) => ({
-        path: (row.ids ?? []).map((id, i) => ({
-          entityId: id,
-          canonicalName: row.names?.[i] ?? "",
-          ontologyType: row.types?.[i] ?? "",
-          confidence: Number(row.confs?.[i] ?? 0),
-        })),
-      }))
+      return rows.map((row) => {
+        return {
+          path: (row.ids ?? []).map((id, i) => {
+            return {
+              entityId: id,
+              canonicalName: row.names?.[i] ?? "",
+              ontologyType: row.types?.[i] ?? "",
+              confidence: row.confs?.[i] ?? 0,
+            }
+          }),
+        }
+      })
     })
 
-  const close = () => okAsync<void, GraphError>(undefined)
+  const close = (): ResultAsync<void, GraphError> => okAsync()
 
   return { ensureSchema, upsertExtraction, entitiesForMaterial, neighbors, multiHopQuery, close }
 }

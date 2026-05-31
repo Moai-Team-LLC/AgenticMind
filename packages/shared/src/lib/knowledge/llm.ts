@@ -35,11 +35,13 @@ export type KnowledgeAiError = {
   readonly originalError: unknown
 }
 
-const aiError = (message: string, originalError: unknown): KnowledgeAiError => ({
-  type: "ai_error",
-  message,
-  originalError,
-})
+const aiError = (message: string, originalError: unknown): KnowledgeAiError => {
+  return {
+    type: "ai_error",
+    message,
+    originalError,
+  }
+}
 
 /** Embeds a single text into a 1536-dim vector. */
 export const embedKnowledgeText = (
@@ -65,7 +67,9 @@ export const embedKnowledgeBatch = (
   texts: string[],
   purpose = "knowledge embed batch",
 ): ResultAsync<number[][], KnowledgeAiError> => {
-  if (texts.length === 0) return okAsync<number[][], KnowledgeAiError>([])
+  if (texts.length === 0) {
+    return okAsync<number[][], KnowledgeAiError>([])
+  }
   return ResultAsync.fromPromise(
     pRetry(async () => {
       const { embeddings } = await embedMany({

@@ -9,13 +9,14 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { MaterialSelect } from "@agenticmind/shared/database/schema"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
+import type { ResultAsync } from "neverthrow"
 
 import {
   createMaterial,
   deleteMaterial as deleteMaterialRow,
   getMaterial,
 } from "@agenticmind/shared/database/query/knowledge/materials"
-import { errAsync, okAsync, ResultAsync } from "neverthrow"
+import { errAsync, okAsync } from "neverthrow"
 import { randomUUID } from "node:crypto"
 
 /** V1 size cap for a single manual upload (aligned with the multipart limit). */
@@ -23,7 +24,9 @@ export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024
 
 export type IngestionError = { readonly type: "ingestion_error"; readonly message: string }
 
-const ingestionError = (message: string): IngestionError => ({ type: "ingestion_error", message })
+const ingestionError = (message: string): IngestionError => {
+  return { type: "ingestion_error", message }
+}
 
 export type ManualUpload = {
   filename: string
@@ -32,14 +35,18 @@ export type ManualUpload = {
   contentType: string
   sizeBytes: number
   body: Uint8Array
-  /** cuid from the JWT subject claim. */
+  /** Cuid from the JWT subject claim. */
   uploaderId?: string | null
 }
 
 /** Returns the first reason the upload is unacceptable, or null when valid. */
 export const validateUpload = (u: ManualUpload): string | null => {
-  if (u.filename === "") return "filename is required"
-  if (u.sizeBytes <= 0) return "size must be positive"
+  if (u.filename === "") {
+    return "filename is required"
+  }
+  if (u.sizeBytes <= 0) {
+    return "size must be positive"
+  }
   if (u.sizeBytes > MAX_UPLOAD_BYTES) {
     return `file too large: ${u.sizeBytes} bytes (max ${MAX_UPLOAD_BYTES})`
   }
@@ -52,9 +59,11 @@ export const validateUpload = (u: ManualUpload): string | null => {
  * s3-console listings readable.
  */
 export const buildObjectKey = (id: string, filename: string): string => {
-  const segments = filename.replace(/\\/g, "/").split("/")
-  let base = segments[segments.length - 1] ?? ""
-  if (base === "" || base === ".") base = "blob"
+  const segments = filename.replaceAll("\\", "/").split("/")
+  let base = segments.at(-1) ?? ""
+  if (base === "" || base === ".") {
+    base = "blob"
+  }
   return `manual/${id}/${base}`
 }
 
@@ -65,7 +74,9 @@ export const uploadManual = (props: {
   upload: ManualUpload
 }): ResultAsync<MaterialSelect, IngestionError> => {
   const invalid = validateUpload(props.upload)
-  if (invalid !== null) return errAsync(ingestionError(invalid))
+  if (invalid !== null) {
+    return errAsync(ingestionError(invalid))
+  }
 
   const id = randomUUID()
   const objectKey = buildObjectKey(id, props.upload.filename)
@@ -99,7 +110,9 @@ export const fetchMaterialBlob = (props: {
   blobStore: KnowledgeBlobStore
   storageUri: string
 }): ResultAsync<Uint8Array, IngestionError> => {
-  if (props.storageUri === "") return errAsync(ingestionError("empty storage URI"))
+  if (props.storageUri === "") {
+    return errAsync(ingestionError("empty storage URI"))
+  }
   return props.blobStore
     .get({ storageUri: props.storageUri })
     .mapErr((e) => ingestionError(e.message))
@@ -121,8 +134,9 @@ export const removeMaterial = (props: {
   getMaterial({ tx: props.tx, id: props.id })
     .mapErr((e) => ingestionError(e.message))
     .andThen((mat) => {
-      if (mat === null)
+      if (mat === null) {
         return okAsync<RemoveResult, IngestionError>({ removed: false, blobCleanupFailed: false })
+      }
       return deleteMaterialRow({ tx: props.tx, id: props.id })
         .mapErr((e) => ingestionError(`delete row: ${e.message}`))
         .andThen(() => {
@@ -135,7 +149,9 @@ export const removeMaterial = (props: {
           }
           return props.blobStore
             .delete({ storageUri: uri })
-            .map(() => ({ removed: true, blobCleanupFailed: false }))
+            .map(() => {
+              return { removed: true, blobCleanupFailed: false }
+            })
             .orElse(() => {
               console.warn(`ingestion: row ${props.id} deleted but blob cleanup failed`)
               return okAsync<RemoveResult, IngestionError>({

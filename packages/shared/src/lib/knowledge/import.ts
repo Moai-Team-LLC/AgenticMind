@@ -24,7 +24,9 @@ import { uploadManual } from "@agenticmind/shared/lib/knowledge/ingestion"
 import { errAsync, ResultAsync } from "neverthrow"
 
 export type ImportError = { readonly type: "import_error"; readonly message: string }
-const importError = (message: string): ImportError => ({ type: "import_error", message })
+const importError = (message: string): ImportError => {
+  return { type: "import_error", message }
+}
 
 export { deriveFilename, deriveTitle } from "@agenticmind/shared/lib/knowledge/import-url"
 
@@ -101,7 +103,9 @@ export const importFromUrl = (props: {
   fetchUrl(props.url)
     .mapErr((e) => importError(`fetch: ${e.message}`))
     .andThen((res) => {
-      if (res.body.byteLength === 0) return errAsync(importError("remote returned no body"))
+      if (res.body.byteLength === 0) {
+        return errAsync(importError("remote returned no body"))
+      }
       return ingestAndIndex({
         tx: props.tx,
         blobStore: props.blobStore,

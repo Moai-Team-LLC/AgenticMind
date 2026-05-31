@@ -6,13 +6,10 @@
  * procedures call TS libs directly instead of proxying the Go service.
  */
 
+import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 
-import {
-  createS3BlobStore,
-  type KnowledgeBlobStore,
-  nopBlobStore,
-} from "@agenticmind/shared/lib/knowledge/blobstore"
+import { createS3BlobStore, nopBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
 import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 import { spacesSettings } from "@agenticmind/shared/settings/spaces-settings"
@@ -26,11 +23,13 @@ export type KnowledgeFeatureFlags = {
 }
 
 /** Env-controlled tier flags (cards / answer-cache / graphrag). */
-export const knowledgeFeatureFlags = (): KnowledgeFeatureFlags => ({
-  cardsEnabled: knowledgeFeatureSettings.KNOWLEDGE_CARDS_ENABLED === "true",
-  cacheEnabled: knowledgeFeatureSettings.KNOWLEDGE_CACHE_ENABLED === "true",
-  graphragEnabled: knowledgeFeatureSettings.KNOWLEDGE_GRAPHRAG_ENABLED === "true",
-})
+export const knowledgeFeatureFlags = (): KnowledgeFeatureFlags => {
+  return {
+    cardsEnabled: knowledgeFeatureSettings.KNOWLEDGE_CARDS_ENABLED === "true",
+    cacheEnabled: knowledgeFeatureSettings.KNOWLEDGE_CACHE_ENABLED === "true",
+    graphragEnabled: knowledgeFeatureSettings.KNOWLEDGE_GRAPHRAG_ENABLED === "true",
+  }
+}
 
 let cachedBlobStore: KnowledgeBlobStore | undefined
 
@@ -40,7 +39,9 @@ let cachedBlobStore: KnowledgeBlobStore | undefined
  * material rows; the raw bytes just aren't retained for re-indexing.
  */
 export const getKnowledgeBlobStore = (): KnowledgeBlobStore => {
-  if (cachedBlobStore !== undefined) return cachedBlobStore
+  if (cachedBlobStore !== undefined) {
+    return cachedBlobStore
+  }
   const bucket = knowledgeFeatureSettings.SPACES_KNOWLEDGE_BUCKET
   cachedBlobStore =
     bucket === undefined || bucket === ""
@@ -63,7 +64,9 @@ let cachedGraph: GraphStore | undefined
  * call-site `!== undefined` guards keep compiling; it never returns undefined.
  */
 export const getKnowledgeGraphRepo = (): GraphStore | undefined => {
-  if (cachedGraph !== undefined) return cachedGraph
+  if (cachedGraph !== undefined) {
+    return cachedGraph
+  }
   cachedGraph = createPostgresGraphStore(getDb())
   return cachedGraph
 }

@@ -12,17 +12,21 @@ const TRAILING_PUNCT = new Set(["?", "!", ".", ",", ";"])
 /** Canonical form for hash-keying: lowercase, whitespace-collapsed, trailing punctuation stripped. */
 export const normaliseQuestion = (input: string): string => {
   let q = input.trim().toLowerCase()
-  if (q === "") return ""
+  if (q === "") {
+    return ""
+  }
   q = q
     .split(/\s+/u)
     .filter((w) => w !== "")
     .join(" ")
   let end = q.length
-  while (end > 0 && TRAILING_PUNCT.has(q[end - 1]!)) end--
+  while (end > 0 && TRAILING_PUNCT.has(q[end - 1] ?? "")) {
+    end--
+  }
   return q.slice(0, end)
 }
 
-/** sha256 hex of the normalised question. Stable across processes. */
+/** Sha256 hex of the normalised question. Stable across processes. */
 export const hashQuestion = (q: string): string =>
   createHash("sha256").update(normaliseQuestion(q)).digest("hex")
 
@@ -37,10 +41,12 @@ export type SourceFingerprintInput = {
  * join to detect drift, so this only needs to be self-consistent.
  */
 export const fingerprintSources = (inputs: SourceFingerprintInput[]): string => {
-  const sorted = [...inputs].sort((a, b) =>
+  const sorted = [...inputs].toSorted((a, b) =>
     a.materialId < b.materialId ? -1 : a.materialId > b.materialId ? 1 : 0,
   )
   const h = createHash("sha256")
-  for (const s of sorted) h.update(`${s.materialId}|${s.updatedAt.toISOString()}\n`)
+  for (const s of sorted) {
+    h.update(`${s.materialId}|${s.updatedAt.toISOString()}\n`)
+  }
   return h.digest("hex")
 }

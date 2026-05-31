@@ -18,41 +18,55 @@ export type Table = {
 /** Cap on cells parsed from one source — defends against runaway memory. */
 export const MAX_TABULAR_CELLS = 10_000_000
 /** Cap on rows flattened into the chunkable text (Tables keeps the rest). */
-export const MAX_ROWS_RENDERED = 5_000
+export const MAX_ROWS_RENDERED = 5000
 
 /** True when the string is exactly an int/decimal (optional sign). */
 export const isPurelyNumeric = (input: string): boolean => {
   let s = input.trim()
-  if (s === "") return false
-  if (s[0] === "+" || s[0] === "-") {
+  if (s === "") {
+    return false
+  }
+  if (s.startsWith("+") || s.startsWith("-")) {
     s = s.slice(1)
-    if (s === "") return false
+    if (s === "") {
+      return false
+    }
   }
   let dotSeen = false
   for (const r of s) {
     if (r === ".") {
-      if (dotSeen) return false
+      if (dotSeen) {
+        return false
+      }
       dotSeen = true
       continue
     }
-    if (r < "0" || r > "9") return false
+    if (r < "0" || r > "9") {
+      return false
+    }
   }
   return true
 }
 
 /** Row 0 is a header when every cell is non-empty, non-numeric, ≤200 chars. */
 export const isLikelyHeader = (row: string[]): boolean => {
-  if (row.length === 0) return false
+  if (row.length === 0) {
+    return false
+  }
   for (const cell of row) {
     const c = cell.trim()
-    if (c === "" || isPurelyNumeric(c) || c.length > 200) return false
+    if (c === "" || isPurelyNumeric(c) || c.length > 200) {
+      return false
+    }
   }
   return true
 }
 
 const splitHeaderAndRows = (rows: string[][]): { headers: string[]; data: string[][] } => {
-  if (rows.length === 0) return { headers: [], data: [] }
-  const first = rows[0]!
+  const first = rows[0]
+  if (first === undefined) {
+    return { headers: [], data: [] }
+  }
   if (isLikelyHeader(first)) {
     const headers = first.map((h, i) => {
       const trimmed = h.trim()
@@ -60,15 +74,22 @@ const splitHeaderAndRows = (rows: string[][]): { headers: string[]; data: string
     })
     return { headers, data: rows.slice(1) }
   }
-  const width = rows.reduce((max, r) => Math.max(max, r.length), 0)
+  let width = 0
+  for (const r of rows) {
+    width = Math.max(width, r.length)
+  }
   const headers = Array.from({ length: width }, (_, i) => `col_${i + 1}`)
   return { headers, data: rows }
 }
 
 const padRows = (data: string[][], width: number): string[][] =>
   data.map((r) => {
-    if (r.length < width) return [...r, ...Array.from({ length: width - r.length }, () => "")]
-    if (r.length > width) return r.slice(0, width)
+    if (r.length < width) {
+      return [...r, ...Array.from({ length: width - r.length }, () => "")]
+    }
+    if (r.length > width) {
+      return r.slice(0, width)
+    }
     return r
   })
 
@@ -96,7 +117,10 @@ export const parseDelimited = (text: string, delim: string): string[][] => {
   }
 
   for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!
+    const ch = text[i]
+    if (ch === undefined) {
+      continue
+    }
     if (inQuotes) {
       if (ch === '"') {
         if (text[i + 1] === '"') {
@@ -123,8 +147,12 @@ export const parseDelimited = (text: string, delim: string): string[][] => {
       endRow()
       continue
     }
-    if (ch === "\r") continue
-    if (fieldStart && ch === " ") continue
+    if (ch === "\r") {
+      continue
+    }
+    if (fieldStart && ch === " ") {
+      continue
+    }
     field += ch
     fieldStart = false
   }
@@ -143,9 +171,13 @@ export const tableFromRows = (name: string, rows: string[][]): Table => {
 
 /** Parses delimited bytes/text into a single Table. Throws on empty input. */
 export const extractDelimited = (body: string, delim: string): Table => {
-  if (body.length === 0) throw new Error("extract: empty body")
+  if (body.length === 0) {
+    throw new Error("extract: empty body")
+  }
   const rows = parseDelimited(body, delim)
-  if (rows.length === 0) throw new Error("extract: tabular source has no rows")
+  if (rows.length === 0) {
+    throw new Error("extract: tabular source has no rows")
+  }
   return tableFromRows("", rows)
 }
 
@@ -161,21 +193,27 @@ export const renderTablesAsParagraphs = (tables: Table[]): string => {
   const parts: string[] = []
   let rendered = 0
   for (const t of tables) {
-    if (t.rows.length === 0) continue
+    if (t.rows.length === 0) {
+      continue
+    }
     const multiSheet = tables.some((other) => other.name !== t.name && other.name !== "")
     for (let i = 0; i < t.rows.length; i++) {
       if (rendered >= MAX_ROWS_RENDERED) {
         parts.push(`\n[…rows truncated; ${MAX_ROWS_RENDERED}-row chunkable cap reached]\n`)
         return parts.join("").trim()
       }
-      const row = t.rows[i]!
-      const lines: string[] = []
-      lines.push(
+      const row = t.rows[i]
+      if (row === undefined) {
+        continue
+      }
+      const lines: string[] = [
         multiSheet && t.name !== "" ? `[Sheet "${t.name}" — row ${i + 1}]` : `[row ${i + 1}]`,
-      )
+      ]
       for (let col = 0; col < row.length && col < t.headers.length; col++) {
-        const v = row[col]!.trim()
-        if (v === "") continue
+        const v = row[col]?.trim() ?? ""
+        if (v === "") {
+          continue
+        }
         lines.push(`${t.headers[col]}: ${v}`)
       }
       parts.push(lines.join("\n"))

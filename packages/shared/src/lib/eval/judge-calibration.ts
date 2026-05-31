@@ -45,14 +45,17 @@ export const computeCalibration = (
   let fn = 0
   const misses: { id: string; expected: boolean; got: boolean }[] = []
   for (const r of results) {
-    if (r.expected && r.got) tp += 1
-    else if (r.expected && !r.got) {
+    if (r.expected && r.got) {
+      tp += 1
+    } else if (r.expected && !r.got) {
       fn += 1
       misses.push(r)
     } else if (!r.expected && r.got) {
       fp += 1
       misses.push(r)
-    } else tn += 1
+    } else {
+      tn += 1
+    }
   }
   const tpr = tp + fn === 0 ? 1 : tp / (tp + fn)
   const tnr = tn + fp === 0 ? 1 : tn / (tn + fp)

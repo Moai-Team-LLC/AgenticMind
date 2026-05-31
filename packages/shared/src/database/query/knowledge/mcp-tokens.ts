@@ -50,9 +50,15 @@ export const checkMcpToken = (props: { tx: Transaction; jti: string }) =>
     mapDatabaseError,
   ).map((rows): McpTokenCheck => {
     const row = rows[0]
-    if (row === undefined) return { active: false, reason: "unknown" }
-    if (row.revokedAt !== null) return { active: false, reason: "revoked" }
-    if (row.expiresAt.getTime() <= Date.now()) return { active: false, reason: "expired" }
+    if (row === undefined) {
+      return { active: false, reason: "unknown" }
+    }
+    if (row.revokedAt !== null) {
+      return { active: false, reason: "revoked" }
+    }
+    if (row.expiresAt.getTime() <= Date.now()) {
+      return { active: false, reason: "expired" }
+    }
     return {
       active: true,
       userUuid: row.userUuid,

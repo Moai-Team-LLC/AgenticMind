@@ -23,7 +23,9 @@ const INJECTION_PATTERNS: readonly RegExp[] = [
 
 export const detectInjection = (text: string): { injection: boolean; pattern?: string } => {
   for (const re of INJECTION_PATTERNS) {
-    if (re.test(text)) return { injection: true, pattern: re.source }
+    if (re.test(text)) {
+      return { injection: true, pattern: re.source }
+    }
   }
   return { injection: false }
 }
@@ -40,7 +42,9 @@ export const PII_PATTERNS: readonly { kind: string; re: RegExp }[] = [
 export const findPii = (text: string): { kind: string; match: string }[] => {
   const out: { kind: string; match: string }[] = []
   for (const { kind, re } of PII_PATTERNS) {
-    for (const m of text.matchAll(re)) out.push({ kind, match: m[0] })
+    for (const m of text.matchAll(re)) {
+      out.push({ kind, match: m[0] })
+    }
   }
   return out
 }
@@ -93,7 +97,7 @@ const LEAK_MARKERS: readonly RegExp[] = [
   /cite\s+the\s+sources\s+you\s+used/i,
 ]
 
-const normWs = (s: string): string => s.toLowerCase().replace(/\s+/gu, " ").trim()
+const normWs = (s: string): string => s.toLowerCase().replaceAll(/\s+/gu, " ").trim()
 
 /**
  * Output-side guard: detects whether the synthesised answer leaked the system
@@ -113,7 +117,9 @@ export const detectOutputLeak = (
     }
   }
   for (const re of LEAK_MARKERS) {
-    if (re.test(answer)) return { leaked: true, reason: "system-prompt leak marker" }
+    if (re.test(answer)) {
+      return { leaked: true, reason: "system-prompt leak marker" }
+    }
   }
   return { leaked: false }
 }

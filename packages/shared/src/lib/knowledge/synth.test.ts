@@ -1,28 +1,30 @@
 import { describe, expect, it } from "vitest"
 
+import type { Citation, Source } from "./synth"
+
 import {
   buildPromptWithGraphContext,
   buildSystemPromptWithContext,
   classifyServedBy,
-  type Citation,
   formatUpdatedAnnotation,
   parseCitations,
-  type Source,
   SOURCE_ORIGIN_CARD,
   SOURCE_ORIGIN_CHUNK,
   SYSTEM_PROMPT,
 } from "./synth"
 
-const chunkSource = (n: number, id: string): Source => ({
-  number: n,
-  chunkId: id,
-  materialId: `mat-${n}`,
-  title: `Title ${n}`,
-  body: `Body ${n}`,
-  score: 1,
-  updatedAt: null,
-  origin: SOURCE_ORIGIN_CHUNK,
-})
+const chunkSource = (n: number, id: string): Source => {
+  return {
+    number: n,
+    chunkId: id,
+    materialId: `mat-${n}`,
+    title: `Title ${n}`,
+    body: `Body ${n}`,
+    score: 1,
+    updatedAt: null,
+    origin: SOURCE_ORIGIN_CHUNK,
+  }
+}
 
 describe("buildSystemPromptWithContext", () => {
   it("returns the base prompt when the member context is empty", () => {
@@ -82,14 +84,16 @@ describe("parseCitations", () => {
 })
 
 describe("classifyServedBy", () => {
-  const cite = (chunkId: string): Citation => ({
-    number: 1,
-    materialId: "m",
-    title: "t",
-    chunkId,
-    snippet: "",
-    score: 1,
-  })
+  const cite = (chunkId: string): Citation => {
+    return {
+      number: 1,
+      materialId: "m",
+      title: "t",
+      chunkId,
+      snippet: "",
+      score: 1,
+    }
+  }
 
   it("is card_synth when a cited source is a card", () => {
     const sources: Source[] = [{ ...chunkSource(1, "card1"), origin: SOURCE_ORIGIN_CARD }]

@@ -17,13 +17,13 @@ describe("blendHybrid", () => {
       { chunkId: "b", score: 0.4 },
     ]
     const bm25 = [
-      { chunkId: "b", score: 1.0 },
+      { chunkId: "b", score: 1 },
       { chunkId: "c", score: 0.6 },
     ]
     const out = blendHybrid(vector, bm25, defaultHybridWeights())
 
     expect(out.map((h) => h.hit.chunkId)).toEqual(["b", "a", "c"])
-    // b: 0.7*0.4 + 0.3*1.0 = 0.58 ; a: 0.7*0.8 = 0.56 ; c: 0.3*0.6 = 0.18
+    // B: 0.7*0.4 + 0.3*1.0 = 0.58 ; a: 0.7*0.8 = 0.56 ; c: 0.3*0.6 = 0.18
     expect(out[0]?.fusedScore).toBeCloseTo(0.58)
     expect(out[1]?.fusedScore).toBeCloseTo(0.56)
     // BM25-only hits report vectorScore 0

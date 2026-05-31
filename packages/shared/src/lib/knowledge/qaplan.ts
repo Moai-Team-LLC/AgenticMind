@@ -114,7 +114,9 @@ export type PlanResult = {
 
 /** Validates a parsed planner response against the V0 ontology. Pure. */
 export const parsePlannerResponse = (raw: RawPlan): PlanResult => {
-  if (!raw.applicable) return { applicable: false, reason: raw.reason ?? "" }
+  if (!raw.applicable) {
+    return { applicable: false, reason: raw.reason ?? "" }
+  }
   if (raw.spec === null || raw.spec === undefined) {
     return { applicable: false, reason: "applicable=true but spec missing" }
   }
@@ -124,7 +126,10 @@ export const parsePlannerResponse = (raw: RawPlan): PlanResult => {
   }
   const hops: Hop[] = []
   for (let i = 0; i < spec.hops.length; i++) {
-    const rh = spec.hops[i]!
+    const rh = spec.hops[i]
+    if (rh === undefined) {
+      continue
+    }
     if (!isValidPredicate(rh.predicate)) {
       return { applicable: false, reason: `hops[${i}] unknown predicate "${rh.predicate}"` }
     }
@@ -138,8 +143,12 @@ export const parsePlannerResponse = (raw: RawPlan): PlanResult => {
     })
   }
   let limit = spec.limit ?? 25
-  if (limit <= 0) limit = 25
-  if (limit > 200) limit = 200
+  if (limit <= 0) {
+    limit = 25
+  }
+  if (limit > 200) {
+    limit = 200
+  }
   return {
     applicable: true,
     reason: raw.reason ?? "",
@@ -157,7 +166,9 @@ export const parsePlannerResponse = (raw: RawPlan): PlanResult => {
 export const formatRows = (rows: MultiHopResult[]): GraphContextRow[] => {
   const out: GraphContextRow[] = []
   for (const r of rows) {
-    if (r.path.length === 0) continue
+    if (r.path.length === 0) {
+      continue
+    }
     const body = r.path
       .map((n) =>
         n.ontologyType !== "" ? `${n.canonicalName} (${n.ontologyType})` : n.canonicalName,
@@ -176,11 +187,14 @@ export const planQuestion = (props: {
   chatModel?: LlmModel
 }): ResultAsync<PlanResult, PlanError> => {
   const question = props.question.trim()
-  if (question === "")
+  if (question === "") {
     return okAsync<PlanResult, PlanError>({ applicable: false, reason: "empty question" })
+  }
   return ResultAsync.fromPromise(
     import("@agenticmind/shared/lib/knowledge/llm"),
-    (e): PlanError => ({ type: "import_error", message: String(e) }),
+    (e): PlanError => {
+      return { type: "import_error", message: String(e) }
+    },
   ).andThen((m) =>
     m
       .completeKnowledgeJson({
@@ -191,7 +205,9 @@ export const planQuestion = (props: {
         purpose: "knowledge qaplan",
       })
       .map((raw) => parsePlannerResponse(raw))
-      .mapErr((e): PlanError => ({ type: e.type, message: e.message })),
+      .mapErr((e): PlanError => {
+        return { type: e.type, message: e.message }
+      }),
   )
 }
 
@@ -215,7 +231,9 @@ export const createGraphContextProvider = (deps: {
   return async (question: string): Promise<GraphContextRow[]> => {
     const k = key(question)
     const hit = cache.get(k)
-    if (hit !== undefined && Date.now() < hit.expiresAt) return hit.rows
+    if (hit !== undefined && Date.now() < hit.expiresAt) {
+      return hit.rows
+    }
 
     const planned = await planQuestion({ question, chatModel: deps.chatModel })
     if (planned.isErr() || !planned.value.applicable || planned.value.spec === undefined) {
@@ -223,7 +241,9 @@ export const createGraphContextProvider = (deps: {
       return []
     }
     const queryResult = await deps.repo.multiHopQuery(planned.value.spec)
-    if (queryResult.isErr()) return []
+    if (queryResult.isErr()) {
+      return []
+    }
     const rows = formatRows(queryResult.value)
     cache.set(k, { rows, expiresAt: Date.now() + ttl })
     return rows

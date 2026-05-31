@@ -24,7 +24,7 @@ and a corpus that **improves itself** — served to any agent over **MCP**.
 > base that **compounds**.
 
 Most agent memory is a vector store with `save()` and `search()`. That buys you fuzzy
-recall and zero accountability: you can't tell *why* an answer came back, whether it's
+recall and zero accountability: you can't tell _why_ an answer came back, whether it's
 current, or whether a source even supports it. AgenticMind treats knowledge as a
 first-class, auditable, self-improving substrate — and exposes it to any agent over the
 Model Context Protocol.
@@ -32,11 +32,11 @@ Model Context Protocol.
 ## ✨ Why AgenticMind
 
 - 📌 **Citation-enforced** — every claim in an answer is keyed to a numbered source. No source, no claim.
-- 🔍 **Fully auditable** — a replayable *why-trace* for every answer: what was retrieved, ranked, and used.
+- 🔍 **Fully auditable** — a replayable _why-trace_ for every answer: what was retrieved, ranked, and used.
 - ♻️ **Self-improving** — validated answers are promoted back into the corpus by a judge-gated compounding loop, driven by **programmatic signals** (not human thumbs).
 - 🧩 **Tiered retrieval** — chunks → typed fact cards → knowledge graph; hybrid vector + full-text, recency-aware.
-- 🔐 **Safe by construction** — scoped, least-privilege MCP tokens, fail-closed auth, guardrails on input *and* output.
-- 🐘 **One datastore** — Postgres + pgvector carries vectors, full-text, the graph (recursive CTE), *and* the durable queue. No Redis, no Neo4j, no vector-DB sprawl.
+- 🔐 **Safe by construction** — scoped, least-privilege MCP tokens, fail-closed auth, guardrails on input _and_ output.
+- 🐘 **One datastore** — Postgres + pgvector carries vectors, full-text, the graph (recursive CTE), _and_ the durable queue. No Redis, no Neo4j, no vector-DB sprawl.
 
 ## 🔧 How it works
 
@@ -56,29 +56,29 @@ programmatic signals into a loop that promotes validated knowledge back into the
 
 ## 🆚 How it's different
 
-| | Plain RAG / memory SDKs | AgenticMind |
-|---|---|---|
-| Grounded answers | sometimes | citation-enforced + post-checked |
-| Why-trace per answer | ✗ | full decision trace |
-| Self-improving corpus | ✗ | compounding loop (judge-gated) |
-| Relational verification | ✗ | graph module |
-| Runs on | varies | **Postgres + pgvector** (flagship) |
+|                         | Plain RAG / memory SDKs | AgenticMind                        |
+| ----------------------- | ----------------------- | ---------------------------------- |
+| Grounded answers        | sometimes               | citation-enforced + post-checked   |
+| Why-trace per answer    | ✗                       | full decision trace                |
+| Self-improving corpus   | ✗                       | compounding loop (judge-gated)     |
+| Relational verification | ✗                       | graph module                       |
+| Runs on                 | varies                  | **Postgres + pgvector** (flagship) |
 
 ## 🛠 Agent surface (MCP)
 
 A **headless** Bun service (`apps/server`) exposes the engine as MCP tools over
 streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege):
 
-| Tool | Scope | Purpose |
-|---|---|---|
-| `kl_search` | `knowledge:read` | semantic / keyword passage search |
-| `kl_ask_global` | `knowledge:read` | synthesised answer + citations (optional `intent`/`facts`) |
-| `kl_get_material` | `knowledge:read` | fetch a material by id |
-| `kl_graph_neighbors` | `knowledge:read` | related materials via the knowledge graph |
-| `kl_ingest` | `knowledge:write` | add text (chunked, embedded, distilled into cards, graph-extracted) |
-| `kl_signal` | `knowledge:signal` | emit a programmatic compounding signal on a prior answer |
-| `mem_recall` | `memory:read` | recall beliefs (private ∪ shared); semantic or `asOf` time-travel |
-| `mem_write` | `memory:write` | record a belief into private memory (bitemporal, revision-aware) |
+| Tool                 | Scope              | Purpose                                                             |
+| -------------------- | ------------------ | ------------------------------------------------------------------- |
+| `kl_search`          | `knowledge:read`   | semantic / keyword passage search                                   |
+| `kl_ask_global`      | `knowledge:read`   | synthesised answer + citations (optional `intent`/`facts`)          |
+| `kl_get_material`    | `knowledge:read`   | fetch a material by id                                              |
+| `kl_graph_neighbors` | `knowledge:read`   | related materials via the knowledge graph                           |
+| `kl_ingest`          | `knowledge:write`  | add text (chunked, embedded, distilled into cards, graph-extracted) |
+| `kl_signal`          | `knowledge:signal` | emit a programmatic compounding signal on a prior answer            |
+| `mem_recall`         | `memory:read`      | recall beliefs (private ∪ shared); semantic or `asOf` time-travel   |
+| `mem_write`          | `memory:write`     | record a belief into private memory (bitemporal, revision-aware)    |
 
 There is **no frontend** — the only consumers are agents over MCP. The tool logic is
 framework-agnostic in `packages/shared/src/lib/knowledge/mcp-tools.ts`; the host is
@@ -136,10 +136,10 @@ AgenticMind is the flagship **reference implementation** of
 **[the Agentic Product Standard](https://github.com/AlexDuchDev/agentic-product-standard)** —
 the open standard (plus Claude Code skills) for building production-grade agentic products.
 
-| | Repo | Use it when |
-|---|---|---|
-| 📐 | **[agentic-product-standard](https://github.com/AlexDuchDev/agentic-product-standard)** | You're **designing or building** an agent / agentic product — the standard + skills tell you *how*. |
-| 🧠 | **AgenticMind** (this repo) | You need a **knowledge & memory layer** for your agent — a working implementation you can run. |
+|     | Repo                                                                                    | Use it when                                                                                         |
+| --- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 📐  | **[agentic-product-standard](https://github.com/AlexDuchDev/agentic-product-standard)** | You're **designing or building** an agent / agentic product — the standard + skills tell you _how_. |
+| 🧠  | **AgenticMind** (this repo)                                                             | You need a **knowledge & memory layer** for your agent — a working implementation you can run.      |
 
 See the standard's [AgenticMind case study](https://github.com/AlexDuchDev/agentic-product-standard/blob/main/examples/agenticmind-case-study.md) for a layer-by-layer map of how this repo implements the canon.
 

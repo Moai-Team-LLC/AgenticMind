@@ -9,11 +9,12 @@
 
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { BeliefInsert, BeliefSelect } from "@agenticmind/shared/database/schema"
+import type { SQL } from "drizzle-orm"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { beliefs } from "@agenticmind/shared/database/schema"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
-import { and, desc, eq, gt, isNull, lte, or, type SQL, sql } from "drizzle-orm"
+import { and, desc, eq, gt, isNull, lte, or, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 export type AssertBeliefInput = {
@@ -67,7 +68,7 @@ export const assertBelief = (props: {
             .set({ validTo: sql`now()`, invalidatedAt: sql`now()` })
             .where(eq(beliefs.id, row.id))
           // Link the new belief to the one it directly replaces.
-          if (supersedesId === null) supersedesId = row.id
+          supersedesId ??= row.id
         }
       }
 
@@ -84,7 +85,9 @@ export const assertBelief = (props: {
         validFrom: b.validFrom ?? undefined,
       }
       const [created] = await tx.insert(beliefs).values(values).returning()
-      if (created === undefined) throw new Error("assertBelief: insert returned no row")
+      if (created === undefined) {
+        throw new Error("assertBelief: insert returned no row")
+      }
       return created
     }),
     mapDatabaseError,
@@ -105,11 +108,13 @@ const temporalPredicate = (asOf?: Date): SQL => {
 }
 
 const actorPredicate = (actorUuid: string | null, includeShared: boolean): SQL => {
-  if (actorUuid === null) return isNull(beliefs.actorUuid) as SQL
+  if (actorUuid === null) {
+    return isNull(beliefs.actorUuid)
+  }
   if (includeShared) {
     return or(eq(beliefs.actorUuid, actorUuid), isNull(beliefs.actorUuid)) as SQL
   }
-  return eq(beliefs.actorUuid, actorUuid) as SQL
+  return eq(beliefs.actorUuid, actorUuid)
 }
 
 /**

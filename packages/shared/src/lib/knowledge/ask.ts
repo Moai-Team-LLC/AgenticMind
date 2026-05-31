@@ -11,6 +11,12 @@ import type { Transaction } from "@agenticmind/shared/database/client"
 import type { CardHit } from "@agenticmind/shared/database/query/knowledge/cards"
 import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/chunks"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
+import type {
+  Answer,
+  GraphContextRow,
+  CallerContext,
+  Source,
+} from "@agenticmind/shared/lib/knowledge/synth"
 
 import {
   lookupAnswer,
@@ -39,32 +45,30 @@ import { boost, defaultRecencyConfig } from "@agenticmind/shared/lib/knowledge/r
 import { rerankPairs } from "@agenticmind/shared/lib/knowledge/rerank"
 import { queryVariants } from "@agenticmind/shared/lib/knowledge/stopwords"
 import {
-  type Answer,
   buildPromptWithGraphContext,
   buildSystemPromptWithContext,
   classifyServedBy,
   DEFAULT_TOP_K,
-  type GraphContextRow,
   MAX_CARD_SOURCES,
   MAX_GRAPH_CONTEXT_ROWS,
-  type MemberContext,
   parseCitations,
   SERVED_BY_CACHE,
-  type Source,
   SOURCE_ORIGIN_CARD,
   SOURCE_ORIGIN_CHUNK,
 } from "@agenticmind/shared/lib/knowledge/synth"
 import { okAsync, ResultAsync } from "neverthrow"
 
 export type AskError = { readonly type: "ask_error"; readonly message: string }
-const askError = (message: string): AskError => ({ type: "ask_error", message })
+const askError = (message: string): AskError => {
+  return { type: "ask_error", message }
+}
 
 export type AskProps = {
   tx: Transaction
   question: string
   /** Asker id, recorded on the telemetry row (nullable). */
   memberId?: string | null
-  memberContext?: MemberContext | null
+  memberContext?: CallerContext | null
   cardsEnabled?: boolean
   cacheEnabled?: boolean
   topK?: number
@@ -81,7 +85,9 @@ const resolveMeta = async (
   cache: Map<string, MatMeta>,
 ): Promise<MatMeta> => {
   const cached = cache.get(materialId)
-  if (cached !== undefined) return cached
+  if (cached !== undefined) {
+    return cached
+  }
   const res = await getMaterial({ tx, id: materialId })
   const meta: MatMeta =
     res.isOk() && res.value !== null
@@ -113,9 +119,9 @@ const decorate = async (
     })
   }
   sources.sort((a, b) => b.score - a.score)
-  sources.forEach((s, i) => {
+  for (const [i, s] of sources.entries()) {
     s.number = i + 1
-  })
+  }
   return sources
 }
 
@@ -143,26 +149,32 @@ const fetchCardSources = async (
   })
   const byId = new Map<string, { hit: CardHit; score: number }>()
   if (vec.isOk()) {
-    for (const h of vec.value)
+    for (const h of vec.value) {
       byId.set(h.cardId, { hit: h, score: w.vector * clamp01(h.score) * CARD_WEIGHT_BOOST })
+    }
   }
   if (bm.isOk()) {
     for (const h of bm.value) {
       const add = w.bm25 * clamp01(h.score) * CARD_WEIGHT_BOOST
       const existing = byId.get(h.cardId)
-      if (existing !== undefined) existing.score += add
-      else byId.set(h.cardId, { hit: h, score: add })
+      if (existing !== undefined) {
+        existing.score += add
+      } else {
+        byId.set(h.cardId, { hit: h, score: add })
+      }
     }
   }
-  if (byId.size === 0) return []
-  const ranked = [...byId.values()].sort((a, b) => b.score - a.score).slice(0, MAX_CARD_SOURCES)
+  if (byId.size === 0) {
+    return []
+  }
+  const ranked = [...byId.values()].toSorted((a, b) => b.score - a.score).slice(0, MAX_CARD_SOURCES)
 
   const out: Source[] = []
   for (const { hit, score } of ranked) {
     const meta = await resolveMeta(props.tx, hit.materialId, cache)
     out.push({
       number: 0,
-      chunkId: hit.cardId, // overload: card id in the chunk-id slot for the prompt path
+      chunkId: hit.cardId, // Overload: card id in the chunk-id slot for the prompt path
       materialId: hit.materialId,
       title: meta.title,
       body: hit.body,
@@ -179,7 +191,9 @@ const fetchCardSources = async (
 
 const runAsk = async (props: AskProps): Promise<Answer> => {
   const question = props.question.trim()
-  if (question === "") throw askError("empty question")
+  if (question === "") {
+    throw askError("empty question")
+  }
   const topK = props.topK !== undefined && props.topK > 0 ? props.topK : DEFAULT_TOP_K
   const t0 = Date.now()
   const phases: { phase: string; ms: number }[] = []
@@ -191,7 +205,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   const variants = queryVariants(question)
   const embedQuery = variants.length > 0 ? variants.join(" ") : question
   const embedded = await embedKnowledgeText(embedQuery)
-  if (embedded.isErr()) throw askError(`embed: ${embedded.error.message}`)
+  if (embedded.isErr()) {
+    throw askError(`embed: ${embedded.error.message}`)
+  }
   const queryVec = embedded.value
   mark("embed", ts)
 
@@ -211,7 +227,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         phases,
       }
     }
-    if (cached.isErr()) console.warn(`ask: cache lookup failed: ${cached.error.message}`)
+    if (cached.isErr()) {
+      console.warn(`ask: cache lookup failed: ${cached.error.message}`)
+    }
   }
   mark("cache_miss", ts)
 
@@ -219,11 +237,15 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   ts = Date.now()
   const pool = Math.max(topK, Math.min(topK * 3, 30))
   const vectorHits = await searchChunks({ tx: props.tx, queryEmbedding: queryVec, limit: pool })
-  if (vectorHits.isErr()) throw askError(`search: ${vectorHits.error.message}`)
+  if (vectorHits.isErr()) {
+    throw askError(`search: ${vectorHits.error.message}`)
+  }
   const bm25 = await searchChunksBm25({ tx: props.tx, query: question, variants, limit: pool })
   const bm25Hits = bm25.isOk() ? bm25.value : []
   const fused = blendHybrid(vectorHits.value, bm25Hits, defaultHybridWeights())
-  const hits = fused.map((f) => ({ ...f.hit, score: f.fusedScore }))
+  const hits = fused.map((f) => {
+    return { ...f.hit, score: f.fusedScore }
+  })
 
   const matCache = new Map<string, MatMeta>()
   let sources = await decorate(props.tx, hits, matCache)
@@ -231,28 +253,36 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // Tier-1: prepend knowledge cards ahead of raw chunks.
   if (props.cardsEnabled === true) {
     const cardSources = await fetchCardSources(props, queryVec, variants, matCache)
-    if (cardSources.length > 0) sources = [...cardSources, ...sources]
+    if (cardSources.length > 0) {
+      sources = [...cardSources, ...sources]
+    }
   }
   mark("retrieve", ts)
 
   // Reranker: narrow the retrieval pool to the top-K the synthesiser sees,
-  // ordered by cross-encoder relevance. Falls back to fused order on failure.
+  // Ordered by cross-encoder relevance. Falls back to fused order on failure.
   ts = Date.now()
   let rerankUsed = false
   let rerankLatencyMs: number | undefined
   if (sources.length > topK) {
-    const pairs = sources.map((s) => ({ body: s.body, item: s }))
+    const pairs = sources.map((s) => {
+      return { body: s.body, item: s }
+    })
     const r = await rerankPairs({ query: question, pairs, topN: topK }).match(
-      (ranked) => ({ items: ranked.map((p) => p.item), used: true }),
-      () => ({ items: pairs.map((p) => p.item), used: false }),
+      (ranked) => {
+        return { items: ranked.map((p) => p.item), used: true }
+      },
+      () => {
+        return { items: pairs.map((p) => p.item), used: false }
+      },
     )
     sources = r.items.slice(0, topK)
     rerankUsed = r.used
     rerankLatencyMs = Date.now() - ts
   }
-  sources.forEach((s, i) => {
+  for (const [i, s] of sources.entries()) {
     s.number = i + 1
-  })
+  }
   mark("rerank", ts)
 
   // Tier-2: optional graph-context prelude (best-effort).
@@ -261,14 +291,14 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     try {
       const rows = await props.graphContext(question, queryVec)
       graphContext = rows.slice(0, MAX_GRAPH_CONTEXT_ROWS)
-    } catch (e) {
-      console.warn(`ask: graph context failed: ${String(e)}`)
+    } catch (error) {
+      console.warn(`ask: graph context failed: ${String(error)}`)
     }
   }
 
   const retrievalMs = Date.now() - t0
   // Adaptive model routing: simple fact-lookups go to the cheap/fast model,
-  // multi-part / comparative / long questions to the flagship. Caller override wins.
+  // Multi-part / comparative / long questions to the flagship. Caller override wins.
   const model = props.chatModel ?? modelForComplexity(classifyComplexity(question))
   const system = buildSystemPromptWithContext(props.memberContext ?? null)
   ts = Date.now()
@@ -278,12 +308,14 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     model,
     purpose: "knowledge ask",
   })
-  if (completion.isErr()) throw askError(`chat: ${completion.error.message}`)
+  if (completion.isErr()) {
+    throw askError(`chat: ${completion.error.message}`)
+  }
   const generationMs = Date.now() - ts
   mark("synth", ts)
 
   // Output guard: a grounded answer must never echo the system prompt. On a
-  // leak we drop the answer (and its citations) for a safe fallback.
+  // Leak we drop the answer (and its citations) for a safe fallback.
   ts = Date.now()
   let answerText = completion.value
   const leak = detectOutputLeak(answerText, system)
@@ -297,10 +329,14 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // Tier-1: best-effort cache store.
   if (props.cacheEnabled === true && citations.length > 0) {
     const updatedByMat = new Map<string, Date | null>()
-    for (const s of sources) updatedByMat.set(s.materialId, s.updatedAt)
+    for (const s of sources) {
+      updatedByMat.set(s.materialId, s.updatedAt)
+    }
     const citedIds = [...new Set(citations.map((c) => c.materialId))]
     const fingerprint = fingerprintSources(
-      citedIds.map((id) => ({ materialId: id, updatedAt: updatedByMat.get(id) ?? new Date(0) })),
+      citedIds.map((id) => {
+        return { materialId: id, updatedAt: updatedByMat.get(id) ?? new Date(0) }
+      }),
     )
     const stored = await storeAnswer({
       tx: props.tx,
@@ -315,7 +351,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         answerModel: model,
       },
     })
-    if (stored.isErr()) console.warn(`ask: cache store failed: ${stored.error.message}`)
+    if (stored.isErr()) {
+      console.warn(`ask: cache store failed: ${stored.error.message}`)
+    }
   }
 
   return {
@@ -358,7 +396,9 @@ export const ask = (props: AskProps): ResultAsync<Answer, AskError> =>
         phases: answer.phases ?? [],
       },
     })
-      .map((row): Answer => ({ ...answer, telemetryId: row.id }))
+      .map((row): Answer => {
+        return { ...answer, telemetryId: row.id }
+      })
       .orElse((telemetryError) => {
         console.warn("[Knowledge] ask telemetry write failed", telemetryError)
         return okAsync<Answer, AskError>(answer)

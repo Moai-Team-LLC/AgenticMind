@@ -15,11 +15,13 @@ export type RecencyConfig = {
 }
 
 /** V1 default: +20% max, full boost ≤30d, zero boost ≥365d. */
-export const defaultRecencyConfig = (): RecencyConfig => ({
-  maxBoost: 0.2,
-  fullBoostDays: 30,
-  zeroBoostDays: 365,
-})
+export const defaultRecencyConfig = (): RecencyConfig => {
+  return {
+    maxBoost: 0.2,
+    fullBoostDays: 30,
+    zeroBoostDays: 365,
+  }
+}
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
@@ -32,7 +34,9 @@ export const recencyFactor = (
   cfg: RecencyConfig,
   now: Date = new Date(),
 ): number => {
-  if (updatedAt === null || updatedAt === undefined) return 0
+  if (updatedAt === null || updatedAt === undefined) {
+    return 0
+  }
   const fullBoostDays = cfg.fullBoostDays < 0 ? 0 : cfg.fullBoostDays
   const ageDays = (now.getTime() - updatedAt.getTime()) / MS_PER_DAY
 
@@ -40,13 +44,17 @@ export const recencyFactor = (
     // Misconfiguration — treat as a binary cliff at fullBoostDays.
     return ageDays <= fullBoostDays ? 1 : 0
   }
-  if (ageDays <= fullBoostDays) return 1
-  if (ageDays >= cfg.zeroBoostDays) return 0
+  if (ageDays <= fullBoostDays) {
+    return 1
+  }
+  if (ageDays >= cfg.zeroBoostDays) {
+    return 0
+  }
 
   const span = cfg.zeroBoostDays - fullBoostDays
   const progress = (ageDays - fullBoostDays) / span
   const factor = 1 - progress
-  return factor < 0 ? 0 : factor > 1 ? 1 : factor
+  return factor < 0 ? 0 : Math.min(1, factor)
 }
 
 /** Final score after the recency uplift. Pure; caller sorts. */
@@ -57,6 +65,8 @@ export const boost = (
   now?: Date,
 ): number => {
   const factor = recencyFactor(updatedAt, cfg, now)
-  if (factor === 0 || cfg.maxBoost === 0) return baseScore
+  if (factor === 0 || cfg.maxBoost === 0) {
+    return baseScore
+  }
   return baseScore * (1 + cfg.maxBoost * factor)
 }

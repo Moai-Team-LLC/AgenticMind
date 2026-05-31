@@ -178,7 +178,9 @@ export const suggestMaterialsByTitle = (props: {
   query: string
   limit?: number
 }): ResultAsync<MaterialSuggestion[], never> => {
-  if (props.query === "") return okAsync([])
+  if (props.query === "") {
+    return okAsync([])
+  }
   const limit = props.limit !== undefined && props.limit > 0 && props.limit <= 25 ? props.limit : 5
   const score = sql<number>`similarity(lower(${materials.title}), lower(${props.query}))`
   return ResultAsync.fromPromise(

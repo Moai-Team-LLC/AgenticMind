@@ -7,12 +7,12 @@
  * only) and unit-tested; the LLM call imports the client lazily.
  */
 
+import type { ExtractedGraph, Relation } from "@agenticmind/shared/lib/knowledge/graphrag"
+
 import {
   CURRENT_EXTRACTOR_VERSION,
-  type ExtractedGraph,
   GRAPHRAG_MAX_BODY_CHARS,
   normalizeEntity,
-  type Relation,
 } from "@agenticmind/shared/lib/knowledge/graphrag"
 import { mapFreeFormPredicate, mapFreeFormType } from "@agenticmind/shared/lib/knowledge/ontology"
 import { okAsync, ResultAsync } from "neverthrow"
@@ -77,7 +77,7 @@ export const rawGraphSchema = z.object({
 
 export type RawGraph = z.infer<typeof rawGraphSchema>
 
-const clamp01 = (v: number): number => (v < 0 ? 0 : v > 1 ? 1 : v)
+const clamp01 = (v: number): number => (v < 0 ? 0 : Math.min(1, v))
 
 /**
  * Parses a model graph response into a normalised ExtractedGraph: entities get
@@ -101,19 +101,29 @@ export const parseExtraction = (raw: RawGraph): ExtractedGraph => {
       aliases: re.aliases ?? undefined,
       confidence: re.confidence ?? undefined,
     })
-    if (ent === null) continue
+    if (ent === null) {
+      continue
+    }
     const mapped = mapFreeFormType(ent.type)
-    if (mapped !== undefined) ent.ontologyType = mapped
+    if (mapped !== undefined) {
+      ent.ontologyType = mapped
+    }
     byName.set(re.name.trim().toLowerCase(), ent.entityId)
-    for (const alias of ent.aliases) byName.set(alias.trim().toLowerCase(), ent.entityId)
+    for (const alias of ent.aliases) {
+      byName.set(alias.trim().toLowerCase(), ent.entityId)
+    }
     graph.entities.push(ent)
   }
 
   for (const rr of raw.relations) {
     const fromId = byName.get(rr.from.trim().toLowerCase())
     const toId = byName.get(rr.to.trim().toLowerCase())
-    if (fromId === undefined || toId === undefined) continue
-    if (fromId === toId) continue
+    if (fromId === undefined || toId === undefined) {
+      continue
+    }
+    if (fromId === toId) {
+      continue
+    }
     const predicate = (rr.predicate ?? "").trim() || "related_to"
     const relation: Relation = {
       from: fromId,
@@ -155,10 +165,14 @@ export const extractGraph = (props: {
     relations: [],
     extractorVersion: CURRENT_EXTRACTOR_VERSION,
   }
-  if (body === "") return okAsync<ExtractedGraph, GraphExtractError>(empty)
+  if (body === "") {
+    return okAsync<ExtractedGraph, GraphExtractError>(empty)
+  }
   return ResultAsync.fromPromise(
     import("@agenticmind/shared/lib/knowledge/llm"),
-    (e): GraphExtractError => ({ type: "import_error", message: String(e) }),
+    (e): GraphExtractError => {
+      return { type: "import_error", message: String(e) }
+    },
   ).andThen((m) =>
     m
       .completeKnowledgeJson({
@@ -167,7 +181,11 @@ export const extractGraph = (props: {
         schema: rawGraphSchema,
         purpose: "knowledge graphrag extraction",
       })
-      .map((raw) => ({ ...parseExtraction(raw), materialId: props.materialId }))
-      .mapErr((e): GraphExtractError => ({ type: e.type, message: e.message })),
+      .map((raw) => {
+        return { ...parseExtraction(raw), materialId: props.materialId }
+      })
+      .mapErr((e): GraphExtractError => {
+        return { type: e.type, message: e.message }
+      }),
   )
 }

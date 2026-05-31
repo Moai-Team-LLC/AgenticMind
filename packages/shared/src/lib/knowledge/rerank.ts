@@ -7,9 +7,10 @@
  */
 
 import type { RerankModel } from "@agenticmind/shared/lib/ai/model"
+import type { ResultAsync } from "neverthrow"
 
 import { rerankDocuments } from "@agenticmind/shared/lib/ai/rerank"
-import { okAsync, ResultAsync } from "neverthrow"
+import { okAsync } from "neverthrow"
 
 /** Multilingual default — good for the mixed RU/EN corpus. */
 export const KNOWLEDGE_RERANK_MODEL: RerankModel = "cohere/rerank-v3.5"
@@ -37,7 +38,9 @@ export const rerankPairs = <T>(props: {
   topN?: number
   purpose?: string
 }): ResultAsync<RerankPair<T>[], RerankError> => {
-  if (props.pairs.length === 0) return okAsync<RerankPair<T>[], RerankError>([])
+  if (props.pairs.length === 0) {
+    return okAsync<RerankPair<T>[], RerankError>([])
+  }
   return rerankDocuments({
     model: props.model ?? KNOWLEDGE_RERANK_MODEL,
     query: props.query,

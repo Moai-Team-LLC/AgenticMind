@@ -7,22 +7,21 @@
  *   bun run ingest --text "Cyprus corporate tax is 12.5%." --title "Cyprus tax"
  */
 
-import { readFileSync } from "node:fs"
-import { basename, extname } from "node:path"
-
 import { createClient } from "@agenticmind/shared/database/client"
 import { createS3BlobStore, nopBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import { extract } from "@agenticmind/shared/lib/knowledge/extract"
 import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
-import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
 import { importFromUrl } from "@agenticmind/shared/lib/knowledge/import"
+import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 import { spacesSettings } from "@agenticmind/shared/settings/spaces-settings"
+import { readFileSync } from "node:fs"
+import { basename, extname } from "node:path"
 
 const argv = process.argv.slice(2)
 const arg = (name: string): string | undefined => {
-  const i = argv.indexOf("--" + name)
-  return i >= 0 ? argv[i + 1] : undefined
+  const i = argv.indexOf(`--${name}`)
+  return i !== -1 ? argv[i + 1] : undefined
 }
 
 const MIME_BY_EXT: Record<string, string> = {
@@ -65,7 +64,7 @@ if (url !== undefined) {
     console.error("import failed:", r.error.message)
     process.exit(1)
   }
-  console.log("Ingested URL " + url + " -> material " + r.value.id + " (" + r.value.title + ")")
+  console.log(`Ingested URL ${url} -> material ${r.value.id} (${r.value.title})`)
   process.exit(0)
 }
 
@@ -78,7 +77,7 @@ if (file !== undefined) {
     process.exit(1)
   }
   body = ex.value.text
-  if (title === undefined) title = basename(file)
+  title ??= basename(file)
 } else if (text !== undefined) {
   body = text
 } else {
@@ -91,7 +90,15 @@ if (title === undefined || title === "") {
   process.exit(2)
 }
 
-const res = await ingestText({ tx: db, blobStore, graph, title, text: body, cardsEnabled, graphragEnabled })
+const res = await ingestText({
+  tx: db,
+  blobStore,
+  graph,
+  title,
+  text: body,
+  cardsEnabled,
+  graphragEnabled,
+})
 if (res.isErr()) {
   console.error("ingest failed:", res.error.message)
   process.exit(1)
