@@ -17,6 +17,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "eval": "dotenvx run -f .env.local -- bun scripts/eval.ts",
+    "seed-eval": "dotenvx run -f .env.local -- bun scripts/seed-eval-corpus.ts",
+    "reembed": "dotenvx run -f .env.local -- bun scripts/reembed.ts",
     "calibrate": "dotenvx run -f .env.local -- bun scripts/calibrate.ts",
     "ingest": "dotenvx run -f .env.local -- bun scripts/ingest.ts",
     "check": "turbo run format lint tsc && bun test",
