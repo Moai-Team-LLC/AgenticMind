@@ -33,6 +33,7 @@ import {
   memWriteInput,
   klIngest,
   klIngestInput,
+  MCP_CONTRACT_VERSION,
 } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import { createMcpHandler, withMcpAuth } from "mcp-handler"
 
@@ -230,7 +231,7 @@ const handler = createMcpHandler(
     }
   },
   {
-    serverInfo: { name: "agenticmind-knowledge", version: "v1" },
+    serverInfo: { name: "agenticmind-knowledge", version: MCP_CONTRACT_VERSION },
     capabilities: { tools: {} },
   },
   {

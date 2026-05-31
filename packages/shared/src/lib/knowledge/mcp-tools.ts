@@ -441,6 +441,15 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
   return res.value
 }
 
+/**
+ * SemVer of the public MCP tool contract (names + input schemas + scopes), as
+ * surfaced in `serverInfo.version`. Bump MINOR for additive changes (a new tool,
+ * a new optional field), MAJOR for breaking ones (removed/renamed tool or field,
+ * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
+ * guards against silent drift. See CONTRACT.md for the policy.
+ */
+export const MCP_CONTRACT_VERSION = "1.0.0"
+
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
   {
