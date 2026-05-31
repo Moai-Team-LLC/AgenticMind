@@ -60,8 +60,8 @@ export const buildExtractionPrompt = (): string => {
     })
     .join("\n")
 
-  return `You extract typed knowledge cards from one document for a private community
-knowledge base. The cards become structured artifacts that an agent
+  return `You extract typed knowledge cards from one document for a knowledge
+base. The cards become structured artifacts that an agent
 consumes directly without re-reading the original document.
 
 Respond with ONLY a JSON object — no markdown fences, no prose, no preamble.
@@ -107,7 +107,7 @@ Rules:
   subject_value identify what's being defined. Leave predicate/value out.
 - For kind=procedure, body is an ordered list as plain text
   ("1. Do X\n2. Do Y\n..."). subject_type/subject_value identify the
-  procedure (e.g. subject_type=Hub, subject_value="Onboarding").
+  procedure (e.g. subject_type=Topic, subject_value="Onboarding").
 - Cap output at ${MAX_CARDS_PER_MATERIAL} cards. Pick the most informative ones if you'd otherwise emit more.
 - If the document has nothing extractable, return {"cards":[]}.`
 }

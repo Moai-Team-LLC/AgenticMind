@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1780173975347,
-      "tag": "0000_agenticmind_init",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1780221445499,
-      "tag": "0001_volatile_peter_parker",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1780222284122,
-      "tag": "0002_productive_dragon_lord",
+      "when": 1780261068500,
+      "tag": "0000_common_randall_flagg",
       "breakpoints": true
     }
   ]

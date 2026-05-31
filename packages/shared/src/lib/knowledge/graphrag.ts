@@ -21,7 +21,7 @@ export type Entity = {
   canonicalName: string
   /** Free-form lowercase type (concept|company|person|technology|…). */
   type: string
-  /** Mapped V0 ontology type (Member/Company/Skill/…) or "" when not in V0. */
+  /** Mapped V0 ontology type (Person/Organization/Topic/…) or "" when not in V0. */
   ontologyType: string
   aliases: string[]
   confidence: number

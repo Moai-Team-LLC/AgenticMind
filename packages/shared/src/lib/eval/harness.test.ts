@@ -18,14 +18,14 @@ describe("evaluateCase (Level-1 assertions)", () => {
     const c: EvalCase = {
       id: "f1",
       failureMode: "factual_retrieval",
-      query: "Cyprus corporate tax?",
-      assertions: { minCitations: 1, mustCiteMaterial: ["Cyprus tax"], mustMention: ["12.5%"] },
+      query: "Ireland corporate tax?",
+      assertions: { minCitations: 1, mustCiteMaterial: ["Ireland tax"], mustMention: ["12.5%"] },
     }
     const r = await evaluateCase(
       c,
       obs({
         answer: "It is 12.5% [1]",
-        citations: [{ title: "Cyprus tax guide", materialId: "m1" }],
+        citations: [{ title: "Ireland tax guide", materialId: "m1" }],
       }),
     )
     expect(r.passed).toBe(true)

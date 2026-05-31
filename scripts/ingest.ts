@@ -3,8 +3,8 @@
  * Runs the full engine: upload → extract → chunk → embed → cards → graph.
  * Needs DATABASE_URL + OPENROUTER_API_KEY (+ SPACES_* to retain raw bytes).
  *
- *   bun run ingest --file ./guide.pdf [--title "Cyprus tax guide"]
- *   bun run ingest --text "Cyprus corporate tax is 12.5%." --title "Cyprus tax"
+ *   bun run ingest --file ./guide.pdf [--title "product manual"]
+ *   bun run ingest --text "The widget API rate limit is 100 req/s." --title "Widget API"
  */
 
 import { createClient } from "@agenticmind/shared/database/client"

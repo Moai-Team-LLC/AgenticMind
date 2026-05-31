@@ -1,27 +1,27 @@
 [
   {
     "id": "grounded-1",
-    "input": "Q: Cyprus corporate tax? A: 12.5% [1]. Citations: [1] Cyprus tax guide (says 12.5%).",
+    "input": "Q: What is PostgreSQL? A: An open-source relational database [1]. Citations: [1] PostgreSQL overview (an open-source relational database).",
     "expected": true
   },
   {
     "id": "grounded-2",
-    "input": "Q: What is a SAFE? A: A Simple Agreement for Future Equity [1]. Citations: [1] YC SAFE primer.",
+    "input": "Q: What does pgvector add to Postgres? A: Vector similarity search [1]. Citations: [1] pgvector docs (adds vector similarity search).",
     "expected": true
   },
   {
     "id": "ungrounded-1",
-    "input": "Q: Cyprus tax? A: It is 10% [1]. Citations: [1] Cyprus guide (says 12.5%).",
+    "input": "Q: What port does the demo server use? A: Port 8080 [1]. Citations: [1] README (says port 3000).",
     "expected": false
   },
   {
     "id": "ungrounded-2",
-    "input": "Q: Founder of Acme? A: Jane Doe [1]. Citations: [1] doc with no mention of a founder.",
+    "input": "Q: Who maintains the project? A: Jane Doe [1]. Citations: [1] doc with no mention of a maintainer.",
     "expected": false
   },
   {
     "id": "no-citation",
-    "input": "Q: Tax rate? A: Probably around 15%, I think. Citations: none.",
+    "input": "Q: What is the default batch size? A: Probably around 100, I think. Citations: none.",
     "expected": false
   },
   {

@@ -48,7 +48,7 @@ const promoterError = (message: string): PromoterError => {
   return { type: "promoter_error", message }
 }
 
-const SENTINEL_MATERIAL_TITLE = "[community-resolutions]"
+const SENTINEL_MATERIAL_TITLE = "[resolutions]"
 
 type BestAnswer = { answer: string; citations: JudgeCitation[] }
 

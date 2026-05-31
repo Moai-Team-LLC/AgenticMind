@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  ADMIN_ONLY_SIGNALS,
   AGENT_SIGNALS,
   clampStrength,
   defaultStrengthFor,
@@ -11,19 +10,14 @@ import {
 } from "./feedback"
 
 describe("feedback signals", () => {
-  it("freezes the vocabulary (13 human + 7 programmatic = 20)", () => {
-    expect(FEEDBACK_SIGNALS).toHaveLength(20)
+  it("freezes the vocabulary (8 human + 7 programmatic = 15)", () => {
+    expect(FEEDBACK_SIGNALS).toHaveLength(15)
   })
 
   it("guards signals", () => {
     expect(isValidSignal("thumb_up")).toBe(true)
     expect(isValidSignal("verified_supported")).toBe(true)
     expect(isValidSignal("shrug")).toBe(false)
-  })
-
-  it("marks the admin-only markers", () => {
-    expect(ADMIN_ONLY_SIGNALS.has("admin_marked_wrong")).toBe(true)
-    expect(ADMIN_ONLY_SIGNALS.has("thumb_up" as never)).toBe(false)
   })
 
   it("marks the programmatic (agent) signals", () => {
@@ -38,9 +32,9 @@ describe("feedback signals", () => {
     expect(defaultStrengthFor("used_in_generation")).toBe(0.5)
   })
 
-  it("assigns signed strengths", () => {
-    expect(defaultStrengthFor("claimed_deal")).toBe(1)
-    expect(defaultStrengthFor("admin_marked_wrong")).toBe(-1)
+  it("assigns signed strengths to human / implicit signals", () => {
+    expect(defaultStrengthFor("forwarded_answer")).toBe(0.8)
+    expect(defaultStrengthFor("thumb_down")).toBe(-0.7)
     expect(defaultStrengthFor("silent_no_followup")).toBe(0.3)
   })
 

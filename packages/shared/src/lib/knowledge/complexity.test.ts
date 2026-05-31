@@ -4,7 +4,7 @@ import { classifyComplexity, modelForComplexity } from "./complexity"
 
 describe("classifyComplexity", () => {
   it("simple fact-lookups", () => {
-    expect(classifyComplexity("What is the corporate tax rate in Cyprus?")).toBe("simple")
+    expect(classifyComplexity("What is the corporate tax rate in Ireland?")).toBe("simple")
   })
   it("comparative / multi-part are complex", () => {
     expect(classifyComplexity("Compare a SAFE and a convertible note")).toBe("complex")

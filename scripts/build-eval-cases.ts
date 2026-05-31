@@ -95,12 +95,12 @@ const FACTS: { q: string; term: string }[] = [
 /** Clearly out-of-domain queries (no agentic-product grounding); must not be blocked. */
 const OOS: string[] = [
   "How do neutron stars form?",
-  "What is the corporate tax rate in Cyprus?",
-  "What is the weather in Limassol tomorrow?",
+  "What is the corporate tax rate in Japan?",
+  "What is the weather in Berlin tomorrow?",
   "How do I bake sourdough bread at home?",
   "What is the capital of Mongolia?",
   "Explain the offside rule in football.",
-  "What is a SAFE note in startup financing?",
+  "How does a four-stroke combustion engine work?",
   "What is the boiling point of water at sea level?",
   "Who painted the Mona Lisa?",
   "How tall is Mount Everest?",

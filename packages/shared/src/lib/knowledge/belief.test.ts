@@ -22,29 +22,29 @@ const claim = (
 
 describe("belief identity", () => {
   it("is case/whitespace-insensitive on subject+predicate", () => {
-    expect(beliefKey("Cyprus", "corporate-tax-rate")).toBe(
-      beliefKey("  cyprus ", "Corporate-Tax-Rate"),
+    expect(beliefKey("Ireland", "corporate-tax-rate")).toBe(
+      beliefKey("  ireland ", "Corporate-Tax-Rate"),
     )
-    expect(beliefKey("Cyprus", "rate")).not.toBe(beliefKey("Estonia", "rate"))
+    expect(beliefKey("Ireland", "rate")).not.toBe(beliefKey("Estonia", "rate"))
   })
 })
 
 describe("detectConflicts", () => {
   it("flags only (subject,predicate) groups with ≥2 distinct objects", () => {
     const conflicts = detectConflicts([
-      claim("a", "Cyprus", "tax", "12.5%"),
-      claim("b", "Cyprus", "tax", "10%"),
+      claim("a", "Ireland", "tax", "12.5%"),
+      claim("b", "Ireland", "tax", "10%"),
       claim("a", "Estonia", "tax", "20%"), // No conflict — single object
     ])
     expect(conflicts).toHaveLength(1)
-    expect(conflicts[0]!.subject).toBe("Cyprus")
+    expect(conflicts[0]!.subject).toBe("Ireland")
     expect(conflicts[0]!.variants).toHaveLength(2)
   })
 
   it("treats same object from many actors as agreement, not conflict", () => {
     const conflicts = detectConflicts([
-      claim("a", "Cyprus", "tax", "12.5%"),
-      claim("b", "Cyprus", "tax", "12.5 %"), // Same after normalise
+      claim("a", "Ireland", "tax", "12.5%"),
+      claim("b", "Ireland", "tax", "12.5 %"), // Same after normalise
     ])
     expect(conflicts).toHaveLength(0)
   })
@@ -53,9 +53,9 @@ describe("detectConflicts", () => {
 describe("resolveConflict", () => {
   it("prefers the object more actors corroborate", () => {
     const winner = resolveConflict([
-      claim("a", "Cyprus", "tax", "12.5%", 0.6),
-      claim("b", "Cyprus", "tax", "12.5%", 0.6),
-      claim("c", "Cyprus", "tax", "10%", 0.95), // Higher single confidence but lone
+      claim("a", "Ireland", "tax", "12.5%", 0.6),
+      claim("b", "Ireland", "tax", "12.5%", 0.6),
+      claim("c", "Ireland", "tax", "10%", 0.95), // Higher single confidence but lone
     ])
     expect(winner?.object).toBe("12.5%")
     expect(winner?.corroborators).toBe(2)

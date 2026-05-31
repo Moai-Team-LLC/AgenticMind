@@ -34,14 +34,6 @@ export type CallerContext = {
   intent?: string
   /** Arbitrary caller facts the synth may tailor phrasing to. */
   facts?: { label: string; value: string }[]
-  // Legacy human CRM profile (all optional; kept for back-compat).
-  industry?: string
-  stage?: string
-  expertise?: string[]
-  challenges?: string[]
-  customTags?: string[]
-  partnershipInterests?: string[]
-  recentJourney?: string
 }
 
 /** @deprecated Use `CallerContext`. Retained as an alias for back-compat. */
@@ -96,7 +88,7 @@ export type Answer = {
   telemetryId?: string
 }
 
-export const SYSTEM_PROMPT = `You are a knowledge-base assistant for a private community. Answer the user's
+export const SYSTEM_PROMPT = `You are a knowledge-base assistant. Answer the user's
 question using ONLY the numbered sources below. Cite the sources you used by
 appending [N] at the end of the relevant sentence (e.g. "Sales rose 12% [2].").
 
@@ -122,9 +114,9 @@ Resolving conflicts between sources:
   stale data leaks into answers.
 
 Example:
-Q: "What is Y Combinator?"
-A: "Y Combinator is a startup accelerator founded in 2005 [1]. The program
-runs for 3 months and includes funding in exchange for 7% equity [2]."`
+Q: "What is PostgreSQL?"
+A: "PostgreSQL is an open-source relational database first released in 1996 [1].
+It supports ACID transactions and user-defined types and extensions [2]."`
 
 export const clamp01 = (v: number): number => (v < 0 ? 0 : Math.min(1, v))
 
@@ -132,17 +124,7 @@ const isCallerContextEmpty = (c: CallerContext | null | undefined): boolean => {
   if (c === null || c === undefined) {
     return true
   }
-  return (
-    (c.intent ?? "") === "" &&
-    (c.facts?.length ?? 0) === 0 &&
-    (c.industry ?? "") === "" &&
-    (c.stage ?? "") === "" &&
-    (c.expertise?.length ?? 0) === 0 &&
-    (c.challenges?.length ?? 0) === 0 &&
-    (c.customTags?.length ?? 0) === 0 &&
-    (c.partnershipInterests?.length ?? 0) === 0 &&
-    (c.recentJourney ?? "") === ""
-  )
+  return (c.intent ?? "") === "" && (c.facts?.length ?? 0) === 0
 }
 
 /** SYSTEM_PROMPT + an optional caller-context block (in the system message). */
@@ -158,7 +140,7 @@ export const buildSystemPromptWithContext = (c: CallerContext | null | undefined
     "to it where relevant; never invent facts about the caller, and don't",
     "address them by name.",
     "",
-    "[user context]",
+    "[caller context]",
   ]
   if ((m.intent ?? "") !== "") {
     lines.push(`- goal: ${m.intent}`)
@@ -168,33 +150,7 @@ export const buildSystemPromptWithContext = (c: CallerContext | null | undefined
       lines.push(`- ${f.label}: ${f.value}`)
     }
   }
-  if ((m.industry ?? "") !== "") {
-    lines.push(`- industry: ${m.industry}`)
-  }
-  if ((m.stage ?? "") !== "") {
-    lines.push(`- stage: ${m.stage}`)
-  }
-  const expertise = m.expertise ?? []
-  if (expertise.length > 0) {
-    lines.push(`- expertise: ${expertise.join(", ")}`)
-  }
-  const challenges = m.challenges ?? []
-  if (challenges.length > 0) {
-    lines.push(`- current challenges: ${challenges.join(", ")}`)
-  }
-  const customTags = m.customTags ?? []
-  if (customTags.length > 0) {
-    lines.push(`- tags: ${customTags.join(", ")}`)
-  }
-  const partnershipInterests = m.partnershipInterests ?? []
-  if (partnershipInterests.length > 0) {
-    lines.push(`- looking for: ${partnershipInterests.join(", ")}`)
-  }
-  let out = lines.join("\n")
-  if ((m.recentJourney ?? "") !== "") {
-    out += `\n\n[recent journey] (supplementary, not citable)\n${m.recentJourney}\n`
-  }
-  return out
+  return lines.join("\n")
 }
 
 /** " (updated YYYY-MM-DD)" for a known date, else "". */

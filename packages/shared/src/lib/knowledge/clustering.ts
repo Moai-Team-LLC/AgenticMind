@@ -32,7 +32,7 @@ export const PROMOTION_SCORE_THRESHOLD = 0.7
 /**
  * Cosine cutoff for joining an existing cluster vs creating a new one. 0.85 =
  * "very similar phrasing" — groups "what is YC?" with "what is Y Combinator?",
- * but not "open a Cyprus company" with "tax residency in Cyprus".
+ * but not "open a Ireland company" with "tax residency in Ireland".
  */
 export const CLUSTER_MATCH_THRESHOLD = 0.85
 

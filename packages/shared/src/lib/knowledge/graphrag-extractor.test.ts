@@ -12,8 +12,8 @@ describe("parseExtraction", () => {
       relations: [],
     })
     expect(g.entities).toHaveLength(2)
-    expect(g.entities.find((e) => e.canonicalName === "Alice")?.ontologyType).toBe("Member")
-    expect(g.entities.find((e) => e.canonicalName === "Acme")?.ontologyType).toBe("Company")
+    expect(g.entities.find((e) => e.canonicalName === "Alice")?.ontologyType).toBe("Person")
+    expect(g.entities.find((e) => e.canonicalName === "Acme")?.ontologyType).toBe("Organization")
   })
 
   it("resolves relations by canonical name or alias and maps predicates", () => {
@@ -29,7 +29,7 @@ describe("parseExtraction", () => {
     })
     expect(g.relations).toHaveLength(2)
     expect(g.relations[0]?.ontologyPredicate).toBe("works_at")
-    expect(g.relations[1]?.ontologyPredicate).toBe("founded")
+    expect(g.relations[1]?.ontologyPredicate).toBe("created")
   })
 
   it("drops unresolved and self relations", () => {

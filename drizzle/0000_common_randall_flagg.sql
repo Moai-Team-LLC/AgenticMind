@@ -3,7 +3,7 @@ CREATE TABLE "answer_cache" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"question_hash" text NOT NULL,
 	"question_text" text NOT NULL,
-	"question_embedding" vector(1536) NOT NULL,
+	"question_embedding" vector(1024) NOT NULL,
 	"answer_text" text NOT NULL,
 	"citations_json" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"source_material_ids" uuid[] DEFAULT '{}' NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE "ask_cluster_members" (
 CREATE TABLE "ask_clusters" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"representative_q" text NOT NULL,
-	"centroid_embedding" vector(1536) NOT NULL,
+	"centroid_embedding" vector(1024) NOT NULL,
 	"aggregate_score" real DEFAULT 0 NOT NULL,
 	"member_count" integer DEFAULT 0 NOT NULL,
 	"feedback_count" integer DEFAULT 0 NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE "ask_feedback" (
 	"source" text NOT NULL,
 	"metadata" jsonb DEFAULT '{}'::jsonb NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "ask_feedback_signal_check" CHECK ("ask_feedback"."signal" IN ('thumb_up', 'thumb_down', 'claimed_deal', 'requested_intro', 'forwarded_answer', 'thanks_message', 'silent_no_followup', 'no_repeat_in_window', 'reformulated_immediately', 'escalated_to_admin', 'repeat_question_24h', 'admin_marked_wrong', 'admin_marked_helpful', 'verified_supported', 'verification_failed', 'eval_passed', 'eval_failed', 'downstream_success', 'downstream_failure', 'used_in_generation')),
+	CONSTRAINT "ask_feedback_signal_check" CHECK ("ask_feedback"."signal" IN ('thumb_up', 'thumb_down', 'forwarded_answer', 'thanks_message', 'silent_no_followup', 'no_repeat_in_window', 'reformulated_immediately', 'repeat_question_24h', 'verified_supported', 'verification_failed', 'eval_passed', 'eval_failed', 'downstream_success', 'downstream_failure', 'used_in_generation')),
 	CONSTRAINT "ask_feedback_strength_check" CHECK ("ask_feedback"."strength" >= -1.0 AND "ask_feedback"."strength" <= 1.0)
 );
 --> statement-breakpoint
@@ -89,8 +89,8 @@ CREATE TABLE "beliefs" (
 	"confidence" real DEFAULT 0.5 NOT NULL,
 	"source_kind" text DEFAULT 'agent' NOT NULL,
 	"source_id" text,
-	"embedding" vector(1536),
-	"object_tsv" "tsvector" GENERATED ALWAYS AS (setweight(to_tsvector('simple', coalesce(subject,'') || ' ' || coalesce(object,'')), 'A') || setweight(to_tsvector('english', coalesce(object,'')), 'B')) STORED,
+	"embedding" vector(1024),
+	"object_tsv" "tsvector" GENERATED ALWAYS AS (to_tsvector('simple', coalesce(subject,'') || ' ' || coalesce(object,''))) STORED,
 	"metadata" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -101,9 +101,9 @@ CREATE TABLE "chunks" (
 	"ordinal" integer NOT NULL,
 	"body" text NOT NULL,
 	"token_count" integer,
-	"embedding" vector(1536),
+	"embedding" vector(1024),
 	"embedding_model" text,
-	"body_tsv" "tsvector" GENERATED ALWAYS AS (setweight(to_tsvector('simple', coalesce(body, '')), 'A') || setweight(to_tsvector('english', coalesce(body, '')), 'B')) STORED,
+	"body_tsv" "tsvector" GENERATED ALWAYS AS (to_tsvector('simple', coalesce(body, ''))) STORED,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -162,10 +162,10 @@ CREATE TABLE "knowledge_cards" (
 	"confidence" real NOT NULL,
 	"valid_from" timestamp with time zone,
 	"valid_to" timestamp with time zone,
-	"embedding" vector(1536),
+	"embedding" vector(1024),
 	"embedding_model" text,
 	"extractor_version" text,
-	"body_tsv" "tsvector" GENERATED ALWAYS AS (setweight(to_tsvector('simple', coalesce(body, '')), 'A') || setweight(to_tsvector('english', coalesce(body, '')), 'B')) STORED,
+	"body_tsv" "tsvector" GENERATED ALWAYS AS (to_tsvector('simple', coalesce(body, ''))) STORED,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "knowledge_cards_kind_check" CHECK ("knowledge_cards"."kind" IN ('fact', 'qa', 'definition', 'metric', 'procedure', 'resolution')),
 	CONSTRAINT "knowledge_cards_confidence_check" CHECK ("knowledge_cards"."confidence" >= 0.0 AND "knowledge_cards"."confidence" <= 1.0)

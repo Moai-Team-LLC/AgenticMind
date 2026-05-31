@@ -5,12 +5,11 @@ import { index, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-co
 const principalKindEnum = pgEnum("principal_kind", ["agent", "service", "human"])
 
 /**
- * Principals. The table keeps the name `users` for FK stability
- * (assistant_queries, knowledge_settings, mcp_tokens reference it), but an
- * AgenticMind principal is an agent / service / human identity that owns MCP
- * tokens, asks questions, and is attributed in the trace. The fat human CRM
- * profile from the source product was removed — caller context now travels
- * per-call as `CallerContext`, not as a stored profile.
+ * Principals. The table keeps the name `users` for FK stability (knowledge_settings,
+ * mcp_tokens reference it), but an AgenticMind principal is an agent / service /
+ * human identity that owns MCP tokens, asks questions, and is attributed in the
+ * trace. The stored human profile from the source product was removed — caller
+ * context now travels per-call as `CallerContext`, not as a stored profile.
  */
 const users = pgTable(
   "users",

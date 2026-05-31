@@ -1,26 +1,20 @@
 /**
- * Feedback signal vocabulary — pure, ported from
- * services/knowledge/internal/feedback/feedback.go. The closed signal set +
- * canonical strengths drive the /ask/feedback endpoints and the promoter's
- * cluster scoring. Recording lives in the ask-feedback query module; the
- * clustering + promotion loop is a separate (BullMQ) brick.
+ * Feedback signal vocabulary — pure. The closed signal set + canonical
+ * strengths drive the feedback surface and the promoter's cluster scoring.
+ * Recording lives in the ask-feedback query module; the clustering + promotion
+ * loop runs in the worker sweep.
  */
 
 export const FEEDBACK_SIGNALS = [
-  // Human signals (member UI / admin)
+  // Human / implicit UI signals
   "thumb_up",
   "thumb_down",
-  "claimed_deal",
-  "requested_intro",
   "forwarded_answer",
   "thanks_message",
   "silent_no_followup",
   "no_repeat_in_window",
   "reformulated_immediately",
-  "escalated_to_admin",
   "repeat_question_24h",
-  "admin_marked_wrong",
-  "admin_marked_helpful",
   // Programmatic signals (agents / evals / verifiers) — these let the
   // Compounding loop self-improve WITHOUT a human in the loop: an agent or
   // An eval emits them, and they drive the same clustering → judge →
@@ -36,15 +30,9 @@ export const FEEDBACK_SIGNALS = [
 
 export type FeedbackSignal = (typeof FEEDBACK_SIGNALS)[number]
 
-/** Admin-only marker signals — rejected on the public member route. */
-export const ADMIN_ONLY_SIGNALS = new Set<FeedbackSignal>([
-  "admin_marked_wrong",
-  "admin_marked_helpful",
-])
-
 /**
  * Programmatic signals emitted by agents, evals, or verifiers (not humans).
- * Allowed on the agent/MCP surface; rejected on the human member route.
+ * Allowed on the agent/MCP surface; rejected on the human route.
  */
 export const AGENT_SIGNALS = new Set<FeedbackSignal>([
   "verified_supported",
@@ -63,10 +51,7 @@ export const isValidSignal = (s: string): s is FeedbackSignal =>
 export const isAgentSignal = (s: FeedbackSignal): boolean => AGENT_SIGNALS.has(s)
 
 const STRENGTHS: Record<FeedbackSignal, number> = {
-  // Human
-  claimed_deal: 1,
-  requested_intro: 1,
-  admin_marked_helpful: 1,
+  // Human / implicit
   forwarded_answer: 0.8,
   thumb_up: 0.7,
   thanks_message: 0.7,
@@ -75,8 +60,6 @@ const STRENGTHS: Record<FeedbackSignal, number> = {
   repeat_question_24h: -0.4,
   reformulated_immediately: -0.6,
   thumb_down: -0.7,
-  escalated_to_admin: -0.8,
-  admin_marked_wrong: -1,
   // Programmatic (agents / evals / verifiers)
   verified_supported: 1,
   eval_passed: 0.9,

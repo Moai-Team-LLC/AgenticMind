@@ -31,7 +31,7 @@ const askFeedback = pgTable(
     index("ask_feedback_created_at_idx").on(table.createdAt.desc()),
     check(
       "ask_feedback_signal_check",
-      sql`${table.signal} IN ('thumb_up', 'thumb_down', 'claimed_deal', 'requested_intro', 'forwarded_answer', 'thanks_message', 'silent_no_followup', 'no_repeat_in_window', 'reformulated_immediately', 'escalated_to_admin', 'repeat_question_24h', 'admin_marked_wrong', 'admin_marked_helpful', 'verified_supported', 'verification_failed', 'eval_passed', 'eval_failed', 'downstream_success', 'downstream_failure', 'used_in_generation')`,
+      sql`${table.signal} IN ('thumb_up', 'thumb_down', 'forwarded_answer', 'thanks_message', 'silent_no_followup', 'no_repeat_in_window', 'reformulated_immediately', 'repeat_question_24h', 'verified_supported', 'verification_failed', 'eval_passed', 'eval_failed', 'downstream_success', 'downstream_failure', 'used_in_generation')`,
     ),
     check(
       "ask_feedback_strength_check",

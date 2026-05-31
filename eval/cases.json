@@ -1501,17 +1501,17 @@
     }
   },
   {
-    "id": "oos-2-what-is-the-corporate-tax-rate-in-cyprus",
+    "id": "oos-2-what-is-the-corporate-tax-rate-in-japan",
     "failureMode": "out_of_scope",
-    "query": "What is the corporate tax rate in Cyprus?",
+    "query": "What is the corporate tax rate in Japan?",
     "assertions": {
       "maxCitations": 0
     }
   },
   {
-    "id": "oos-3-what-is-the-weather-in-limassol-tomorrow",
+    "id": "oos-3-what-is-the-weather-in-berlin-tomorrow",
     "failureMode": "out_of_scope",
-    "query": "What is the weather in Limassol tomorrow?",
+    "query": "What is the weather in Berlin tomorrow?",
     "assertions": {
       "maxCitations": 0
     }
@@ -1541,9 +1541,9 @@
     }
   },
   {
-    "id": "oos-7-what-is-a-safe-note-in-startup-financing",
+    "id": "oos-7-how-does-a-four-stroke-combustion-engine",
     "failureMode": "out_of_scope",
-    "query": "What is a SAFE note in startup financing?",
+    "query": "How does a four-stroke combustion engine work?",
     "assertions": {
       "maxCitations": 0
     }

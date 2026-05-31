@@ -13,37 +13,37 @@ import {
 describe("ontology V0 schema", () => {
   it("loads the frozen vocabulary with cross-references intact", () => {
     expect(ontologyV0.version).toBe("V0")
-    expect(listTypes()).toHaveLength(14)
-    expect(listPredicates()).toHaveLength(25)
+    expect(listTypes()).toHaveLength(12)
+    expect(listPredicates()).toHaveLength(21)
   })
 
   it("preserves declaration order", () => {
-    expect(listTypes()[0]?.name).toBe("Member")
+    expect(listTypes()[0]?.name).toBe("Person")
     expect(listPredicates()[0]?.name).toBe("works_at")
   })
 })
 
 describe("validateTriple", () => {
   it("accepts a well-formed entity triple", () => {
-    expect(validateTriple("Member", "works_at", "Company")).toBeNull()
+    expect(validateTriple("Person", "works_at", "Organization")).toBeNull()
   })
 
   it("accepts a string-kind predicate ignoring objectType", () => {
-    expect(validateTriple("Member", "has_role", "")).toBeNull()
+    expect(validateTriple("Person", "has_role", "")).toBeNull()
   })
 
   it("rejects an unknown subject_type", () => {
-    expect(validateTriple("Robot", "works_at", "Company")).toContain("unknown subject_type")
+    expect(validateTriple("Robot", "works_at", "Organization")).toContain("unknown subject_type")
   })
 
   it("rejects a subject_type the predicate does not accept", () => {
-    expect(validateTriple("Company", "works_at", "Company")).toContain(
+    expect(validateTriple("Organization", "works_at", "Organization")).toContain(
       "does not accept subject_type",
     )
   })
 
   it("rejects a disallowed object_type", () => {
-    expect(validateTriple("Member", "works_at", "Hub")).toContain("does not accept object_type")
+    expect(validateTriple("Person", "works_at", "Topic")).toContain("does not accept object_type")
   })
 })
 
@@ -66,7 +66,7 @@ describe("mapFreeFormPredicate", () => {
   })
 
   it("is idempotent on already-typed predicates", () => {
-    expect(mapFreeFormPredicate("founded")).toBe("founded")
+    expect(mapFreeFormPredicate("created")).toBe("created")
   })
 
   it("returns undefined on a miss", () => {
@@ -76,13 +76,13 @@ describe("mapFreeFormPredicate", () => {
 
 describe("mapFreeFormType", () => {
   it("maps free-form types onto V0 types", () => {
-    expect(mapFreeFormType("person")).toBe("Member")
+    expect(mapFreeFormType("person")).toBe("Person")
     expect(mapFreeFormType("technology")).toBe("Skill")
   })
 
   it("passes through canonical types case-insensitively", () => {
-    expect(mapFreeFormType("company")).toBe("Company")
-    expect(mapFreeFormType("Member")).toBe("Member")
+    expect(mapFreeFormType("company")).toBe("Organization")
+    expect(mapFreeFormType("Person")).toBe("Person")
   })
 
   it("returns undefined for intentionally unmapped types", () => {

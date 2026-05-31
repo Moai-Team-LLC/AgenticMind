@@ -18,8 +18,8 @@ import { mapFreeFormPredicate, mapFreeFormType } from "@agenticmind/shared/lib/k
 import { okAsync, ResultAsync } from "neverthrow"
 import * as z from "zod"
 
-export const EXTRACTION_SYSTEM_PROMPT = `You extract a knowledge graph from one document for a private community
-knowledge base. Identify the salient entities (concepts, frameworks,
+export const EXTRACTION_SYSTEM_PROMPT = `You extract a knowledge graph from one document for a knowledge
+base. Identify the salient entities (concepts, frameworks,
 companies, technologies, people) and the explicit relationships between
 them. Be conservative: only include entities the document discusses
 substantively, not passing mentions.

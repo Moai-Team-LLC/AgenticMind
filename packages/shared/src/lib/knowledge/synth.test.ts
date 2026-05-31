@@ -32,16 +32,14 @@ describe("buildSystemPromptWithContext", () => {
     expect(buildSystemPromptWithContext({})).toBe(SYSTEM_PROMPT)
   })
 
-  it("appends a profile block when present", () => {
+  it("appends a caller-context block when present", () => {
     const out = buildSystemPromptWithContext({
-      industry: "fintech",
-      expertise: ["payments", "ml"],
-      recentJourney: "asked about pricing yesterday",
+      intent: "evaluate pricing options",
+      facts: [{ label: "industry", value: "fintech" }],
     })
-    expect(out).toContain("[user context]")
+    expect(out).toContain("[caller context]")
+    expect(out).toContain("- goal: evaluate pricing options")
     expect(out).toContain("- industry: fintech")
-    expect(out).toContain("- expertise: payments, ml")
-    expect(out).toContain("[recent journey]")
   })
 })
 

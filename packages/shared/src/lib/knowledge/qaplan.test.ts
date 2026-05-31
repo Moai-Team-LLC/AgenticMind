@@ -6,7 +6,7 @@ describe("buildPlannerPrompt", () => {
   it("renders the ontology vocabulary", () => {
     const p = buildPlannerPrompt()
     expect(p).toContain("Allowed entity types")
-    expect(p).toContain("- Member:")
+    expect(p).toContain("- Person:")
     expect(p).toContain("- works_at —")
   })
 })
@@ -24,16 +24,16 @@ describe("parsePlannerResponse", () => {
       applicable: true,
       reason: "single hop",
       spec: {
-        startType: "Member",
-        hops: [{ predicate: "works_at", targetType: "Company", targetName: "Stripe" }],
+        startType: "Person",
+        hops: [{ predicate: "works_at", targetType: "Organization", targetName: "Stripe" }],
         limit: 0,
       },
     })
     expect(r.applicable).toBe(true)
-    expect(r.spec?.startType).toBe("Member")
+    expect(r.spec?.startType).toBe("Person")
     expect(r.spec?.hops[0]).toEqual({
       predicate: "works_at",
-      targetType: "Company",
+      targetType: "Organization",
       targetName: "Stripe",
     })
     expect(r.spec?.limit).toBe(25) // 0 → default
@@ -46,7 +46,7 @@ describe("parsePlannerResponse", () => {
     expect(
       parsePlannerResponse({
         applicable: true,
-        spec: { startType: "Member", hops: [{ predicate: "nope", targetType: "Company" }] },
+        spec: { startType: "Person", hops: [{ predicate: "nope", targetType: "Organization" }] },
       }).applicable,
     ).toBe(false)
   })
@@ -61,12 +61,12 @@ describe("formatRows", () => {
     const rows = formatRows([
       {
         path: [
-          { entityId: "1", canonicalName: "Alice", ontologyType: "Member", confidence: 1 },
-          { entityId: "2", canonicalName: "Stripe", ontologyType: "Company", confidence: 1 },
+          { entityId: "1", canonicalName: "Alice", ontologyType: "Person", confidence: 1 },
+          { entityId: "2", canonicalName: "Stripe", ontologyType: "Organization", confidence: 1 },
         ],
       },
     ])
-    expect(rows[0]?.body).toBe("Alice (Member) → Stripe (Company)")
+    expect(rows[0]?.body).toBe("Alice (Person) → Stripe (Organization)")
   })
 
   it("skips empty paths", () => {

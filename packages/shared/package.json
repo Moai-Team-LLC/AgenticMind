@@ -16,13 +16,6 @@
     "./worker/**/*": "./src/worker/**/*.ts"
   },
   "scripts": {
-    "migrate:profile-images": "dotenvx run -f .env.local -- tsx src/scripts/migrate-profile-images.ts",
-    "migrate:notification-campaign-content": "tsx src/scripts/migrate-notification-campaign-content.ts",
-    "migrate:notification-campaign-content:write": "tsx src/scripts/migrate-notification-campaign-content.ts --write",
-    "sync:partners-csv": "dotenvx run -f .env.local -- tsx src/scripts/sync-partners-from-csv.ts",
-    "sync:partners-csv:dev": "dotenvx run -f .env.dev -- tsx src/scripts/sync-partners-from-csv.ts",
-    "update:community-menu-buttons": "dotenvx run -f .env.local -- tsx src/scripts/update-community-menu-buttons.ts",
-    "update:community-menu-buttons-dev": "dotenvx run -f .env.dev -- tsx src/scripts/update-community-menu-buttons.ts",
     "tsc": "tsc --noEmit",
     "format": "oxfmt",
     "lint": "oxlint --type-aware --fix"

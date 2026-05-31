@@ -6,7 +6,7 @@ describe("buildExtractionPrompt", () => {
   it("renders the ontology vocabulary into the prompt", () => {
     const prompt = buildExtractionPrompt()
     expect(prompt).toContain("Allowed entity types")
-    expect(prompt).toContain("- Member:")
+    expect(prompt).toContain("- Person:")
     expect(prompt).toContain("- works_at:")
   })
 })
@@ -15,7 +15,7 @@ describe("validateRawCard", () => {
   it("accepts a well-formed fact card", () => {
     const card = validateRawCard({
       kind: "fact",
-      subject_type: "Member",
+      subject_type: "Person",
       subject_value: "Alice",
       predicate: "works_at",
       value: "Acme",
@@ -32,7 +32,7 @@ describe("validateRawCard", () => {
   it("accepts a qa card with a question", () => {
     const card = validateRawCard({
       kind: "qa",
-      subject_type: "Hub",
+      subject_type: "Topic",
       subject_value: "Onboarding",
       body: "Follow the welcome flow.",
       question: "How do I onboard?",
@@ -48,11 +48,11 @@ describe("validateRawCard", () => {
     { name: "empty body", patch: { body: "" } },
     { name: "low confidence", patch: { confidence: 0.3 } },
     { name: "fact without predicate", patch: { predicate: "" } },
-    { name: "fact with subject the predicate rejects", patch: { predicate: "offers_deal" } },
+    { name: "fact with subject the predicate rejects", patch: { predicate: "event_held_in" } },
   ])("drops a card with $name", ({ patch }) => {
     const base = {
       kind: "fact",
-      subject_type: "Member",
+      subject_type: "Person",
       subject_value: "Alice",
       predicate: "works_at",
       value: "Acme",
@@ -80,7 +80,7 @@ describe("validateExtraction", () => {
       cards: [
         {
           kind: "fact",
-          subject_type: "Member",
+          subject_type: "Person",
           subject_value: "Alice",
           predicate: "works_at",
           value: "Acme",
@@ -89,7 +89,7 @@ describe("validateExtraction", () => {
         },
         {
           kind: "nonsense",
-          subject_type: "Member",
+          subject_type: "Person",
           subject_value: "Bob",
           body: "y",
           confidence: 0.9,

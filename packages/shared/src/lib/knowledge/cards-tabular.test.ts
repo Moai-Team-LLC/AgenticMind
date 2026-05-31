@@ -5,14 +5,14 @@ import { extractFromTables, parseTabularSchema } from "./cards-tabular"
 describe("parseTabularSchema", () => {
   it("parses a valid schema with defaults", () => {
     const r = parseTabularSchema({
-      subjectType: "Member",
+      subjectType: "Person",
       subjectColumn: "name",
       predicates: [{ column: "skill", predicate: "has_skill", objectType: "Skill" }],
       skipColumns: ["notes"],
     })
     expect(r.isOk()).toBe(true)
     if (r.isOk()) {
-      expect(r.value.subjectType).toBe("Member")
+      expect(r.value.subjectType).toBe("Person")
       expect(r.value.minConfidence).toBe(0.95)
       expect(r.value.predicates).toHaveLength(1)
     }
@@ -24,7 +24,7 @@ describe("parseTabularSchema", () => {
     {
       name: "unknown predicate",
       input: {
-        subjectType: "Member",
+        subjectType: "Person",
         subjectColumn: "name",
         predicates: [{ column: "x", predicate: "nope" }],
       },
@@ -42,7 +42,7 @@ describe("parseTabularSchema", () => {
 describe("extractFromTables", () => {
   it("emits a qa summary + a fact card per mapped predicate", () => {
     const schema = parseTabularSchema({
-      subjectType: "Member",
+      subjectType: "Person",
       subjectColumn: "name",
       predicates: [{ column: "skill", predicate: "has_skill", objectType: "Skill" }],
     })
@@ -67,7 +67,7 @@ describe("extractFromTables", () => {
 
   it("skips rows with an empty subject value", () => {
     const schema = parseTabularSchema({
-      subjectType: "Member",
+      subjectType: "Person",
       subjectColumn: "name",
       predicates: [],
     })

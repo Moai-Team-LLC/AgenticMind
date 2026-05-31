@@ -21,7 +21,7 @@ import {
 import { okAsync, ResultAsync } from "neverthrow"
 import * as z from "zod"
 
-const PLANNER_SYSTEM_PROMPT_TEMPLATE = `You are a query-shape classifier for a private community knowledge service.
+const PLANNER_SYSTEM_PROMPT_TEMPLATE = `You are a query-shape classifier for a knowledge service.
 
 Your job: decide whether the user's question can be answered by a
 multi-hop traversal over a typed knowledge graph, and if so, emit a
@@ -56,10 +56,10 @@ Shape B — when the question does fit:
 }
 
 Examples:
-Q: "Who in the community works at Stripe?"
-A: {"applicable":true,"reason":"single-hop Member→Company by name","spec":{"startType":"Member","hops":[{"predicate":"works_at","targetType":"Company","targetName":"Stripe"}],"limit":25}}
-Q: "Which members work in fintech in Cyprus?"
-A: {"applicable":true,"reason":"two predicates","spec":{"startType":"Member","hops":[{"predicate":"located_in","targetType":"Location","targetName":"Cyprus"},{"predicate":"focuses_on","targetType":"Industry","targetName":"fintech"}],"limit":25}}
+Q: "Who works at Stripe?"
+A: {"applicable":true,"reason":"single-hop Person→Organization by name","spec":{"startType":"Person","hops":[{"predicate":"works_at","targetType":"Organization","targetName":"Stripe"}],"limit":25}}
+Q: "Which people work in fintech in Ireland?"
+A: {"applicable":true,"reason":"two predicates","spec":{"startType":"Person","hops":[{"predicate":"located_in","targetType":"Location","targetName":"Ireland"},{"predicate":"focuses_on","targetType":"Field","targetName":"fintech"}],"limit":25}}
 Q: "Tell me about Alice's approach to product market fit."
 A: {"applicable":false,"reason":"narrative answer, not a triple chain"}
 

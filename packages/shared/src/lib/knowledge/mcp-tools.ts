@@ -455,13 +455,13 @@ export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "kl_search",
     description:
-      "Search the community knowledge base by keyword/semantic similarity. Returns the top-K matching passages with material titles and similarity scores. Prefer for exploratory lookups; use kl_ask_global for a synthesised answer with citations.",
+      "Search the knowledge base by keyword/semantic similarity. Returns the top-K matching passages with material titles and similarity scores. Prefer for exploratory lookups; use kl_ask_global for a synthesised answer with citations.",
     inputSchema: klSearchInput,
   },
   {
     name: "kl_ask_global",
     description:
-      "Ask a natural-language question about the community knowledge base. Retrieves the most relevant passages, synthesises an answer, and returns citation markers ([1], [2], …) keyed to source materials.",
+      "Ask a natural-language question about the knowledge base. Retrieves the most relevant passages, synthesises an answer, and returns citation markers ([1], [2], …) keyed to source materials.",
     inputSchema: klAskGlobalInput,
   },
   {
