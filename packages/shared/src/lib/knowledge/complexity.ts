@@ -7,6 +7,8 @@
 
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 
+import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
+
 export type Complexity = "simple" | "complex"
 
 const COMPARE = /(compare|versus|\bvs\b|difference|differ|trade-?offs?)/iu
@@ -33,9 +35,13 @@ export const classifyComplexity = (question: string): Complexity => {
   return "simple"
 }
 
-const SIMPLE_MODEL: LlmModel = "google/gemini-3.1-flash-lite-preview"
-const COMPLEX_MODEL: LlmModel = "openai/gpt-5-mini"
+// Tier defaults, also applied in code (not only via zod) so they survive
+// SKIP_VALIDATION, which the repo's dev env sets.
+const DEFAULT_SIMPLE_MODEL = "google/gemini-3.1-flash-lite-preview"
+const DEFAULT_COMPLEX_MODEL = "openai/gpt-5-mini"
 
-/** The model tier for a complexity class. */
+/** The model tier for a complexity class (configurable via CHAT_MODEL_*). */
 export const modelForComplexity = (c: Complexity): LlmModel =>
-  c === "complex" ? COMPLEX_MODEL : SIMPLE_MODEL
+  c === "complex"
+    ? (aiSettings.CHAT_MODEL_COMPLEX ?? DEFAULT_COMPLEX_MODEL)
+    : (aiSettings.CHAT_MODEL_SIMPLE ?? DEFAULT_SIMPLE_MODEL)

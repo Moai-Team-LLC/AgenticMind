@@ -28,14 +28,18 @@
     "lint": "oxlint --type-aware --fix"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.48",
     "@aws-sdk/client-s3": "^3.1048.0",
+    "@huggingface/transformers": "^4.2.0",
     "@openrouter/ai-sdk-provider": "^2.9.0",
+    "@opentelemetry/api": "^1.9.1",
     "@t3-oss/env-core": "^0.13.11",
     "ai": "^6.0.190",
     "drizzle-orm": "^0.45.2",
     "htmlparser2": "^12.0.0",
     "mammoth": "^1.12.0",
     "neverthrow": "^8.2.0",
+    "onnxruntime-node": "1.24.3",
     "p-retry": "^8.0.0",
     "pg": "^8.21.0",
     "unpdf": "^1.6.2",

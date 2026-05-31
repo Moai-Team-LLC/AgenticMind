@@ -1,3 +1,7 @@
+import {
+  EMBEDDING_DIMENSIONS,
+  FTS_CONFIG,
+} from "@agenticmind/shared/database/schema/knowledge/_config"
 import { tsvector } from "@agenticmind/shared/database/schema/knowledge/_types"
 import { materials } from "@agenticmind/shared/database/schema/knowledge/materials"
 import { sql } from "drizzle-orm"
@@ -39,11 +43,11 @@ const knowledgeCards = pgTable(
     confidence: real("confidence").notNull(),
     validFrom: timestamp("valid_from", { withTimezone: true }),
     validTo: timestamp("valid_to", { withTimezone: true }),
-    embedding: vector("embedding", { dimensions: 1536 }),
+    embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
     embeddingModel: text("embedding_model"),
     extractorVersion: text("extractor_version"),
     bodyTsv: tsvector("body_tsv").generatedAlwaysAs(
-      sql`setweight(to_tsvector('simple', coalesce(body, '')), 'A') || setweight(to_tsvector('english', coalesce(body, '')), 'B')`,
+      sql`to_tsvector('${sql.raw(FTS_CONFIG)}', coalesce(body, ''))`,
     ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`now()`)

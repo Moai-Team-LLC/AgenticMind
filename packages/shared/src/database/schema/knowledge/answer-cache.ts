@@ -1,3 +1,4 @@
+import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { sql } from "drizzle-orm"
 import {
   check,
@@ -26,7 +27,7 @@ const answerCache = pgTable(
       .default(sql`gen_random_uuid()`),
     questionHash: text("question_hash").notNull(),
     questionText: text("question_text").notNull(),
-    questionEmbedding: vector("question_embedding", { dimensions: 1536 }).notNull(),
+    questionEmbedding: vector("question_embedding", { dimensions: EMBEDDING_DIMENSIONS }).notNull(),
     answerText: text("answer_text").notNull(),
     citationsJson: jsonb("citations_json")
       .notNull()

@@ -1,7 +1,7 @@
 /**
  * Chunks repository — ported from services/knowledge/internal/index
  * (repo_pg.go). Persists chunks and serves vector (pgvector cosine) + BM25
- * (dual-config tsvector) retrieval. Hybrid fusion of the two lists is done by
+ * (FTS_CONFIG tsvector) retrieval. Hybrid fusion of the two lists is done by
  * blendHybrid (lib/knowledge/blend). Follows the repo's { tx } + ResultAsync
  * convention.
  */
@@ -12,6 +12,7 @@ import type { SQL } from "drizzle-orm"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { chunks } from "@agenticmind/shared/database/schema"
+import { FTS_CONFIG } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
 import { asc, eq, isNotNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
@@ -145,20 +146,18 @@ export const dedupeVariants = (query: string, variants: string[] | undefined): s
 }
 
 /**
- * OR-combined dual-config tsquery fragment for the given variants: each fans
- * into simple/english plainto_tsquery joined with `||`. Matches the generated
- * body_tsv shape on chunks and knowledge_cards.
+ * OR-combined tsquery fragment for the given variants under the configured FTS
+ * config (FTS_CONFIG). Must use the same config as the generated `*_tsv` columns
+ * or the `@@` match never fires. Default `simple` is language-neutral.
  */
 export const variantTsQuery = (variants: string[]): SQL => {
-  const configs = ["simple", "english"] as const
-  const parts = variants.flatMap((v) => configs.map((cfg) => sql`plainto_tsquery(${cfg}, ${v})`))
+  const parts = variants.map((v) => sql`plainto_tsquery(${FTS_CONFIG}, ${v})`)
   return sql`(${sql.join(parts, sql` || `)})`
 }
 
 /**
- * BM25 full-text search over the generated dual-config body_tsv. Each variant
- * fans into simple/english plainto_tsquery, all OR-combined — `simple` keeps
- * exact lexemes (proper nouns, acronyms), `english` adds stemmed recall. Empty
+ * BM25 full-text search over the generated body_tsv. Each variant fans into a
+ * plainto_tsquery under the configured FTS_CONFIG, all OR-combined. Empty
  * query → []. Score is the raw ts_rank_cd value (caller normalises before blending).
  */
 export const searchChunksBm25 = (props: {

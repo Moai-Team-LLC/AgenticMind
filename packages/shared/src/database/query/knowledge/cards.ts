@@ -215,7 +215,7 @@ export const searchCards = (
   ).map((rows) => rows.map((r) => toCardHit(r)))
 }
 
-/** BM25 search over the dual-config body_tsv with the same filters as searchCards. */
+/** BM25 search over the FTS_CONFIG body_tsv with the same filters as searchCards. */
 export const searchCardsBm25 = (
   props: {
     tx: Transaction

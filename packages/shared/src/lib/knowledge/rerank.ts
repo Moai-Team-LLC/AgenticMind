@@ -10,7 +10,8 @@ import type { RerankModel } from "@agenticmind/shared/lib/ai/model"
 import type { ResultAsync } from "neverthrow"
 
 import { rerankDocuments } from "@agenticmind/shared/lib/ai/rerank"
-import { okAsync } from "neverthrow"
+import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
+import { errAsync, okAsync } from "neverthrow"
 
 /** Multilingual default — good for the mixed RU/EN corpus. */
 export const KNOWLEDGE_RERANK_MODEL: RerankModel = "cohere/rerank-v3.5"
@@ -40,6 +41,14 @@ export const rerankPairs = <T>(props: {
 }): ResultAsync<RerankPair<T>[], RerankError> => {
   if (props.pairs.length === 0) {
     return okAsync<RerankPair<T>[], RerankError>([])
+  }
+  // Off by default: callers fall back to the fused vector+BM25 order. This keeps
+  // the zero-key path free of a doomed network call + its retry storm.
+  if (aiSettings.RERANK_ENABLED?.toLowerCase() !== "true") {
+    return errAsync<RerankPair<T>[], RerankError>({
+      type: "rerank_disabled",
+      message: "rerank disabled (set RERANK_ENABLED=true to enable)",
+    })
   }
   return rerankDocuments({
     model: props.model ?? KNOWLEDGE_RERANK_MODEL,

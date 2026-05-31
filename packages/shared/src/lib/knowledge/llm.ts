@@ -9,23 +9,31 @@
  *   - ChatCompleter.Complete → completeKnowledge (system + user)
  *   - CompleteJSON        → completeKnowledgeJson (zod-validated)
  *
- * Embeddings stay at text-embedding-3-small / 1536 dims to match the Go RAG
- * tuning and the `chunks` / `knowledge_cards` vector(1536) columns.
+ * Embeddings are produced by the pluggable EmbeddingsProvider (lib/ai/embeddings):
+ * a zero-key in-process multilingual model by default, or any OpenAI-compatible
+ * endpoint. Dimensionality is pinned to the DB schema constant.
  */
 
-import type { EmbeddingModel, LlmModel } from "@agenticmind/shared/lib/ai/model"
+import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type * as z from "zod"
 
-import { openrouterClient } from "@agenticmind/shared/lib/ai/openrouter"
+import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
+import { chatModel } from "@agenticmind/shared/lib/ai/chat"
+import {
+  configuredEmbeddingModelId,
+  embeddingsProvider,
+} from "@agenticmind/shared/lib/ai/embeddings"
 import { buildRetryOptions } from "@agenticmind/shared/lib/retry"
 import { parseZodSchema } from "@agenticmind/shared/lib/zod/parse"
-import { embed, embedMany, generateText, Output } from "ai"
+import { generateText, Output } from "ai"
 import { okAsync, ResultAsync } from "neverthrow"
 import pRetry from "p-retry"
 
-/** Embedding model + dimensionality for the knowledge corpus (matches Go). */
-export const KNOWLEDGE_EMBEDDING_MODEL: EmbeddingModel = "openai/text-embedding-3-small"
-export const KNOWLEDGE_EMBEDDING_DIMENSIONS = 1536
+/** Embedding dimensionality for the knowledge corpus (pinned to the DB schema). */
+export const KNOWLEDGE_EMBEDDING_DIMENSIONS = EMBEDDING_DIMENSIONS
+/** Identifier of the configured embedding model — recorded on persisted rows
+ * (`embedding_model`) so re-embeds and model swaps are auditable. */
+export const KNOWLEDGE_EMBEDDING_MODEL = configuredEmbeddingModelId()
 /** Default chat model for synthesis / extraction. */
 export const KNOWLEDGE_CHAT_MODEL: LlmModel = "openai/gpt-5-mini"
 
@@ -43,20 +51,13 @@ const aiError = (message: string, originalError: unknown): KnowledgeAiError => {
   }
 }
 
-/** Embeds a single text into a 1536-dim vector. */
+/** Embeds a single text into an EMBEDDING_DIMENSIONS-dim vector. */
 export const embedKnowledgeText = (
   text: string,
   purpose = "knowledge embed",
 ): ResultAsync<number[], KnowledgeAiError> =>
-  ResultAsync.fromPromise(
-    pRetry(async () => {
-      const { embedding } = await embed({
-        model: openrouterClient.textEmbeddingModel(KNOWLEDGE_EMBEDDING_MODEL),
-        value: text,
-      })
-      return embedding
-    }, buildRetryOptions(purpose)),
-    (error) => aiError(`Failed to embed text for ${purpose}`, error),
+  ResultAsync.fromPromise(embeddingsProvider().embed(text, purpose), (error) =>
+    aiError(`Failed to embed text for ${purpose}`, error),
   )
 
 /**
@@ -70,15 +71,8 @@ export const embedKnowledgeBatch = (
   if (texts.length === 0) {
     return okAsync<number[][], KnowledgeAiError>([])
   }
-  return ResultAsync.fromPromise(
-    pRetry(async () => {
-      const { embeddings } = await embedMany({
-        model: openrouterClient.textEmbeddingModel(KNOWLEDGE_EMBEDDING_MODEL),
-        values: texts,
-      })
-      return embeddings
-    }, buildRetryOptions(purpose)),
-    (error) => aiError(`Failed to embed batch for ${purpose}`, error),
+  return ResultAsync.fromPromise(embeddingsProvider().embedBatch(texts, purpose), (error) =>
+    aiError(`Failed to embed batch for ${purpose}`, error),
   )
 }
 
@@ -93,7 +87,7 @@ export const completeKnowledge = (props: {
   return ResultAsync.fromPromise(
     pRetry(async () => {
       const { text } = await generateText({
-        model: openrouterClient(props.model ?? KNOWLEDGE_CHAT_MODEL),
+        model: chatModel(props.model ?? KNOWLEDGE_CHAT_MODEL),
         system: props.system,
         prompt: props.user,
       })
@@ -118,7 +112,7 @@ export const completeKnowledgeJson = <T>(props: {
   return ResultAsync.fromPromise(
     pRetry(async () => {
       const { output } = await generateText({
-        model: openrouterClient(props.model ?? KNOWLEDGE_CHAT_MODEL),
+        model: chatModel(props.model ?? KNOWLEDGE_CHAT_MODEL),
         system: props.system,
         prompt: props.user,
         output: Output.object({ schema: props.schema }),

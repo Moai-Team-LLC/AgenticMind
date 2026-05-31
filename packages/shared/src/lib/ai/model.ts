@@ -1,6 +1,9 @@
 import * as z from "zod"
 
-const llmModel = z.enum(["openai/gpt-5-mini", "google/gemini-3.1-flash-lite-preview"])
+// A chat model identifier. Kept as a free-form string (not an enum) so any
+// provider's model ids work — OpenRouter slugs, OpenAI names, or local Ollama
+// tags — per the Agentic Product Standard's "multi-provider from the start".
+const llmModel = z.string().min(1)
 
 type LlmModel = z.infer<typeof llmModel>
 

@@ -1,3 +1,7 @@
+import {
+  EMBEDDING_DIMENSIONS,
+  FTS_CONFIG,
+} from "@agenticmind/shared/database/schema/knowledge/_config"
 import { tsvector } from "@agenticmind/shared/database/schema/knowledge/_types"
 import { materials } from "@agenticmind/shared/database/schema/knowledge/materials"
 import { sql } from "drizzle-orm"
@@ -14,11 +18,11 @@ import {
 
 /**
  * Text + embedding chunks for vector + BM25 hybrid retrieval. Combined in one
- * row (no chunk/embedding split): one model, fixed 1536 dim, cascade delete,
- * vector index next to source rows.
+ * row (no chunk/embedding split): one model, fixed EMBEDDING_DIMENSIONS dim,
+ * cascade delete, vector index next to source rows.
  *
- * `body_tsv` is a generated dual-config tsvector (simple=A for exact lexemes,
- * english=B for stemmed forms).
+ * `body_tsv` is a generated tsvector under the configured FTS_CONFIG (default
+ * `simple` — language-neutral, multilingual-safe).
  */
 const chunks = pgTable(
   "chunks",
@@ -32,10 +36,10 @@ const chunks = pgTable(
     ordinal: integer("ordinal").notNull(),
     body: text("body").notNull(),
     tokenCount: integer("token_count"),
-    embedding: vector("embedding", { dimensions: 1536 }),
+    embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
     embeddingModel: text("embedding_model"),
     bodyTsv: tsvector("body_tsv").generatedAlwaysAs(
-      sql`setweight(to_tsvector('simple', coalesce(body, '')), 'A') || setweight(to_tsvector('english', coalesce(body, '')), 'B')`,
+      sql`to_tsvector('${sql.raw(FTS_CONFIG)}', coalesce(body, ''))`,
     ),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`now()`)

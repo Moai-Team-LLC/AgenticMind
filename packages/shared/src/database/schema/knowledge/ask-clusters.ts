@@ -1,3 +1,4 @@
+import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { knowledgeCards } from "@agenticmind/shared/database/schema/knowledge/knowledge-cards"
 import { sql } from "drizzle-orm"
 import {
@@ -24,7 +25,7 @@ const askClusters = pgTable(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
     representativeQ: text("representative_q").notNull(),
-    centroidEmbedding: vector("centroid_embedding", { dimensions: 1536 }).notNull(),
+    centroidEmbedding: vector("centroid_embedding", { dimensions: EMBEDDING_DIMENSIONS }).notNull(),
     aggregateScore: real("aggregate_score").notNull().default(0),
     memberCount: integer("member_count").notNull().default(0),
     feedbackCount: integer("feedback_count").notNull().default(0),
