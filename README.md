@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🧠 AgenticMind
+<img src="assets/agenticmind-logo.png" alt="AgenticMind" width="118" />
+
+# AgenticMind
 
 ### The auditable, self-improving knowledge & memory layer for AI agents.
 
@@ -11,7 +13,7 @@ and a corpus that **improves itself** — served to any agent over **MCP**.
 [![CI](https://github.com/Moai-Team-LLC/AgenticMind/actions/workflows/ci.yml/badge.svg)](https://github.com/Moai-Team-LLC/AgenticMind/actions/workflows/ci.yml)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://www.conventionalcommits.org)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Implements: Agentic Product Standard](https://img.shields.io/badge/implements-Agentic%20Product%20Standard-d97757.svg)](https://github.com/Moai-Team-LLC/agentic-product-standard)
+[![Implements: Agentic Product Standard](https://img.shields.io/badge/implements-Agentic%20Product%20Standard-CD7722.svg)](https://github.com/Moai-Team-LLC/agentic-product-standard)
 [![Runtime: Node or Bun](https://img.shields.io/badge/runtime-Node%20or%20Bun-black.svg)](https://nodejs.org)
 [![DB: Postgres + pgvector](https://img.shields.io/badge/db-Postgres%20%2B%20pgvector-336791.svg)](https://github.com/pgvector/pgvector)
 [![Stars](https://img.shields.io/github/stars/Moai-Team-LLC/AgenticMind?style=social)](https://github.com/Moai-Team-LLC/AgenticMind/stargazers)
