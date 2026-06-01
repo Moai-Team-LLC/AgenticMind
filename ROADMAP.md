@@ -24,7 +24,7 @@ are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Later / help wanted
 
-- **Managed-Postgres guides** — Supabase / RDS / Neon setup recipes (TLS, pgvector enablement).
+- **Managed-Postgres guides** — Supabase / RDS / Neon setup recipes (TLS, plus the `vector` + `vectorscale` + `pg_trgm` extensions the schema requires).
 - **More compounding signals** — richer programmatic feedback beyond the current set.
 - **Reference MCP-client recipes** — Claude Code, Cursor, and SDK snippets for wiring the
   tools in minutes.

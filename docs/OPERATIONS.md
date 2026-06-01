@@ -184,10 +184,10 @@ vars — no code changes. See `.env.example` for the canonical, commented set.
   `EMBED_API_KEY` as needed.
 
 > **Embedding dimension is pinned to 1024.** The schema's vector columns are
-> `vector(1024)` (see migration `drizzle/0001_volatile_peter_parker.sql`). Any
-> chosen embedding model **must** output 1024-dim vectors or ingestion fails fast.
-> Changing the dimension is a **breaking migration** that requires a full re-embed
-> of every existing corpus — see "Re-embedding" below.
+> `vector(1024)` (see the baseline migration `drizzle/0000_common_randall_flagg.sql`).
+> Any chosen embedding model **must** output 1024-dim vectors or ingestion fails
+> fast. Changing the dimension is a **breaking schema change** that requires a full
+> re-embed of every existing corpus — see "Re-embedding" below.
 
 ### Chat / synthesis (`CHAT_PROVIDER`)
 
@@ -202,14 +202,17 @@ vars — no code changes. See `.env.example` for the canonical, commented set.
 Optional cross-encoder rerank is off by default; enable with `RERANK_ENABLED=true`
 (requires `OPENROUTER_API_KEY`).
 
-### Re-embedding after a dimension/provider change
+### Re-embedding after a model/provider change
 
-Migrations `0001` (embedding dim → 1024) and `0002` (FTS config) are a **breaking**
-embedding-dimension + full-text change. Existing corpora embedded under the old
-dimension are invalid afterward and must be re-embedded. A re-embed script is
-maintained at **`scripts/reembed.ts`** — run it after applying the migrations and
-after any change to `EMBED_MODEL`/`EMBED_PROVIDER` that alters the vector space.
-Until a corpus is re-embedded, its vector search results are not meaningful.
+The baseline migration (`drizzle/0000_common_randall_flagg.sql`) ships the schema
+with `vector(1024)` columns and the full-text config already in place — a fresh
+clone needs no dimension upgrade. You only need to re-embed when you **change the
+embedding model or provider to one that produces a different vector space** (a new
+`EMBED_MODEL`/`EMBED_PROVIDER`, or any model whose vectors are not comparable to the
+existing ones). A re-embed script is maintained at **`scripts/reembed.ts`** — run it
+after any such change; until the corpus is re-embedded, its vector search results
+are not meaningful. (Moving off 1024 dimensions additionally requires altering the
+`vector(N)` columns — a breaking schema change.)
 
 ---
 
