@@ -16,7 +16,7 @@ and a corpus that **improves itself** — served to any agent over **MCP**.
 [![DB: Postgres + pgvector](https://img.shields.io/badge/db-Postgres%20%2B%20pgvector-336791.svg)](https://github.com/pgvector/pgvector)
 [![Stars](https://img.shields.io/github/stars/Moai-Team-LLC/AgenticMind?style=social)](https://github.com/Moai-Team-LLC/AgenticMind/stargazers)
 
-**[Quickstart](#-quickstart)** · **[Agent tools](#-agent-surface-mcp)** · **[How it works](#-how-it-works)** · **[Why](#-why-agenticmind)** · **[The Standard ↗](https://github.com/Moai-Team-LLC/agentic-product-standard)**
+**[Quickstart](#-quickstart)** · **[See it work](#-see-it-work)** · **[Agent tools](#-agent-surface-mcp)** · **[How it works](#-how-it-works)** · **[Why](#-why-agenticmind)** · **[The Standard ↗](https://github.com/Moai-Team-LLC/agentic-product-standard)**
 
 <sub>If this is useful, a ⭐ helps others find it — and tells us to keep going.</sub>
 
@@ -58,6 +58,41 @@ flowchart TD
 A request comes in over MCP → the engine retrieves across three tiers → synthesises an
 answer where **every claim cites a source** → logs a replayable trace → and feeds
 programmatic signals into a loop that promotes validated knowledge back into the corpus.
+
+## 🎬 See it work
+
+A real `kl_ask_global` call against a corpus seeded with the Agentic Product Standard. The
+question deliberately has **two halves** — one the corpus can answer, one it can't:
+
+```jsonc
+// → kl_ask_global
+{ "question": "When should I use a multi-agent architecture instead of a single agent,
+                and what must every agent ship with according to the standard?" }
+
+// ← response (trimmed)
+{
+  "answer": "The provided sources do not specify when to use a multi-agent architecture
+             versus a single agent. … According to the Agentic Product Standard, every
+             agent must ship with a written Agent Contract [1]. This contract must cover
+             ownership, forbidden actions, acceptance criteria, failure modes, escalation
+             rules, and logging requirements [1].",
+  "citations": [
+    { "number": 1, "title": "Agent Contract requirement",
+      "materialId": "ba44971b-…", "score": 0.46, "origin": "chunk" }
+  ],
+  "model": "google/gemini-3.1-flash-lite-preview",
+  "retrievalMs": 606, "generationMs": 890,
+  "phases": [ {"phase":"embed","ms":552}, {"phase":"retrieve","ms":37},
+              {"phase":"synth","ms":890}, {"phase":"output_filter","ms":2} ],
+  "telemetryId": "cc942e54-…"
+}
+```
+
+**Look at what *didn't* happen.** The half the corpus couldn't support, the model **refused to
+answer** — *"the provided sources do not specify…"* — instead of fabricating it. The half it
+could support is keyed to a numbered citation you can open. And every answer comes with a
+**why-trace** (`phases`, `model`, `telemetryId`) you can replay. That's the whole pitch in one
+call: **no source, no claim — and a receipt for every answer.**
 
 ## 🆚 How it's different
 
@@ -129,7 +164,7 @@ Then point an MCP client at `http://localhost:3000/mcp` with that token as the
 
 ```text
 packages/shared/src/lib/knowledge/        ← the tiered engine (the product)
-packages/shared/src/lib/ai/               ← LLM + embeddings (OpenRouter)
+packages/shared/src/lib/ai/               ← chat + embeddings (provider-agnostic; local embeddings by default)
 packages/shared/src/database/             ← Drizzle schema + queries (Postgres + pgvector)
 apps/server/src/{index,mcp}.ts            ← headless Bun MCP host (agent surface)
 apps/worker/src/jobs/knowledge-feedback/  ← Postgres-scheduled compounding sweep
@@ -138,8 +173,9 @@ apps/worker/src/jobs/knowledge-feedback/  ← Postgres-scheduled compounding swe
 **Architecture notes.** Agent-first and **Postgres-only**: the graph lives behind a
 `GraphStore` interface (recursive-CTE traversal on Postgres, no extra service),
 compounding is driven by programmatic signals, MCP tokens are scoped least-privilege, the
-agent principal is slim, and the host is headless Bun. The knowledge engine is
-English-language (`simple` + `english` full-text configs alongside pgvector embeddings).
+agent principal is slim, and the host is headless Bun. Retrieval is **multilingual by
+default** — local `bge-m3` embeddings cover many languages with zero keys; full-text search
+uses the language-agnostic `simple` config (configurable per deployment).
 
 ## 🌐 Ecosystem
 
