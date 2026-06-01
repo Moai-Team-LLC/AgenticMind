@@ -11,7 +11,6 @@ import { createClient } from "@agenticmind/shared/database/client"
 import { createS3BlobStore, nopBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import { extract } from "@agenticmind/shared/lib/knowledge/extract"
 import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
-import { importFromUrl } from "@agenticmind/shared/lib/knowledge/import"
 import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 import { spacesSettings } from "@agenticmind/shared/settings/spaces-settings"
@@ -52,21 +51,10 @@ const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
 const graphragEnabled = process.env.KNOWLEDGE_GRAPHRAG_ENABLED === "true"
 const graph = graphragEnabled ? createPostgresGraphStore(db) : undefined
 
-const url = arg("url")
 const file = arg("file")
 const text = arg("text")
 let title = arg("title")
 let body: string
-
-if (url !== undefined) {
-  const r = await importFromUrl({ tx: db, blobStore, url, title, cardsEnabled })
-  if (r.isErr()) {
-    console.error("import failed:", r.error.message)
-    process.exit(1)
-  }
-  console.log(`Ingested URL ${url} -> material ${r.value.id} (${r.value.title})`)
-  process.exit(0)
-}
 
 if (file !== undefined) {
   const bytes = new Uint8Array(readFileSync(file))
