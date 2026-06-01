@@ -4,6 +4,36 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-06-01
+
+Runs on plain Node now — Bun is no longer required — and the knowledge layer is
+leaner and strictly MCP-native.
+
+### Added
+
+- **Runtime-agnostic host** — the MCP server runs on plain **Node ≥22.18** (via
+  `@hono/node-server`) or **Bun** (`Bun.serve`), behind a single Web-standard
+  `fetch` handler. Server and worker scripts run on Node via `tsx`.
+- **Package-manager-agnostic install** — install with **npm** or **bun**
+  (`*` workspace specifiers + an `.npmrc` for peer resolution). A second CI job
+  installs with npm on Node so the path can't silently rot; `bun.lock` stays the
+  canonical lockfile.
+- Community-health files (`GOVERNANCE`, `SUPPORT`, `ROADMAP`, `PUBLISHING`) and a
+  live "See it work" demo in the README.
+
+### Removed
+
+- **The `http_url` ingestion connector** and its SSRF URL-fetcher. The substrate
+  is MCP-native: agents carry their own connectors and feed the corpus via
+  `kl_ingest`, so an outbound-fetch connector inside the substrate was redundant
+  and an unnecessary SSRF surface. The `ingest` CLI keeps `--file` and `--text`.
+
+### Fixed
+
+- Stale migration references in `docs/OPERATIONS.md` after the migration squash.
+
+[0.3.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.3.0
+
 ## [0.2.0] — 2026-06-01
 
 The substrate is now provider-agnostic, multilingual, observable, and
