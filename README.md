@@ -66,6 +66,10 @@ programmatic signals into a loop that promotes validated knowledge back into the
 A real `kl_ask_global` call against a corpus seeded with the Agentic Product Standard. The
 question deliberately has **two halves** — one the corpus can answer, one it can't:
 
+<div align="center">
+  <img src="assets/demo.gif" alt="A live kl_ask_global call: a citation-enforced answer that refuses the unsupported half, with a replayable why-trace" width="780" />
+</div>
+
 ```jsonc
 // → kl_ask_global
 { "question": "When should I use a multi-agent architecture instead of a single agent,
