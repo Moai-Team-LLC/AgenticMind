@@ -6,6 +6,7 @@
       "name": "agenticmind",
       "dependencies": {
         "drizzle-kit": "0.31.10",
+        "tsx": "^4.19.2",
       },
       "devDependencies": {
         "@agenticmind/oxlint-config": "workspace:*",
@@ -28,6 +29,7 @@
       "version": "0.0.1",
       "dependencies": {
         "@agenticmind/shared": "workspace:*",
+        "@hono/node-server": "^1.13.7",
         "@modelcontextprotocol/sdk": "^1.29.0",
         "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
         "@opentelemetry/resources": "^2.7.1",

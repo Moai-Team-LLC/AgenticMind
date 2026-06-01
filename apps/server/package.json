@@ -5,15 +5,16 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "dotenvx run -f .env.local -- bun --bun --watch src/index.ts",
-    "start": "bun --bun src/index.ts",
-    "start-local": "dotenvx run -f .env.local -- bun --bun src/index.ts",
+    "dev": "dotenvx run -f .env.local -- tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "start-local": "dotenvx run -f .env.local -- tsx src/index.ts",
     "tsc": "tsc --noEmit",
     "format": "oxfmt",
     "lint": "oxlint --type-aware --fix"
   },
   "dependencies": {
     "@agenticmind/shared": "workspace:*",
+    "@hono/node-server": "^1.13.7",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
     "@opentelemetry/resources": "^2.7.1",

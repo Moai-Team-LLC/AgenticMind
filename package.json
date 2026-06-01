@@ -34,7 +34,8 @@
     "db:introspect-local": "dotenvx run -f .env.local -- drizzle-kit introspect"
   },
   "dependencies": {
-    "drizzle-kit": "0.31.10"
+    "drizzle-kit": "0.31.10",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
     "@agenticmind/oxlint-config": "workspace:*",

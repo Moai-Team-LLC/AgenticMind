@@ -5,9 +5,9 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "dev": "dotenvx run -f .env.local -- bun --bun --watch src/index.ts",
-    "start": "bun --bun src/index.ts",
-    "start-local": "NODE_ENV=production dotenvx run -f .env.local -- bun --bun src/index.ts",
+    "dev": "dotenvx run -f .env.local -- tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "start-local": "NODE_ENV=production dotenvx run -f .env.local -- tsx src/index.ts",
     "tsc": "tsc --noEmit",
     "format": "oxfmt",
     "lint": "oxlint --type-aware --fix"
