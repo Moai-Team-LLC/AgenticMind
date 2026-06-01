@@ -6,6 +6,11 @@ node_modules
 .pnp.js
 install-state.gz
 
+# Alternative package-manager lockfiles — bun.lock is canonical (committed).
+# npm / pnpm users can install locally without committing a competing lockfile.
+package-lock.json
+pnpm-lock.yaml
+
 # Local env files
 .env
 .env.local

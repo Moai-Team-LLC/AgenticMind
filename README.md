@@ -12,7 +12,7 @@ and a corpus that **improves itself** — served to any agent over **MCP**.
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://www.conventionalcommits.org)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Implements: Agentic Product Standard](https://img.shields.io/badge/implements-Agentic%20Product%20Standard-d97757.svg)](https://github.com/Moai-Team-LLC/agentic-product-standard)
-[![Runtime: Bun](https://img.shields.io/badge/runtime-Bun-black.svg)](https://bun.sh)
+[![Runtime: Node or Bun](https://img.shields.io/badge/runtime-Node%20or%20Bun-black.svg)](https://nodejs.org)
 [![DB: Postgres + pgvector](https://img.shields.io/badge/db-Postgres%20%2B%20pgvector-336791.svg)](https://github.com/pgvector/pgvector)
 [![Stars](https://img.shields.io/github/stars/Moai-Team-LLC/AgenticMind?style=social)](https://github.com/Moai-Team-LLC/AgenticMind/stargazers)
 
@@ -106,7 +106,7 @@ call: **no source, no claim — and a receipt for every answer.**
 
 ## 🛠 Agent surface (MCP)
 
-A **headless** Bun service (`apps/server`) exposes the engine as MCP tools over
+A **headless** service (`apps/server`) exposes the engine as MCP tools over
 streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege):
 
 | Tool                 | Scope              | Purpose                                                             |
@@ -121,19 +121,19 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `mem_write`          | `memory:write`     | record a belief into private memory (bitemporal, revision-aware)    |
 
 There is **no frontend** — the only consumers are agents over MCP. The tool logic is
-framework-agnostic in `packages/shared/src/lib/knowledge/mcp-tools.ts`; the host is
-~60 lines of `Bun.serve`.
+framework-agnostic in `packages/shared/src/lib/knowledge/mcp-tools.ts`; the host is a
+~60-line Web-standard `fetch` handler served by Node or Bun.
 
 ## 🚀 Quickstart
 
-Requires [Bun](https://bun.sh) ≥1.3 and Docker (for Postgres + pgvector).
+Requires Docker and **Node ≥22.18** (or **Bun ≥1.3**) — the server and worker run on plain Node or Bun.
 
 ```bash
 git clone https://github.com/Moai-Team-LLC/AgenticMind.git
 cd AgenticMind
 cp .env.example .env.local         # set AUTH_SECRET (+ a chat key OR local Ollama)
-./setup.sh                         # installs deps, starts Postgres, runs migrations
-bun run dev                        # headless MCP server on :3000
+./setup.sh                         # picks npm or bun, starts Postgres, runs migrations
+npm run dev                        # headless MCP server on :3000  (or: bun run dev)
 ```
 
 **Embeddings run locally by default** — a zero-key, offline, multilingual model
@@ -142,14 +142,14 @@ bun run dev                        # headless MCP server on :3000
 OpenAI-compatible endpoint like a local Ollama (`CHAT_PROVIDER=openai`,
 `CHAT_BASE_URL=…`). See `.env.example`.
 
-Verify the build with `bun run check` (typecheck + tests).
+Verify the build with `npm run check` (typecheck + tests) — `bun run check` works too.
 
 The MCP endpoint is fail-closed, so you need a bearer `typ="mcp"` JWT. The headless
-server ships no admin UI — mint one with the issuance CLI (needs `DATABASE_URL` +
-`AUTH_SECRET` from your `.env.local`):
+server ships no admin UI — mint one with the issuance script (it reads `DATABASE_URL`
++ `AUTH_SECRET` from your `.env.local`):
 
 ```bash
-bun run scripts/issue-mcp-token.ts --label "claude-code" --ttl-days 365
+npm run issue-token -- --label "claude-code" --ttl-days 365   # or: bun run issue-token --label …
 # prints the bearer on the last line — capture it, it is not stored in plaintext
 ```
 
@@ -166,14 +166,14 @@ Then point an MCP client at `http://localhost:3000/mcp` with that token as the
 packages/shared/src/lib/knowledge/        ← the tiered engine (the product)
 packages/shared/src/lib/ai/               ← chat + embeddings (provider-agnostic; local embeddings by default)
 packages/shared/src/database/             ← Drizzle schema + queries (Postgres + pgvector)
-apps/server/src/{index,mcp}.ts            ← headless Bun MCP host (agent surface)
+apps/server/src/{index,mcp}.ts            ← headless MCP host, Node or Bun (agent surface)
 apps/worker/src/jobs/knowledge-feedback/  ← Postgres-scheduled compounding sweep
 ```
 
 **Architecture notes.** Agent-first and **Postgres-only**: the graph lives behind a
 `GraphStore` interface (recursive-CTE traversal on Postgres, no extra service),
 compounding is driven by programmatic signals, MCP tokens are scoped least-privilege, the
-agent principal is slim, and the host is headless Bun. Retrieval is **multilingual by
+agent principal is slim, and the host is a headless Node/Bun HTTP server. Retrieval is **multilingual by
 default** — local `bge-m3` embeddings cover many languages with zero keys; full-text search
 uses the language-agnostic `simple` config (configurable per deployment).
 
