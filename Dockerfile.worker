@@ -1,0 +1,42 @@
+FROM oven/bun:1.3.11-alpine AS base
+
+ENV NODE_ENV=production
+
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+FROM base AS builder
+
+COPY . .
+RUN bunx --bun turbo@2.9.6 prune @agenticmind/worker --docker
+
+FROM base AS installer
+
+COPY --from=builder /app/out/json/ .
+RUN bun install --frozen-lockfile
+
+COPY --from=builder /app/out/full/ .
+
+COPY drizzle.config.ts ./drizzle.config.ts
+COPY drizzle/ ./drizzle/
+
+FROM base AS runner
+
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 workeruser
+
+COPY --from=installer --chown=workeruser:nodejs /app ./
+
+USER workeruser
+
+# Required environment variables:
+# DATABASE_URL       — Postgres (pgvector); also where the advisory-lock sweep runs
+# OPENROUTER_API_KEY — LLM judge for the feedback promoter
+
+WORKDIR /app/apps/worker
+
+CMD ["bun", "--bun", "run", "start"]
+

@@ -1,0 +1,101 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Moai-Team-LLC/agenticmind",
+  "title": "AgenticMind",
+  "description": "Auditable, self-improving knowledge & memory layer for AI agents over MCP.",
+  "version": "1.0.0",
+  "websiteUrl": "https://github.com/Moai-Team-LLC/AgenticMind",
+  "repository": {
+    "url": "https://github.com/Moai-Team-LLC/AgenticMind",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "{baseUrl}/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Bearer typ=\"mcp\" JWT (HS256, AUTH_SECRET). The endpoint is fail-closed and requires the knowledge:read scope. Mint one with `bun run scripts/issue-mcp-token.ts`.",
+          "isRequired": true,
+          "isSecret": true,
+          "value": "Bearer {token}",
+          "variables": {
+            "token": {
+              "description": "MCP bearer token issued by the self-hosted AgenticMind instance.",
+              "isRequired": true,
+              "isSecret": true
+            }
+          }
+        }
+      ],
+      "variables": {
+        "baseUrl": {
+          "description": "Base URL of your self-hosted AgenticMind server (headless Bun service).",
+          "default": "http://localhost:3000",
+          "isRequired": true
+        }
+      }
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "runtime": "Bun",
+      "license": "Apache-2.0",
+      "selfHosted": true,
+      "contractVersion": "1.0.0",
+      "implements": {
+        "name": "Agentic Product Standard",
+        "url": "https://github.com/Moai-Team-LLC/agentic-product-standard"
+      },
+      "auth": {
+        "type": "bearer",
+        "tokenType": "mcp-jwt-hs256",
+        "failClosed": true,
+        "endpointScope": "knowledge:read"
+      },
+      "tools": [
+        {
+          "name": "kl_search",
+          "scope": "knowledge:read",
+          "summary": "Semantic / keyword passage search over the knowledge base."
+        },
+        {
+          "name": "kl_ask_global",
+          "scope": "knowledge:read",
+          "summary": "Synthesised, citation-enforced answer to a question (optional intent/facts)."
+        },
+        {
+          "name": "kl_get_material",
+          "scope": "knowledge:read",
+          "summary": "Fetch metadata for a single material by its UUID."
+        },
+        {
+          "name": "kl_graph_neighbors",
+          "scope": "knowledge:read",
+          "summary": "Related materials via the knowledge graph (only when GraphRAG is enabled)."
+        },
+        {
+          "name": "kl_ingest",
+          "scope": "knowledge:write",
+          "summary": "Add text to the corpus (chunked, embedded, distilled into fact cards, graph-extracted)."
+        },
+        {
+          "name": "kl_signal",
+          "scope": "knowledge:signal",
+          "summary": "Emit a programmatic compounding feedback signal on a prior answer."
+        },
+        {
+          "name": "mem_recall",
+          "scope": "memory:read",
+          "summary": "Recall beliefs (private ∪ shared); semantic filter or asOf time-travel."
+        },
+        {
+          "name": "mem_write",
+          "scope": "memory:write",
+          "summary": "Record a belief into private memory (bitemporal, revision-aware)."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,502 @@
+/**
+ * MCP tool handlers — ported from services/knowledge/internal/mcp/mcp.go.
+ * Framework-agnostic: each tool is a { name, description, inputSchema, handle }
+ * record delegating to the already-ported retrieval/ask/graph functions. The
+ * MCP transport (streamable HTTP) + JWT + revocation mounting is an app-surface
+ * concern wired in Tier-3 with @modelcontextprotocol/sdk; this module is the
+ * faithful logic those tools run.
+ */
+
+import type { Transaction } from "@agenticmind/shared/database/client"
+import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
+import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
+import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
+import type { CallerContext } from "@agenticmind/shared/lib/knowledge/synth"
+
+import { recordEvent } from "@agenticmind/shared/database/query/knowledge/ask-feedback"
+import { assertBelief, recallBeliefs } from "@agenticmind/shared/database/query/knowledge/beliefs"
+import { searchChunks } from "@agenticmind/shared/database/query/knowledge/chunks"
+import { recordGuardEvent } from "@agenticmind/shared/database/query/knowledge/guard-events"
+import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materials"
+import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
+import { ask } from "@agenticmind/shared/lib/knowledge/ask"
+import {
+  defaultStrengthFor,
+  isAgentSignal,
+  isValidSignal,
+} from "@agenticmind/shared/lib/knowledge/feedback"
+import { guardInput, redactPii } from "@agenticmind/shared/lib/knowledge/guard"
+import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
+import { embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
+import { hasScope } from "@agenticmind/shared/lib/knowledge/mcp-scopes"
+import { createGraphContextProvider } from "@agenticmind/shared/lib/knowledge/qaplan"
+import { createHash } from "node:crypto"
+import * as z from "zod"
+
+/** Per-request dependencies for the knowledge MCP tools. */
+export type McpToolDeps = {
+  tx: Transaction
+  cardsEnabled?: boolean
+  cacheEnabled?: boolean
+  chatModel?: LlmModel
+  memberContext?: CallerContext | null
+  /** Optional GraphRAG store (Postgres flagship / Neo4j swap-in);
+   * kl_graph_neighbors is omitted when absent. */
+  graph?: GraphStore
+  /** Capability scopes granted to the calling token (least-privilege).
+   * Write tools (kl_signal, mem_write) assert their required scope against this. */
+  scopes?: string[]
+  /** The calling agent's principal id — owns private memory written via mem_write. */
+  actorUuid?: string | null
+  /** Blob store for ingested material bytes (kl_ingest). */
+  blobStore?: KnowledgeBlobStore
+}
+
+const snippet = (s: string, max = 240): string => {
+  const runes = Array.from(s)
+  return runes.length <= max ? s : `${runes.slice(0, max).join("")}…`
+}
+
+const resolveTitle = async (
+  tx: Transaction,
+  materialId: string,
+  cache: Map<string, string>,
+): Promise<string> => {
+  const cached = cache.get(materialId)
+  if (cached !== undefined) {
+    return cached
+  }
+  const res = await getMaterial({ tx, id: materialId })
+  const title = res.isOk() && res.value !== null ? res.value.title : ""
+  cache.set(materialId, title)
+  return title
+}
+
+const GUARD_RATE_LIMIT = 60
+const GUARD_RATE_WINDOW_SEC = 60
+const sha256hex = (s: string): string => createHash("sha256").update(s).digest("hex")
+
+/** Rate-limit + injection gate; records a hashed guard_event on block. */
+const enforceGuards = async (deps: McpToolDeps, tool: string, text: string): Promise<void> => {
+  const actorUuid = deps.actorUuid ?? null
+  if (actorUuid !== null) {
+    const rl = await checkRateLimit({
+      tx: deps.tx,
+      key: actorUuid,
+      limit: GUARD_RATE_LIMIT,
+      windowSeconds: GUARD_RATE_WINDOW_SEC,
+    })
+    if (rl.isOk() && !rl.value.allowed) {
+      await recordGuardEvent({
+        tx: deps.tx,
+        event: { actorUuid, tool, reason: "rate_limited" },
+      }).unwrapOr([])
+      throw new Error(`${tool}: rate limit exceeded`)
+    }
+  }
+  const g = guardInput(text)
+  if (!g.ok) {
+    const reason = g.tags.includes("injection") ? "injection" : "too_long"
+    await recordGuardEvent({
+      tx: deps.tx,
+      event: { actorUuid, tool, reason, inputHash: sha256hex(text) },
+    }).unwrapOr([])
+    throw new Error(`${tool} blocked: ${g.reason}`)
+  }
+}
+
+export const klSearchInput = z.object({
+  q: z.string().min(1),
+  limit: z.number().int().positive().max(50).optional(),
+})
+
+/** Kl_search — vector retrieval over the chunks index. */
+export const klSearch = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klSearchInput>,
+): Promise<{
+  query: string
+  hits: { materialId: string; title: string; snippet: string; score: number }[]
+}> => {
+  await enforceGuards(deps, "kl_search", args.q)
+  const limit = args.limit !== undefined && args.limit > 0 && args.limit <= 50 ? args.limit : 10
+  const embedded = await embedKnowledgeText(args.q)
+  if (embedded.isErr()) {
+    throw new Error(`kl_search: embed: ${embedded.error.message}`)
+  }
+  const hits = await searchChunks({ tx: deps.tx, queryEmbedding: embedded.value, limit })
+  if (hits.isErr()) {
+    throw new Error(`kl_search: ${hits.error.message}`)
+  }
+  const titles = new Map<string, string>()
+  const out = []
+  for (const h of hits.value) {
+    out.push({
+      materialId: h.materialId,
+      title: await resolveTitle(deps.tx, h.materialId, titles),
+      snippet: snippet(h.body),
+      score: h.score,
+    })
+  }
+  return { query: args.q, hits: out }
+}
+
+export const klAskGlobalInput = z.object({
+  question: z.string().min(1),
+  /** The calling agent's goal — synthesised answers are tailored to it. */
+  intent: z.string().max(500).optional(),
+  /** Arbitrary caller facts the answer should account for. */
+  facts: z
+    .array(z.object({ label: z.string().min(1), value: z.string().min(1) }))
+    .max(20)
+    .optional(),
+})
+
+/** Kl_ask_global — RAG synthesis with citations (reuses the ask pipeline). */
+export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskGlobalInput>) => {
+  await enforceGuards(deps, "kl_ask_global", args.question)
+  // Caller context: host-supplied context merged with the agent's per-call
+  // Intent/facts. Empty → the synth falls back to the bare system prompt.
+  const callerContext: CallerContext = {
+    kind: "agent",
+    ...deps.memberContext,
+    ...(args.intent !== undefined ? { intent: args.intent } : {}),
+    ...(args.facts !== undefined ? { facts: args.facts } : {}),
+  }
+  const answer = await ask({
+    tx: deps.tx,
+    question: args.question,
+    memberContext: callerContext,
+    cardsEnabled: deps.cardsEnabled,
+    cacheEnabled: deps.cacheEnabled,
+    chatModel: deps.chatModel,
+    // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
+    // Provider when a graph store is configured.
+    graphContext:
+      deps.graph !== undefined
+        ? createGraphContextProvider({ repo: deps.graph, chatModel: deps.chatModel })
+        : undefined,
+  })
+  if (answer.isErr()) {
+    throw new Error(`kl_ask_global: ${answer.error.message}`)
+  }
+  return answer.value
+}
+
+export const klGetMaterialInput = z.object({ id: z.string().min(1) })
+
+/** Kl_get_material — fetch a single material's metadata by id. */
+export const klGetMaterial = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klGetMaterialInput>,
+) => {
+  const res = await getMaterial({ tx: deps.tx, id: args.id })
+  if (res.isErr()) {
+    throw new Error(`kl_get_material: ${res.error.message}`)
+  }
+  if (res.value === null) {
+    throw new Error("kl_get_material: not found")
+  }
+  return res.value
+}
+
+export const klGraphNeighborsInput = z.object({
+  materialId: z.string().min(1),
+  limit: z.number().int().positive().max(50).optional(),
+})
+
+/** Kl_graph_neighbors — materials sharing a graph entity with the seed. */
+export const klGraphNeighbors = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klGraphNeighborsInput>,
+): Promise<{
+  seed: string
+  neighbors: {
+    materialId: string
+    title: string
+    entityName: string
+    entityType: string
+    distance: number
+  }[]
+}> => {
+  if (deps.graph === undefined) {
+    throw new Error("kl_graph_neighbors disabled: graphrag not configured")
+  }
+  const limit = args.limit !== undefined && args.limit > 0 && args.limit <= 50 ? args.limit : 10
+  const result = await deps.graph.neighbors(args.materialId, limit)
+  if (result.isErr()) {
+    throw new Error(`kl_graph_neighbors: ${result.error.message}`)
+  }
+  const titles = new Map<string, string>()
+  const neighbors = []
+  for (const n of result.value) {
+    neighbors.push({
+      materialId: n.materialId,
+      title: await resolveTitle(deps.tx, n.materialId, titles),
+      entityName: n.entity.canonicalName,
+      entityType: n.entity.type,
+      distance: n.distance,
+    })
+  }
+  return { seed: args.materialId, neighbors }
+}
+
+export const klSignalInput = z.object({
+  /** The `telemetryId` returned by kl_ask_global for the answer being judged. */
+  askId: z.string().min(1),
+  /** A programmatic signal: verified_supported | verification_failed | eval_passed |
+   * eval_failed | downstream_success | downstream_failure | used_in_generation. */
+  signal: z.string().min(1),
+  /** Optional override in [-1, 1]; defaults to the signal's canonical strength. */
+  strength: z.number().min(-1).max(1).optional(),
+  /** Optional free-text note stored on the event (e.g. the failing eval case). */
+  note: z.string().max(500).optional(),
+})
+
+/**
+ * Kl_signal — an agent / eval / verifier emits a programmatic feedback signal
+ * on a prior answer. This is what makes the compounding loop self-improve
+ * without a human: signals feed the same clustering → judge → resolution-card
+ * promotion path that human thumbs do. Only agent signals are accepted here.
+ */
+export const klSignal = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klSignalInput>,
+): Promise<{ ok: true; askId: string; signal: string; strength: number }> => {
+  if (!hasScope(deps.scopes, "knowledge:signal")) {
+    throw new Error("kl_signal: missing required scope 'knowledge:signal'")
+  }
+  if (!isValidSignal(args.signal)) {
+    throw new Error(`kl_signal: unknown signal '${args.signal}'`)
+  }
+  if (!isAgentSignal(args.signal)) {
+    throw new Error(`kl_signal: '${args.signal}' is not an agent signal`)
+  }
+  const strength = args.strength ?? defaultStrengthFor(args.signal)
+  const res = await recordEvent({
+    tx: deps.tx,
+    event: {
+      askId: args.askId,
+      memberId: null,
+      signal: args.signal,
+      strength,
+      source: "agent",
+      metadata: args.note !== undefined && args.note !== "" ? { note: args.note } : {},
+    },
+  })
+  if (res.isErr()) {
+    throw new Error(`kl_signal: ${res.error.message}`)
+  }
+  return { ok: true, askId: args.askId, signal: args.signal, strength }
+}
+
+export const memWriteInput = z.object({
+  /** What the belief is about (entity / topic). */
+  subject: z.string().min(1).max(200),
+  /** The relation / attribute. */
+  predicate: z.string().min(1).max(100),
+  /** The claimed value. */
+  object: z.string().min(1).max(2000),
+  /** 0..1; how sure the agent is. Defaults to 0.6. */
+  confidence: z.number().min(0).max(1).optional(),
+  /** Compute an embedding so the belief is semantically recallable (default true). */
+  embed: z.boolean().optional(),
+})
+
+/**
+ * Mem_write — the calling agent records a belief into its PRIVATE memory.
+ * Belief-revision-aware: a contradicting claim on the same (subject,predicate)
+ * supersedes the old one non-destructively (the history stays replayable).
+ * Corroborated private beliefs are later consolidated into shared memory by the
+ * worker sweep. Requires the memory:write scope.
+ */
+export const memWrite = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof memWriteInput>,
+): Promise<{ id: string; revised: boolean }> => {
+  if (!hasScope(deps.scopes, "memory:write")) {
+    throw new Error("mem_write: missing required scope 'memory:write'")
+  }
+  const actorUuid = deps.actorUuid ?? null
+  if (actorUuid === null) {
+    throw new Error("mem_write: no agent identity on the token")
+  }
+
+  await enforceGuards(deps, "mem_write", `${args.subject} ${args.predicate} ${args.object}`)
+  const redactRes = redactPii(args.object)
+  const object = redactRes.redacted
+  if (redactRes.found.length > 0) {
+    await recordGuardEvent({
+      tx: deps.tx,
+      event: {
+        actorUuid: deps.actorUuid ?? null,
+        tool: "mem_write",
+        reason: "pii_redacted",
+        inputHash: sha256hex(args.object),
+      },
+    }).unwrapOr([])
+  }
+
+  let embedding: number[] | null = null
+  if (args.embed !== false) {
+    const e = await embedKnowledgeText(`${args.subject} ${args.predicate} ${args.object}`)
+    if (e.isOk()) {
+      embedding = e.value
+    }
+  }
+
+  const res = await assertBelief({
+    tx: deps.tx,
+    belief: {
+      actorUuid,
+      subject: args.subject,
+      predicate: args.predicate,
+      object,
+      confidence: args.confidence ?? 0.6,
+      sourceKind: "agent",
+      sourceId: actorUuid,
+      embedding,
+    },
+  })
+  if (res.isErr()) {
+    throw new Error(`mem_write: ${res.error.message}`)
+  }
+  return { id: res.value.id, revised: res.value.supersedes !== null }
+}
+
+export const memRecallInput = z.object({
+  /** Exact subject filter (optional). */
+  subject: z.string().max(200).optional(),
+  /** Semantic query — recall the most relevant beliefs (optional). */
+  query: z.string().max(500).optional(),
+  /** Time-travel: what was believed at this ISO instant (transaction time). */
+  asOf: z.iso.datetime().optional(),
+  /** Include shared/collective beliefs alongside the agent's own (default true). */
+  includeShared: z.boolean().optional(),
+  limit: z.number().int().positive().max(50).optional(),
+})
+
+/**
+ * Mem_recall — recall the calling agent's beliefs, optionally unioned with the
+ * shared/collective memory, by subject or semantic similarity, optionally as of
+ * a past instant (belief time-travel). Requires the memory:read scope.
+ */
+export const memRecall = async (deps: McpToolDeps, args: z.infer<typeof memRecallInput>) => {
+  if (!hasScope(deps.scopes, "memory:read")) {
+    throw new Error("mem_recall: missing required scope 'memory:read'")
+  }
+
+  let queryEmbedding: number[] | undefined
+  if (args.query !== undefined && args.query !== "") {
+    const e = await embedKnowledgeText(args.query)
+    if (e.isOk()) {
+      queryEmbedding = e.value
+    }
+  }
+
+  const res = await recallBeliefs({
+    tx: deps.tx,
+    actorUuid: deps.actorUuid ?? null,
+    includeShared: args.includeShared ?? true,
+    subject: args.subject,
+    queryEmbedding,
+    asOf: args.asOf !== undefined ? new Date(args.asOf) : undefined,
+    limit: args.limit,
+  })
+  if (res.isErr()) {
+    throw new Error(`mem_recall: ${res.error.message}`)
+  }
+  return { beliefs: res.value }
+}
+
+export const klIngestInput = z.object({
+  title: z.string().min(1).max(300),
+  text: z.string().min(1).max(200_000),
+})
+
+/**
+ * Kl_ingest -- push text into the knowledge base (chunk + embed + cards +
+ * graph). Requires knowledge:write. Later kl_ask_global / kl_search can cite it.
+ */
+export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestInput>) => {
+  if (!hasScope(deps.scopes, "knowledge:write")) {
+    throw new Error("kl_ingest: missing required scope 'knowledge:write'")
+  }
+  await enforceGuards(deps, "kl_ingest", `${args.title} ${args.text.slice(0, 2000)}`)
+  if (deps.blobStore === undefined) {
+    throw new Error("kl_ingest: blob store not configured")
+  }
+  const res = await ingestText({
+    tx: deps.tx,
+    blobStore: deps.blobStore,
+    graph: deps.graph,
+    title: args.title,
+    text: args.text,
+    cardsEnabled: deps.cardsEnabled,
+    graphragEnabled: deps.graph !== undefined,
+  })
+  if (res.isErr()) {
+    throw new Error(`kl_ingest: ${res.error.message}`)
+  }
+  return res.value
+}
+
+/**
+ * SemVer of the public MCP tool contract (names + input schemas + scopes), as
+ * surfaced in `serverInfo.version`. Bump MINOR for additive changes (a new tool,
+ * a new optional field), MAJOR for breaking ones (removed/renamed tool or field,
+ * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
+ * guards against silent drift. See CONTRACT.md for the policy.
+ */
+export const MCP_CONTRACT_VERSION = "1.0.0"
+
+/** Tool metadata (name + description + input schema) for MCP registration. */
+export const KNOWLEDGE_MCP_TOOLS = [
+  {
+    name: "kl_search",
+    description:
+      "Search the knowledge base by keyword/semantic similarity. Returns the top-K matching passages with material titles and similarity scores. Prefer for exploratory lookups; use kl_ask_global for a synthesised answer with citations.",
+    inputSchema: klSearchInput,
+  },
+  {
+    name: "kl_ask_global",
+    description:
+      "Ask a natural-language question about the knowledge base. Retrieves the most relevant passages, synthesises an answer, and returns citation markers ([1], [2], …) keyed to source materials.",
+    inputSchema: klAskGlobalInput,
+  },
+  {
+    name: "kl_get_material",
+    description: "Fetch metadata for a single material by its UUID.",
+    inputSchema: klGetMaterialInput,
+  },
+  {
+    name: "kl_graph_neighbors",
+    description:
+      "Find materials related to a given material via the knowledge graph (sharing an extracted entity). Use for 'show me related content' after kl_search/kl_ask_global.",
+    inputSchema: klGraphNeighborsInput,
+  },
+  {
+    name: "kl_signal",
+    description:
+      "Emit a programmatic feedback signal on a prior answer (use the askId/telemetryId from kl_ask_global). Signals: verified_supported, verification_failed, eval_passed, eval_failed, downstream_success, downstream_failure, used_in_generation. This is how an agent or eval makes the knowledge base self-improve — strong signals promote the answer into a reusable resolution card.",
+    inputSchema: klSignalInput,
+  },
+  {
+    name: "mem_recall",
+    description:
+      "Recall your beliefs (subject-predicate-object facts) — your own private memory unioned with the shared/collective memory. Filter by subject or semantic query; pass `asOf` (ISO time) to time-travel to what was believed then.",
+    inputSchema: memRecallInput,
+  },
+  {
+    name: "mem_write",
+    description:
+      "Record a belief into your private memory (subject, predicate, object, confidence). Belief-revision-aware: a contradicting claim supersedes the old one non-destructively. Corroborated beliefs consolidate into shared memory over time.",
+    inputSchema: memWriteInput,
+  },
+  {
+    name: "kl_ingest",
+    description:
+      "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Later kl_ask_global / kl_search retrieve and cite it.",
+    inputSchema: klIngestInput,
+  },
+] as const

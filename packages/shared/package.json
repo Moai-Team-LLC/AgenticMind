@@ -1,0 +1,52 @@
+{
+  "name": "@agenticmind/shared",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "exports": {
+    "./settings/*": "./src/settings/*.ts",
+    "./lib/*": "./src/lib/*.ts",
+    "./lib/**/*": "./src/lib/**/*.ts",
+    "./bot/*": "./src/bot/*.ts",
+    "./bot/**/*": "./src/bot/**/*.ts",
+    "./database/*": "./src/database/*.ts",
+    "./database/**/*": "./src/database/**/*.ts",
+    "./worker/*": "./src/worker/*.ts",
+    "./worker/**/*": "./src/worker/**/*.ts"
+  },
+  "scripts": {
+    "tsc": "tsc --noEmit",
+    "format": "oxfmt",
+    "lint": "oxlint --type-aware --fix"
+  },
+  "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.48",
+    "@aws-sdk/client-s3": "^3.1048.0",
+    "@huggingface/transformers": "^4.2.0",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@t3-oss/env-core": "^0.13.11",
+    "ai": "^6.0.190",
+    "drizzle-orm": "^0.45.2",
+    "htmlparser2": "^12.0.0",
+    "mammoth": "^1.12.0",
+    "neverthrow": "^8.2.0",
+    "onnxruntime-node": "1.24.3",
+    "p-retry": "^8.0.0",
+    "pg": "^8.21.0",
+    "unpdf": "^1.6.2",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@agenticmind/typescript-config": "workspace:*",
+    "@dotenvx/dotenvx": "^1.67.0",
+    "@inquirer/select": "^5.1.5",
+    "@ngneat/falso": "^8.0.2",
+    "@types/pg": "^8.20.0",
+    "@types/sanitize-html": "^2.16.1",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,33 @@
+FROM oven/bun:1.3.11-alpine AS base
+ENV NODE_ENV=production
+WORKDIR /app
+
+FROM base AS builder
+COPY . .
+RUN bunx --bun turbo@2.9.6 prune @agenticmind/server --docker
+
+FROM base AS installer
+COPY --from=builder /app/out/json/ .
+RUN bun install --frozen-lockfile
+COPY --from=builder /app/out/full/ .
+# Drizzle migrations (applied on deploy)
+COPY drizzle.config.ts ./drizzle.config.ts
+COPY drizzle/ ./drizzle/
+
+FROM base AS runner
+RUN addgroup --system --gid 1001 app && adduser --system --uid 1001 app
+COPY --from=installer --chown=app:app /app ./
+USER app
+
+# Required environment variables:
+# DATABASE_URL       — Postgres (pgvector)
+# AUTH_SECRET        — signs/verifies MCP bearer tokens
+# OPENROUTER_API_KEY — LLM + embeddings
+# SPACES_*           — optional blob storage for ingested materials
+
+ARG PORT
+ENV PORT=${PORT:-3000}
+EXPOSE ${PORT}
+
+WORKDIR /app/apps/server
+CMD ["bun", "--bun", "run", "start"]

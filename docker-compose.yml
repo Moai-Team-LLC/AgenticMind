@@ -1,0 +1,28 @@
+services:
+  db:
+    # Timescale HA image bundles pgvector + pgvectorscale (the `diskann` access
+    # method the schema's vector indexes need). No custom build required.
+    image: timescale/timescaledb-ha:pg17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: mysecretpassword
+    command:
+      [
+        "postgres",
+        "-c",
+        "log_destination=stderr",
+        "-c",
+        "log_line_prefix=%m [%p] ",
+        "-c",
+        "log_statement=all",
+        "-c",
+        "log_min_duration_statement=0",
+      ]
+    volumes:
+      - pgdata:/home/postgres/pgdata
+      # Creates the vector + vectorscale extensions on first init.
+      - ./scripts/db-init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  pgdata:

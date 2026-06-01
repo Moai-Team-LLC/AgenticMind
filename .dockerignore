@@ -1,0 +1,100 @@
+# Keep Docker build contexts small. Anything ignored here is unavailable to
+# Dockerfile COPY instructions.
+
+# Version control and local agent/editor state
+.git
+.gitignore
+.cursor
+.claude
+.agents
+agent-tools
+agent-transcripts
+
+# Dependencies
+node_modules
+**/node_modules
+.pnp
+.pnp.js
+install-state.gz
+.bun
+.pnpm-store
+.yarn
+
+# BuildKit / Docker local caches. Never send exported cache back into context.
+.buildx-cache
+.docker-cache
+docker-cache
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*
+
+# Testing
+coverage
+**/coverage
+
+# Turbo
+.turbo
+**/.turbo
+
+# Vercel
+.vercel
+**/.vercel
+
+# Build Outputs
+.next/
+**/.next
+out/
+**/out
+build
+**/build
+dist
+**/dist
+next-env.d.ts
+
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun-debug.log*
+pnpm-debug.log*
+*.log
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+docs
+**/docs
+
+# Misc
+.DS_Store
+*.pem
+tmp
+temp
+.cache
+
+# Oxlint
+.oxc_cache
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+
+# Typescript
+**/*.d.ts
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Postgres
+.pgdata
+
+# Redis
+.redisdata

@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Questions & ideas
+    url: https://github.com/Moai-Team-LLC/AgenticMind/discussions
+    about: Ask questions, share what you're building, or discuss direction.
+  - name: 🔐 Report a security issue
+    url: https://github.com/Moai-Team-LLC/AgenticMind/security/advisories/new
+    about: Privately report a vulnerability (do not open a public issue).
+  - name: 📐 The Agentic Product Standard
+    url: https://github.com/Moai-Team-LLC/agentic-product-standard
+    about: The standard AgenticMind implements.

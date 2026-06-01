@@ -1,0 +1,14 @@
+{
+  "extends": "@agenticmind/typescript-config/app.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "moduleResolution": "Bundler",
+    "outDir": "./dist",
+    "rootDir": "../.."
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../../packages/shared/src/**/*.ts"]
+}

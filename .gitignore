@@ -1,0 +1,59 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+install-state.gz
+
+# Local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*
+# Whitelist the example template — it has placeholders only, no real secrets.
+!.env.example
+
+# Testing
+coverage
+
+# Turbo
+.turbo
+
+# Vercel
+.vercel
+
+# Build Outputs
+.next/
+out/
+build
+dist
+next-env.d.ts
+packages/shared/src/scripts/output
+
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.DS_Store
+*.pem
+
+# Oxlint
+.oxc_cache
+
+# IDEs
+.vscode
+.idea
+
+# Typescript
+**/*.d.ts
+tsconfig.tsbuildinfo
+
+# Werf secrets
+.werf_secret_key_dev
+.werf_secret_key_prod
