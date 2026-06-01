@@ -6,7 +6,9 @@ on:
   pull_request:
 
 jobs:
-  check:
+  # Canonical gate: Bun (frozen lockfile), the reproducible build.
+  check-bun:
+    name: check (bun)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,3 +23,20 @@ jobs:
       # Full integration eval (lib/eval against the live engine) runs where
       # DATABASE_URL + OPENROUTER_API_KEY are available:
       #   bun run eval   # exits non-zero on regression vs BASELINE_PASS_RATE
+
+  # Compatibility canary: plain Node + npm, so self-hosters without Bun keep
+  # working. No committed package-lock (bun.lock is canonical), so this resolves
+  # fresh each run; .npmrc supplies legacy-peer-deps. Runs on Node, via tsx.
+  check-npm:
+    name: check (npm / Node)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install
+      - name: Typecheck
+        run: npm run tsc
+      - name: Unit tests
+        run: npm run test
