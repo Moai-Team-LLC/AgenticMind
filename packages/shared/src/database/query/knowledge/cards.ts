@@ -9,7 +9,10 @@ import type { Transaction } from "@agenticmind/shared/database/client"
 import type { CardKind } from "@agenticmind/shared/lib/knowledge/card"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
-import { dedupeVariants, variantTsQuery } from "@agenticmind/shared/database/query/knowledge/chunks"
+import {
+  buildFtsWhereClause,
+  dedupeVariants,
+} from "@agenticmind/shared/database/query/knowledge/chunks"
 import { knowledgeCards, materials } from "@agenticmind/shared/database/schema"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
 import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, notExists, sql } from "drizzle-orm"
@@ -82,10 +85,16 @@ const toCardHit = (r: RawCardRow): CardHit => {
 }
 
 /** Atomically replaces a material's cards (delete + insert). Pass a tx for atomicity. */
-export const upsertCards = (props: { tx: Transaction; materialId: string; items: CardInput[] }) =>
+export const upsertCards = (props: {
+  tx: Transaction
+  materialId: string
+  items: CardInput[]
+  ftsConfig?: string
+}) =>
   ResultAsync.fromPromise(
     (async () => {
       await props.tx.delete(knowledgeCards).where(eq(knowledgeCards.materialId, props.materialId))
+      const config = props.ftsConfig ?? "simple"
       if (props.items.length > 0) {
         await props.tx.insert(knowledgeCards).values(
           props.items.map((c) => {
@@ -109,6 +118,8 @@ export const upsertCards = (props: { tx: Transaction; materialId: string; items:
                   : null,
               embeddingModel: emptyToNull(c.embeddingModel),
               extractorVersion: emptyToNull(c.extractorVersion),
+              ftsConfig: config,
+              bodyTsv: sql`to_tsvector(${config}::regconfig, coalesce(${c.body}, ''))`,
             }
           }),
         )
@@ -214,7 +225,7 @@ export const searchCards = (
   ).map((rows) => rows.map((r) => toCardHit(r)))
 }
 
-/** BM25 search over the FTS_CONFIG body_tsv with the same filters as searchCards. */
+/** BM25 search over the body_tsv with the same filters as searchCards. */
 export const searchCardsBm25 = (
   props: {
     tx: Transaction
@@ -229,16 +240,23 @@ export const searchCardsBm25 = (
   }
   const limit =
     props.limit !== undefined && props.limit > 0 && props.limit <= 100 ? props.limit : 10
-  const tsQuery = variantTsQuery(variants)
+
+  const whereClause = buildFtsWhereClause(knowledgeCards, variants)
+
+  const tsQueryParts = variants.map(
+    (v) => sql`plainto_tsquery(${knowledgeCards.ftsConfig}::regconfig, ${v})`,
+  )
+  const tsQuery = sql`(${sql.join(tsQueryParts, sql` || `)})`
+
   return ResultAsync.fromPromise(
     props.tx
       .select({
         ...hitColumns,
-        score: sql<number>`ts_rank_cd(body_tsv, ${tsQuery})`.as("score"),
+        score: sql<number>`ts_rank_cd(${knowledgeCards.bodyTsv}, ${tsQuery})`.as("score"),
       })
       .from(knowledgeCards)
-      .where(and(sql`body_tsv @@ ${tsQuery}`, ...retrievalConditions(props)))
-      .orderBy(sql`ts_rank_cd(body_tsv, ${tsQuery}) DESC`)
+      .where(and(whereClause, ...retrievalConditions(props)))
+      .orderBy(sql`ts_rank_cd(${knowledgeCards.bodyTsv}, ${tsQuery}) DESC`)
       .limit(limit),
     mapDatabaseError,
   ).map((rows) => rows.map((r) => toCardHit(r)))
