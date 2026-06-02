@@ -17,6 +17,7 @@ const materials = pgTable(
       .default(sql`gen_random_uuid()`),
     title: text("title").notNull(),
     source: text("source").notNull(),
+    ftsConfig: text("fts_config").notNull().default("simple"),
     status: text("status").notNull().default("ingesting"),
     mimeType: text("mime_type"),
     sizeBytes: bigint("size_bytes", { mode: "number" }),
