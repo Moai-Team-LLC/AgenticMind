@@ -17,7 +17,7 @@ import type { FeatureExtractionPipeline } from "@huggingface/transformers"
 import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { buildRetryOptions } from "@agenticmind/shared/lib/retry"
 import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
-import { pipeline } from "@huggingface/transformers"
+import { env, pipeline } from "@huggingface/transformers"
 import pRetry from "p-retry"
 
 export type EmbeddingsProvider = {
@@ -39,6 +39,17 @@ const assertDimensions = (vector: number[], modelId: string): number[] => {
 /** In-process local model (transformers.js). The pipeline is created lazily on
  * first use and cached for the process lifetime. */
 const createLocalProvider = (modelId: string, pooling: "cls" | "mean"): EmbeddingsProvider => {
+  // Make the first-use model download work behind a blocked Hugging Face CDN
+  // (cdn-lfs.huggingface.co / cas-bridge.xethub.hf.co). EMBED_HF_ENDPOINT points
+  // downloads at a mirror (e.g. https://hf-mirror.com); EMBED_CACHE_DIR persists
+  // the model so it downloads once and can be pre-seeded for offline installs.
+  const endpoint = aiSettings.EMBED_HF_ENDPOINT
+  if (endpoint !== undefined && endpoint !== "") {
+    env.remoteHost = endpoint.replace(/\/+$/u, "")
+  }
+  if (aiSettings.EMBED_CACHE_DIR !== undefined && aiSettings.EMBED_CACHE_DIR !== "") {
+    env.cacheDir = aiSettings.EMBED_CACHE_DIR
+  }
   let pipe: Promise<FeatureExtractionPipeline> | null = null
   const getPipe = async (): Promise<FeatureExtractionPipeline> => {
     pipe ??= pipeline("feature-extraction", modelId)

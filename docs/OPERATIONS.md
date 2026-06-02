@@ -179,6 +179,19 @@ vars — no code changes. See `.env.example` for the canonical, commented set.
   (`Xenova/bge-m3`, 1024-dim, `EMBED_POOLING=cls`). First run downloads the model;
   no API key, no network at query time. This is what makes a clean clone work with
   no cloud credentials.
+
+  > **Blocked Hugging Face CDN?** The first-run download pulls the model from
+  > `huggingface.co`, which redirects to `cdn-lfs.huggingface.co` /
+  > `cas-bridge.xethub.hf.co`. If those are blocked (corporate firewall, region),
+  > the download fails. Three options:
+  > - **Mirror** — `EMBED_HF_ENDPOINT=https://hf-mirror.com` downloads via the
+  >   mirror instead of the blocked CDN.
+  > - **Pre-seed a cache** — set `EMBED_CACHE_DIR=/path` on a machine *with*
+  >   access, let it download once, copy that directory to the blocked host, and
+  >   set the same `EMBED_CACHE_DIR` there (fully offline / air-gapped).
+  > - **Sidestep Hugging Face** — use the `openai` provider below pointed at a
+  >   local Ollama `bge-m3` (also 1024-dim): `EMBED_PROVIDER=openai`,
+  >   `EMBED_BASE_URL=http://localhost:11434/v1`, `EMBED_MODEL=bge-m3`.
 - **`openai`** — any hosted OpenAI-compatible endpoint (OpenAI, Ollama, vLLM,
   OpenRouter, …). Set `EMBED_PROVIDER=openai`, `EMBED_BASE_URL`, `EMBED_MODEL`, and
   `EMBED_API_KEY` as needed.

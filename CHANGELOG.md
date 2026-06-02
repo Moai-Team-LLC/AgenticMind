@@ -4,6 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Blocked-CDN / offline embeddings** — `EMBED_HF_ENDPOINT` (a Hugging Face
+  mirror such as `https://hf-mirror.com`) and `EMBED_CACHE_DIR` (a pre-seedable
+  model cache) let the default in-process embedder work when the Hugging Face CDN
+  (`cdn-lfs.huggingface.co` / `cas-bridge.xethub.hf.co`) is blocked or the host is
+  air-gapped. See `docs/OPERATIONS.md` § Switching model providers.
+
 ## [0.4.0] — 2026-06-02
 
 ### Added

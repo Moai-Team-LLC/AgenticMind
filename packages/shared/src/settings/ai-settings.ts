@@ -21,6 +21,12 @@ export const aiSettings = createEnv({
     EMBED_POOLING: z.enum(["cls", "mean"]).default("cls"),
     EMBED_BASE_URL: z.url().optional(),
     EMBED_API_KEY: z.string().optional(),
+    // For the `local` provider behind a blocked Hugging Face CDN
+    // (cdn-lfs.huggingface.co / cas-bridge.xethub.hf.co): point downloads at a
+    // mirror (e.g. https://hf-mirror.com), and/or persist the model in a cache
+    // dir you can pre-seed for fully offline / air-gapped installs.
+    EMBED_HF_ENDPOINT: z.url().optional(),
+    EMBED_CACHE_DIR: z.string().optional(),
 
     // ── Chat / synthesis ────────────────────────────────────────────────
     // `openrouter` is the back-compat default; `openai` is any OpenAI-compatible
@@ -43,6 +49,8 @@ export const aiSettings = createEnv({
     EMBED_POOLING: process.env.EMBED_POOLING,
     EMBED_BASE_URL: process.env.EMBED_BASE_URL,
     EMBED_API_KEY: process.env.EMBED_API_KEY,
+    EMBED_HF_ENDPOINT: process.env.EMBED_HF_ENDPOINT,
+    EMBED_CACHE_DIR: process.env.EMBED_CACHE_DIR,
     CHAT_PROVIDER: process.env.CHAT_PROVIDER,
     CHAT_BASE_URL: process.env.CHAT_BASE_URL,
     CHAT_API_KEY: process.env.CHAT_API_KEY,
