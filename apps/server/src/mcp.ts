@@ -33,6 +33,8 @@ import {
   memWriteInput,
   klIngest,
   klIngestInput,
+  klForget,
+  klForgetInput,
   MCP_CONTRACT_VERSION,
 } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import { createMcpHandler, withMcpAuth } from "mcp-handler"
@@ -206,6 +208,21 @@ const handler = createMcpHandler(
           return jsonContent(await klIngest(toolDeps(extra), args))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_ingest failed")
+        }
+      },
+    )
+
+    registerKlTool(
+      server,
+      "kl_forget",
+      "Forget knowledge",
+      "Permanently delete a material by its UUID and everything derived from it (chunks, cards, graph). The inverse of kl_ingest, for retraction / right-to-erasure. Requires the knowledge:admin scope.",
+      klForgetInput,
+      async (args, extra) => {
+        try {
+          return jsonContent(await klForget(toolDeps(extra), args))
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "kl_forget failed")
         }
       },
     )

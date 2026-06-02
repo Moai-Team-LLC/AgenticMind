@@ -122,6 +122,7 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `kl_get_material`    | `knowledge:read`   | fetch a material by id                                              |
 | `kl_graph_neighbors` | `knowledge:read`   | related materials via the knowledge graph                           |
 | `kl_ingest`          | `knowledge:write`  | add text (chunked, embedded, distilled into cards, graph-extracted) |
+| `kl_forget`          | `knowledge:admin`  | delete a material + all derived chunks/cards/graph (inverse of ingest) |
 | `kl_signal`          | `knowledge:signal` | emit a programmatic compounding signal on a prior answer            |
 | `mem_recall`         | `memory:read`      | recall beliefs (private ∪ shared); semantic or `asOf` time-travel   |
 | `mem_write`          | `memory:write`     | record a belief into private memory (bitemporal, revision-aware)    |

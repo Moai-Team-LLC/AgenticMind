@@ -5,7 +5,7 @@ the set of MCP **tool names**, their **input schemas**, and the **scopes** they
 require. It is surfaced to clients as `serverInfo.version` and guarded in CI by a
 snapshot test (`packages/shared/src/lib/knowledge/mcp-contract.test.ts`).
 
-**Current version: `1.0.0`** (see `MCP_CONTRACT_VERSION` in
+**Current version: `1.1.0`** (see `MCP_CONTRACT_VERSION` in
 `packages/shared/src/lib/knowledge/mcp-tools.ts`).
 
 ## Tools
@@ -17,13 +17,15 @@ snapshot test (`packages/shared/src/lib/knowledge/mcp-contract.test.ts`).
 | `kl_get_material` | `knowledge:read` | `id` | — |
 | `kl_graph_neighbors` | `knowledge:read` | `materialId` | `limit` |
 | `kl_ingest` | `knowledge:write` | `title`, `text` | — |
+| `kl_forget` | `knowledge:admin` | `id` | — |
 | `kl_signal` | `knowledge:signal` | `askId`, `signal` | `strength`, `note` |
 | `mem_recall` | `memory:read` | — | `subject`, `query`, `asOf`, `includeShared`, `limit` |
 | `mem_write` | `memory:write` | `subject`, `predicate`, `object` | `confidence`, `embed` |
 
 `kl_graph_neighbors` is exposed only when GraphRAG is enabled
 (`KNOWLEDGE_GRAPHRAG_ENABLED=true`). All write/signal tools assert their scope in
-code (fail-closed); read tools require `knowledge:read` at the endpoint.
+code (fail-closed); `kl_forget` requires the elevated `knowledge:admin` (strictly
+above `knowledge:write`); read tools require `knowledge:read` at the endpoint.
 
 ## Versioning policy (SemVer)
 
@@ -67,11 +69,11 @@ unknown fields and tools they don't use.
 registries (the official MCP registry, Smithery, mcp.so). It follows the
 official `server.schema.json` (`2025-12-11`): reverse-DNS `name`
 (`io.github.Moai-Team-LLC/agenticmind`), `version` mirroring this contract
-(`1.0.0`), the `repository`, and a `streamable-http` `remotes` entry pointing at
+(`1.1.0`), the `repository`, and a `streamable-http` `remotes` entry pointing at
 `{baseUrl}/mcp` (default `http://localhost:3000`) with a required, secret
 `Authorization: Bearer …` header (the fail-closed `typ="mcp"` JWT).
 
-The eight tools above are listed under
+The nine tools above are listed under
 `_meta."io.modelcontextprotocol.registry/publisher-provided".tools` (the schema
 caps `description` at 100 chars, so the full surface lives in `_meta` rather than
 the description). When the tool set or `MCP_CONTRACT_VERSION` changes, bump

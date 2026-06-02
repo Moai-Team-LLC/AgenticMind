@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **`kl_forget` MCP tool** — the inverse of `kl_ingest`: permanently delete a
+  material by its UUID and everything derived from it (chunks, embeddings, fact
+  cards, graph mentions; best-effort blob cleanup). For retraction /
+  right-to-erasure. Requires the new, elevated **`knowledge:admin`** scope
+  (strictly above `knowledge:write`). The MCP tool contract is bumped to
+  **1.1.0** (additive — existing clients are unaffected).
+
 ## [0.3.0] — 2026-06-01
 
 Runs on plain Node now — Bun is no longer required — and the knowledge layer is

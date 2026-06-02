@@ -27,6 +27,7 @@ import {
 } from "@agenticmind/shared/lib/knowledge/feedback"
 import { guardInput, redactPii } from "@agenticmind/shared/lib/knowledge/guard"
 import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
+import { removeMaterial } from "@agenticmind/shared/lib/knowledge/ingestion"
 import { embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
 import { hasScope } from "@agenticmind/shared/lib/knowledge/mcp-scopes"
 import { createGraphContextProvider } from "@agenticmind/shared/lib/knowledge/qaplan"
@@ -441,6 +442,29 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
   return res.value
 }
 
+export const klForgetInput = z.object({ id: z.string().min(1) })
+
+/**
+ * Kl_forget -- the inverse of kl_ingest: permanently delete a material by its
+ * UUID and everything derived from it (chunks, embeddings, fact cards, graph
+ * mentions; best-effort blob cleanup). For retraction / right-to-erasure.
+ * Requires the elevated knowledge:admin scope. Idempotent — removed=false when
+ * the id does not exist.
+ */
+export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetInput>) => {
+  if (!hasScope(deps.scopes, "knowledge:admin")) {
+    throw new Error("kl_forget: missing required scope 'knowledge:admin'")
+  }
+  if (deps.blobStore === undefined) {
+    throw new Error("kl_forget: blob store not configured")
+  }
+  const res = await removeMaterial({ tx: deps.tx, blobStore: deps.blobStore, id: args.id })
+  if (res.isErr()) {
+    throw new Error(`kl_forget: ${res.error.message}`)
+  }
+  return { id: args.id, ...res.value }
+}
+
 /**
  * SemVer of the public MCP tool contract (names + input schemas + scopes), as
  * surfaced in `serverInfo.version`. Bump MINOR for additive changes (a new tool,
@@ -448,7 +472,7 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.0.0"
+export const MCP_CONTRACT_VERSION = "1.1.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
@@ -498,5 +522,11 @@ export const KNOWLEDGE_MCP_TOOLS = [
     description:
       "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Later kl_ask_global / kl_search retrieve and cite it.",
     inputSchema: klIngestInput,
+  },
+  {
+    name: "kl_forget",
+    description:
+      "Forget (permanently delete) a single material by its UUID and everything derived from it — chunks, embeddings, fact cards, and graph mentions. The inverse of kl_ingest, for retraction or right-to-erasure. Requires the elevated knowledge:admin scope.",
+    inputSchema: klForgetInput,
   },
 ] as const
