@@ -37,6 +37,7 @@ export type ManualUpload = {
   body: Uint8Array
   /** Cuid from the JWT subject claim. */
   uploaderId?: string | null
+  ftsConfig?: string
 }
 
 /** Returns the first reason the upload is unacceptable, or null when valid. */
@@ -96,6 +97,7 @@ export const uploadManual = (props: {
           sizeBytes: props.upload.sizeBytes,
           storageUri,
           createdBy: props.upload.uploaderId ?? null,
+          ftsConfig: props.upload.ftsConfig,
         },
       })
         .mapErr((e) => ingestionError(`persist material: ${e.message}`))

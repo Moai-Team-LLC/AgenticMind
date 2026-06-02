@@ -10,6 +10,7 @@ import type { Transaction } from "@agenticmind/shared/database/client"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 
+import { isSupportedLanguage } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { extractGraph } from "@agenticmind/shared/lib/knowledge/graphrag-extractor"
 import { indexMaterial } from "@agenticmind/shared/lib/knowledge/indexer"
 import { uploadManual } from "@agenticmind/shared/lib/knowledge/ingestion"
@@ -50,10 +51,13 @@ export const ingestText = (props: {
   contentType?: string
   cardsEnabled?: boolean
   graphragEnabled?: boolean
+  language?: string
 }): ResultAsync<IngestResult, IngestError> => {
   const title = props.title.trim()
   const text = props.text
   const bytes = new TextEncoder().encode(text)
+  const config =
+    props.language !== undefined && isSupportedLanguage(props.language) ? props.language : "simple"
 
   return ResultAsync.fromPromise(
     (async (): Promise<IngestResult> => {
@@ -66,6 +70,7 @@ export const ingestText = (props: {
           contentType: props.contentType ?? "text/plain",
           sizeBytes: bytes.length,
           body: bytes,
+          ftsConfig: config,
         },
       })
       if (mat.isErr()) {
@@ -75,7 +80,7 @@ export const ingestText = (props: {
 
       const indexed = await indexMaterial({
         tx: props.tx,
-        material: { id: material.id, title: material.title },
+        material: { id: material.id, title: material.title, ftsConfig: material.ftsConfig },
         body: text,
         cardsEnabled: props.cardsEnabled,
       })

@@ -31,7 +31,7 @@ export type IndexError = { readonly type: "index_error"; readonly message: strin
 
 export type IndexMaterialProps = {
   tx: Transaction
-  material: { id: string; title: string }
+  material: { id: string; title: string; ftsConfig?: string }
   body: string
   /** Tabular hints: when schema + tables are set, cards come from rows (no LLM). */
   extras?: { tables?: Table[]; schema?: TabularSchema }
@@ -81,7 +81,12 @@ const runCardExtraction = async (props: IndexMaterialProps, body: string): Promi
         ? { ...c, embedding: vectors[k], embeddingModel: KNOWLEDGE_EMBEDDING_MODEL }
         : c,
     )
-    const upserted = await upsertCards({ tx, materialId: material.id, items: withEmbeddings })
+    const upserted = await upsertCards({
+      tx,
+      materialId: material.id,
+      items: withEmbeddings,
+      ftsConfig: material.ftsConfig,
+    })
     if (upserted.isErr()) {
       console.warn(`index: cards upsert failed for ${material.id}: ${upserted.error.message}`)
     }
@@ -138,7 +143,12 @@ const runIndex = async (props: IndexMaterialProps): Promise<{ chunkCount: number
       embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
     }
   })
-  const persisted = await upsertChunks({ tx, materialId: material.id, items })
+  const persisted = await upsertChunks({
+    tx,
+    materialId: material.id,
+    items,
+    ftsConfig: material.ftsConfig,
+  })
   if (persisted.isErr()) {
     await markFailed(tx, material.id, `persist: ${persisted.error.message}`)
     throw indexError(`persist: ${persisted.error.message}`)

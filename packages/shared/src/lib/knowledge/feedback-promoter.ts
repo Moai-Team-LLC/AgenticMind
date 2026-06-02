@@ -208,6 +208,8 @@ export const sweepPromoteClusters = (props: {
             embedding,
             embeddingModel: embedding !== null ? KNOWLEDGE_EMBEDDING_MODEL : null,
             extractorVersion: "resolution-v1",
+            ftsConfig: "simple",
+            bodyTsv: sql`to_tsvector('simple'::regconfig, coalesce(${best.answer}, ''))`,
           })
           .returning({ id: knowledgeCards.id })
         if (card === undefined) {
