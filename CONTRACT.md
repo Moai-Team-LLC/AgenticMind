@@ -5,7 +5,7 @@ the set of MCP **tool names**, their **input schemas**, and the **scopes** they
 require. It is surfaced to clients as `serverInfo.version` and guarded in CI by a
 snapshot test (`packages/shared/src/lib/knowledge/mcp-contract.test.ts`).
 
-**Current version: `1.1.0`** (see `MCP_CONTRACT_VERSION` in
+**Current version: `1.2.0`** (see `MCP_CONTRACT_VERSION` in
 `packages/shared/src/lib/knowledge/mcp-tools.ts`).
 
 ## Tools
@@ -16,7 +16,7 @@ snapshot test (`packages/shared/src/lib/knowledge/mcp-contract.test.ts`).
 | `kl_ask_global` | `knowledge:read` | `question` | `intent`, `facts` |
 | `kl_get_material` | `knowledge:read` | `id` | — |
 | `kl_graph_neighbors` | `knowledge:read` | `materialId` | `limit` |
-| `kl_ingest` | `knowledge:write` | `title`, `text` | — |
+| `kl_ingest` | `knowledge:write` | `title`, `text` | `language` |
 | `kl_forget` | `knowledge:admin` | `id` | — |
 | `kl_signal` | `knowledge:signal` | `askId`, `signal` | `strength`, `note` |
 | `mem_recall` | `memory:read` | — | `subject`, `query`, `asOf`, `includeShared`, `limit` |
