@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] — 2026-06-02
 
 ### Added
 
@@ -14,6 +14,10 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   right-to-erasure. Requires the new, elevated **`knowledge:admin`** scope
   (strictly above `knowledge:write`). The MCP tool contract is bumped to
   **1.1.0** (additive — existing clients are unaffected).
+- **README polish** — an animated `kl_ask_global` demo and the AgenticMind logo
+  in the header.
+
+[0.4.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.4.0
 
 ## [0.3.0] — 2026-06-01
 
