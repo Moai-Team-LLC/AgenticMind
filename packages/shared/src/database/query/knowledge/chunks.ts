@@ -7,7 +7,7 @@
 
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { ScoredHit } from "@agenticmind/shared/lib/knowledge/blend"
-import type { SQL } from "drizzle-orm"
+import type { AnyColumn, SQL } from "drizzle-orm"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { chunks } from "@agenticmind/shared/database/schema"
@@ -166,7 +166,7 @@ export const variantTsQuery = (variants: string[]): SQL => {
  * to allow Postgres to perform index scans on body_tsv/object_tsv.
  */
 export const buildFtsWhereClause = (
-  table: { ftsConfig: any; bodyTsv: any },
+  table: { ftsConfig: AnyColumn; bodyTsv: AnyColumn },
   variants: string[],
 ): SQL => {
   const branches = SUPPORTED_LANGUAGES.map((lang) => {

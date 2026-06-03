@@ -44,6 +44,6 @@ export const SUPPORTED_LANGUAGES = [
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
 
-export const isSupportedLanguage = (lang: string): lang is SupportedLanguage => 
+export const isSupportedLanguage = (lang: string): lang is SupportedLanguage =>
   (SUPPORTED_LANGUAGES as readonly string[]).includes(lang)
 
