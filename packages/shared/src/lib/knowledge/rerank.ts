@@ -1,7 +1,6 @@
 /**
  * Knowledge cross-encoder rerank — thin wrapper over the shared
- * rerankDocuments (Cohere via OpenRouter), replacing the Go service's
- * self-hosted RERANK_BASE_URL cross-encoder. Reorders (query, doc) pairs by
+ * rerankDocuments (native Cohere /v2/rerank by default). Reorders (query, doc) pairs by
  * relevance, mapping the ranking back onto the caller's items. Used to narrow
  * the top-30 retrieval pool to the top-K the synthesiser sees.
  */
@@ -13,8 +12,8 @@ import { rerankDocuments } from "@agenticmind/shared/lib/ai/rerank"
 import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
 import { errAsync, okAsync } from "neverthrow"
 
-/** Multilingual default — good for the mixed RU/EN corpus. */
-export const KNOWLEDGE_RERANK_MODEL: RerankModel = "cohere/rerank-v3.5"
+/** Multilingual default — good for a mixed RU/EN corpus (override via RERANK_MODEL). */
+export const KNOWLEDGE_RERANK_MODEL: RerankModel = aiSettings.RERANK_MODEL ?? "rerank-v3.5"
 
 export type RerankPair<T> = {
   /** The document text scored against the query. */

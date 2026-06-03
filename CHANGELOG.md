@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **BREAKING: OpenRouter is no longer a special-cased provider.** Chat is now a
+  single OpenAI-compatible seam configured by `CHAT_BASE_URL` (default
+  `https://api.openai.com/v1`) + `CHAT_API_KEY` — point it at OpenAI, Ollama,
+  vLLM, **or OpenRouter** (`CHAT_BASE_URL=https://openrouter.ai/api/v1`). The
+  `CHAT_PROVIDER` switch, the dedicated OpenRouter client (`@openrouter/ai-sdk-provider`),
+  and `OPENROUTER_API_KEY` are gone; default models are now `gpt-4o-mini` / `gpt-4o`.
+  No capability is lost — OpenRouter is still reachable via the base URL.
+  **Migration:** OpenRouter users set `CHAT_BASE_URL=https://openrouter.ai/api/v1`,
+  `CHAT_API_KEY=<openrouter-key>`, and `CHAT_MODEL_*` to OpenRouter slugs.
+- **Rerank moved to native Cohere.** The optional cross-encoder now calls
+  `api.cohere.com/v2/rerank` with `RERANK_API_KEY` + `RERANK_MODEL` (default
+  `rerank-v3.5`), overridable via `RERANK_BASE_URL`. No OpenRouter needed. Off by
+  default, so retrieval is unaffected unless you had rerank enabled.
+
 ## [0.5.0] — 2026-06-03
 
 ### Added

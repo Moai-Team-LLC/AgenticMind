@@ -26,7 +26,6 @@ x-am-env: &am-env
   DATABASE_URL: postgresql://postgres:${AGENTICMIND_DB_PASSWORD}@agenticmind-db:5432/postgres
   DATABASE_SSL: "false"
   # Reuse your existing OpenAI key for synthesis — no OpenRouter needed.
-  CHAT_PROVIDER: openai
   CHAT_BASE_URL: https://api.openai.com/v1
   CHAT_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in deploy/.env}
   CHAT_MODEL_SIMPLE: ${AGENTICMIND_CHAT_MODEL_SIMPLE:-gpt-4o-mini}

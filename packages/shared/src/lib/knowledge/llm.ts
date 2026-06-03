@@ -34,8 +34,8 @@ export const KNOWLEDGE_EMBEDDING_DIMENSIONS = EMBEDDING_DIMENSIONS
 /** Identifier of the configured embedding model — recorded on persisted rows
  * (`embedding_model`) so re-embeds and model swaps are auditable. */
 export const KNOWLEDGE_EMBEDDING_MODEL = configuredEmbeddingModelId()
-/** Default chat model for synthesis / extraction. */
-export const KNOWLEDGE_CHAT_MODEL: LlmModel = "openai/gpt-5-mini"
+/** Default chat model for synthesis / extraction (OpenAI; override per provider). */
+export const KNOWLEDGE_CHAT_MODEL: LlmModel = "gpt-4o"
 
 export type KnowledgeAiError = {
   readonly type: "ai_error"

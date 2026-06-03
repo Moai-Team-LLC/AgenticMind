@@ -2,7 +2,7 @@
  * Judge calibration runner — runs the feedback LLM-judge against the
  * human-labeled set (eval/judge-labels.json) and reports TPR/TNR. Exits
  * non-zero when the judge is not calibrated (both rates must clear 0.8).
- * Needs OPENROUTER_API_KEY. Run: bun run calibrate
+ * Needs CHAT_API_KEY. Run: bun run calibrate
  */
 
 import type { LabeledExample } from "@agenticmind/shared/lib/eval/judge-calibration"

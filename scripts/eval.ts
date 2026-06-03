@@ -1,6 +1,6 @@
 /**
  * Integration eval runner — wires the harness (lib/eval) to the real engine
- * (guard + ask). Needs DATABASE_URL + OPENROUTER_API_KEY. Exits non-zero when
+ * (guard + ask). Needs DATABASE_URL + CHAT_API_KEY. Exits non-zero when
  * the run regresses below the baseline pass rate (the CI gate).
  *
  *   bun run eval                 # uses BASELINE_PASS_RATE (default 0.8)

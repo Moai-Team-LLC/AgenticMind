@@ -17,7 +17,7 @@ describe("classifyComplexity", () => {
 
 describe("modelForComplexity", () => {
   it("routes cheap vs flagship", () => {
-    expect(modelForComplexity("simple")).toBe("google/gemini-3.1-flash-lite-preview")
-    expect(modelForComplexity("complex")).toBe("openai/gpt-5-mini")
+    expect(modelForComplexity("simple")).toBe("gpt-4o-mini")
+    expect(modelForComplexity("complex")).toBe("gpt-4o")
   })
 })

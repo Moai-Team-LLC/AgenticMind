@@ -17,7 +17,7 @@
  *   --table=chunks|cards|beliefs   limit to one table (default: all three)
  *   --dry-run                      count rows only; no writes
  *
- * Needs DATABASE_URL + OPENROUTER_API_KEY (same env as `ingest`). Run via the
+ * Needs DATABASE_URL + CHAT_API_KEY (same env as `ingest`). Run via the
  * dotenvx wrapper:
  *
  *   dotenvx run -f .env.local -- bun scripts/reembed.ts
