@@ -24,9 +24,11 @@ jobs:
       # DATABASE_URL + OPENROUTER_API_KEY are available:
       #   bun run eval   # exits non-zero on regression vs BASELINE_PASS_RATE
 
-  # Compatibility canary: plain Node + npm, so self-hosters without Bun keep
-  # working. No committed package-lock (bun.lock is canonical), so this resolves
-  # fresh each run; .npmrc supplies legacy-peer-deps. Runs on Node, via tsx.
+  # Compatibility canary: dependencies install under plain npm (bun.lock is
+  # canonical and not committed for npm, so this resolves fresh; .npmrc supplies
+  # legacy-peer-deps). Bun is installed only so Turbo (packageManager: bun) can
+  # orchestrate the workspace tasks; the server/worker themselves run on Node via
+  # tsx, and dependency resolution is what this job proves.
   check-npm:
     name: check (npm / Node)
     runs-on: ubuntu-latest
@@ -35,6 +37,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
       - run: npm install
       - name: Typecheck
         run: npm run tsc

@@ -6,6 +6,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Published container images** — a `release-images` workflow builds and pushes
+  `ghcr.io/moai-team-llc/agenticmind-server` and `…-worker` to GHCR on each
+  release (and on demand). Self-hosters can `docker pull` instead of
+  clone-and-build.
+
 ### Fixed
 
 - **A dropped MCP client no longer crashes the server.** When a client aborts or
@@ -15,6 +22,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   One misbehaving client took down the whole knowledge service. The host now
   swallows that benign disconnect class (and only that class) at the process
   level via `isClientDisconnectError`; genuine faults stay loud and fatal.
+- **Docker images build and run again.** `packageManager` had been set to `npm`,
+  which made `turbo prune` look for a `package-lock.json` that isn't committed and
+  broke the image build (_"Cannot prune without parsed lockfile"_) — reverted to
+  `bun`. The images also moved off Alpine to a glibc base, because
+  `onnxruntime-node` (the local-embeddings addon) cannot load on musl
+  (_"__getauxval: symbol not found"_). The npm CI job installs Bun so Turbo can
+  still orchestrate.
 
 ## [0.4.1] — 2026-06-02
 

@@ -1,4 +1,8 @@
-FROM oven/bun:1.3.11-alpine AS base
+# glibc base (NOT alpine): onnxruntime-node — the local-embeddings native addon
+# behind transformers.js — ships glibc binaries and fails to load on musl/alpine
+# ("__getauxval: symbol not found"). Debian-based bun keeps the default zero-key
+# embedder working out of the box.
+FROM oven/bun:1.3.11 AS base
 ENV NODE_ENV=production
 WORKDIR /app
 
@@ -15,14 +19,15 @@ COPY drizzle.config.ts ./drizzle.config.ts
 COPY drizzle/ ./drizzle/
 
 FROM base AS runner
-RUN addgroup --system --gid 1001 app && adduser --system --uid 1001 app
-COPY --from=installer --chown=app:app /app ./
-USER app
+# Run unprivileged. Numeric uid/gid is portable across base images (no
+# adduser/useradd dependency).
+COPY --from=installer --chown=1001:1001 /app ./
+USER 1001:1001
 
 # Required environment variables:
-# DATABASE_URL       — Postgres (pgvector)
+# DATABASE_URL       — Postgres (pgvector + pgvectorscale)
 # AUTH_SECRET        — signs/verifies MCP bearer tokens
-# OPENROUTER_API_KEY — LLM + embeddings
+# OPENROUTER_API_KEY — LLM + (optional) hosted embeddings
 # SPACES_*           — optional blob storage for ingested materials
 
 ARG PORT
@@ -30,4 +35,5 @@ ENV PORT=${PORT:-3000}
 EXPOSE ${PORT}
 
 WORKDIR /app/apps/server
-CMD ["bun", "--bun", "run", "start"]
+# Run the server directly under Bun (native TS; resolves @/ via tsconfig paths).
+CMD ["bun", "--bun", "src/index.ts"]

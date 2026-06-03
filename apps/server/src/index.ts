@@ -62,11 +62,13 @@ const fetchHandler = (req: Request): Response | Promise<Response> => {
 // server; on Node we use @hono/node-server, which runs a `fetch` handler with
 // correct streaming for the MCP streamable-HTTP transport. The handler above is
 // byte-for-byte identical across both — only the listener differs.
+// Bind 0.0.0.0 so the port is reachable from outside the container (Bun.serve
+// otherwise defaults to loopback, which a Docker/host port map can't reach).
 if ((globalThis as { Bun?: unknown }).Bun !== undefined) {
-  Bun.serve({ port: PORT, idleTimeout: 120, fetch: fetchHandler })
+  Bun.serve({ port: PORT, hostname: "0.0.0.0", idleTimeout: 120, fetch: fetchHandler })
 } else {
   const { serve } = await import("@hono/node-server")
-  serve({ port: PORT, fetch: fetchHandler })
+  serve({ port: PORT, hostname: "0.0.0.0", fetch: fetchHandler })
 }
 
 console.log(`[SERVER] AgenticMind MCP server listening on :${PORT} (MCP at /mcp)`)
