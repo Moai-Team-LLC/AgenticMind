@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.1] — 2026-06-02
 
 ### Added
 
@@ -13,6 +13,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   model cache) let the default in-process embedder work when the Hugging Face CDN
   (`cdn-lfs.huggingface.co` / `cas-bridge.xethub.hf.co`) is blocked or the host is
   air-gapped. See `docs/OPERATIONS.md` § Switching model providers.
+
+[0.4.1]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.4.1
 
 ## [0.4.0] — 2026-06-02
 
