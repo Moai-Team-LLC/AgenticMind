@@ -7,7 +7,7 @@ memory layer for agents, and a reference implementation of
 ## Getting started
 
 ```bash
-cp .env.example .env.local      # set OPENROUTER_API_KEY + AUTH_SECRET
+cp .env.example .env.local      # set CHAT_API_KEY + AUTH_SECRET
 ./setup.sh                      # deps + Postgres + migrations
 bun run check                   # typecheck + tests — must pass before a PR
 ```
@@ -22,9 +22,11 @@ bun run check                   # typecheck + tests — must pass before a PR
 1. **Keep it Postgres-only.** The flagship runs on Postgres + pgvector alone. New
    hard dependencies on Redis/Neo4j/ClickHouse/etc. belong behind an interface
    (e.g. `GraphStore`), not in the default path.
-2. **English-language engine.** The knowledge engine is English-only (`simple` +
-   `english` full-text configs). Don't reintroduce language-specific lexicons,
-   transliteration, or non-English prompt content.
+2. **Keep it language-neutral.** The engine is multilingual: embeddings use a
+   multilingual model (bge-m3) and full-text search uses the language-neutral
+   `simple` config. Don't switch FTS to a language-specific config (e.g.
+   `english`) or hardcode one language's lexicon — it silently degrades retrieval
+   for every other language.
 3. **Don't regress the moat.** Citation-enforced synthesis, the replayable decision
    trace, the judge-gated compounding loop, and tiered retrieval are the core —
    changes there need tests and a clear rationale.
@@ -37,7 +39,7 @@ bun run check                   # typecheck + tests — must pass before a PR
 
 - `bun test` — unit tests (engine, guardrails, judge calibration, eval harness).
 - `bun run eval` — full integration eval against the live engine; needs
-  `DATABASE_URL` + `OPENROUTER_API_KEY`. It exits non-zero on regression vs the
+  `DATABASE_URL` + `CHAT_API_KEY`. It exits non-zero on regression vs the
   baseline pass rate. CI runs the unit suite; run the eval before changing
   retrieval/synthesis behavior.
 - Add a test for every bug fix and every new tool or behavior.

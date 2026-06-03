@@ -22,7 +22,7 @@ USER 1001:1001
 
 # Required environment variables:
 # DATABASE_URL       — Postgres (pgvector); also where the advisory-lock sweep runs
-# OPENROUTER_API_KEY — LLM judge for the feedback promoter
+# CHAT_API_KEY       — chat LLM for the feedback promoter's judge
 
 WORKDIR /app/apps/worker
 CMD ["bun", "--bun", "src/index.ts"]

@@ -47,7 +47,7 @@ mint scoped JWTs with `issue-token` (see the README).
 
 ## LLM — reuse your OpenAI key
 
-The compose sets `CHAT_PROVIDER=openai` against `api.openai.com` with your
+The compose points `CHAT_BASE_URL` at `api.openai.com/v1` with your
 `OPENAI_API_KEY`; **no OpenRouter key is needed.** Embeddings run locally
 (zero-key). Behind a blocked Hugging Face CDN, see
 [`OPERATIONS.md`](OPERATIONS.md) § Switching model providers.

@@ -1,7 +1,7 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
-  "globalEnv": ["NODE_ENV", "DATABASE_URL", "SKIP_VALIDATION", "AUTH_SECRET", "OPENROUTER_API_KEY"],
+  "globalEnv": ["NODE_ENV", "DATABASE_URL", "SKIP_VALIDATION", "AUTH_SECRET", "CHAT_API_KEY", "RERANK_API_KEY"],
   "globalDependencies": [
     "packages/*/src/**",
     "packages/*/package.json",

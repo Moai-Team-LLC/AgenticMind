@@ -18,8 +18,8 @@ Most setup problems are covered already:
 
 - **[Quickstart](README.md#-quickstart)** — clone → `cp .env.example .env.local` → `./setup.sh` → `bun run dev`.
 - **Retrieval needs no cloud key** — embeddings run locally (bge-m3). Only *synthesis*
-  (`kl_ask_global`) needs a chat model: set `OPENROUTER_API_KEY`, or point `CHAT_PROVIDER=openai`
-  + `CHAT_BASE_URL` at a local Ollama.
+  (`kl_ask_global`) needs a chat model: set `CHAT_API_KEY` (OpenAI by default), or point
+  `CHAT_BASE_URL` at a local Ollama / vLLM / OpenRouter.
 - **`401` from the MCP endpoint** — the surface is fail-closed; mint a token with
   `bun run scripts/issue-mcp-token.ts` and send it as `Authorization: Bearer …`.
 - **SSL errors against managed Postgres** — set `DATABASE_SSL=true` (local Docker ships `false`).

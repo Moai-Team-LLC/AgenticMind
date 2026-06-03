@@ -27,7 +27,7 @@ USER 1001:1001
 # Required environment variables:
 # DATABASE_URL       — Postgres (pgvector + pgvectorscale)
 # AUTH_SECRET        — signs/verifies MCP bearer tokens
-# OPENROUTER_API_KEY — LLM + (optional) hosted embeddings
+# CHAT_API_KEY       — chat/synthesis LLM (OpenAI-compatible; CHAT_BASE_URL to override)
 # SPACES_*           — optional blob storage for ingested materials
 
 ARG PORT

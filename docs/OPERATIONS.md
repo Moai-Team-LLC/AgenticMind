@@ -209,18 +209,22 @@ vars — no code changes. See `.env.example` for the canonical, commented set.
 > fast. Changing the dimension is a **breaking schema change** that requires a full
 > re-embed of every existing corpus — see "Re-embedding" below.
 
-### Chat / synthesis (`CHAT_PROVIDER`)
+### Chat / synthesis (`CHAT_BASE_URL`)
 
-- **OpenRouter** (default) — set `OPENROUTER_API_KEY`. Used for synthesis,
-  classification, and extraction.
-- **OpenAI-compatible / Ollama (offline)** — set `CHAT_PROVIDER=openai`,
-  `CHAT_BASE_URL` (e.g. `http://localhost:11434/v1` for Ollama), optional
-  `CHAT_API_KEY`, and the model tiers `CHAT_MODEL_SIMPLE` (cheap/fast) and
-  `CHAT_MODEL_COMPLEX` (flagship). Combined with `EMBED_PROVIDER=local`, this runs
-  the whole system fully offline.
+Chat is a single OpenAI-compatible seam used for synthesis, classification, and
+extraction. Set `CHAT_API_KEY` and (optionally) `CHAT_BASE_URL`:
+
+- **OpenAI** (default) — set `CHAT_API_KEY`; `CHAT_BASE_URL` defaults to
+  `https://api.openai.com/v1`, with model tiers `CHAT_MODEL_SIMPLE` (cheap/fast)
+  and `CHAT_MODEL_COMPLEX` (flagship).
+- **Ollama / vLLM / OpenRouter** — point `CHAT_BASE_URL` at the endpoint (e.g.
+  `http://localhost:11434/v1` for Ollama, `https://openrouter.ai/api/v1` for
+  OpenRouter) with the matching `CHAT_API_KEY` and model ids. Combined with
+  `EMBED_PROVIDER=local`, Ollama runs the whole system fully offline.
 
 Optional cross-encoder rerank is off by default; enable with `RERANK_ENABLED=true`
-(requires `OPENROUTER_API_KEY`).
+and set `RERANK_API_KEY` (native Cohere `https://api.cohere.com/v2/rerank` by
+default; override `RERANK_BASE_URL` for Voyage / Jina).
 
 ### Re-embedding after a model/provider change
 

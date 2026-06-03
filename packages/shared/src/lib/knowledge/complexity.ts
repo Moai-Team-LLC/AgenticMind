@@ -37,8 +37,8 @@ export const classifyComplexity = (question: string): Complexity => {
 
 // Tier defaults, also applied in code (not only via zod) so they survive
 // SKIP_VALIDATION, which the repo's dev env sets.
-const DEFAULT_SIMPLE_MODEL = "google/gemini-3.1-flash-lite-preview"
-const DEFAULT_COMPLEX_MODEL = "openai/gpt-5-mini"
+const DEFAULT_SIMPLE_MODEL = "gpt-4o-mini"
+const DEFAULT_COMPLEX_MODEL = "gpt-4o"
 
 /** The model tier for a complexity class (configurable via CHAT_MODEL_*). */
 export const modelForComplexity = (c: Complexity): LlmModel =>

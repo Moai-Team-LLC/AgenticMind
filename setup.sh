@@ -4,7 +4,7 @@
 # Idempotent — safe to re-run. Requires Docker and a JS package manager (Bun or
 # npm). The server and worker run on plain Node (>=22.18) or Bun.
 #
-#   cp .env.example .env.local   # set OPENROUTER_API_KEY + AUTH_SECRET first
+#   cp .env.example .env.local   # set CHAT_API_KEY + AUTH_SECRET first
 #   ./setup.sh
 #   npm run dev                  # or: bun run dev
 #
@@ -31,7 +31,7 @@ fi
 echo "    Using package manager: $PM"
 
 if [ ! -f .env.local ]; then
-  echo "==> No .env.local — copying from .env.example (remember to set OPENROUTER_API_KEY + AUTH_SECRET)"
+  echo "==> No .env.local — copying from .env.example (remember to set CHAT_API_KEY + AUTH_SECRET)"
   cp .env.example .env.local
 fi
 

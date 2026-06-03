@@ -21,7 +21,7 @@ jobs:
       - name: Unit tests (incl. eval harness, guardrails, judge calibration)
         run: bun test
       # Full integration eval (lib/eval against the live engine) runs where
-      # DATABASE_URL + OPENROUTER_API_KEY are available:
+      # DATABASE_URL + CHAT_API_KEY are available:
       #   bun run eval   # exits non-zero on regression vs BASELINE_PASS_RATE
 
   # Compatibility canary: dependencies install under plain npm (bun.lock is

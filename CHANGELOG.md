@@ -22,6 +22,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `rerank-v3.5`), overridable via `RERANK_BASE_URL`. No OpenRouter needed. Off by
   default, so retrieval is unaffected unless you had rerank enabled.
 
+### Fixed
+
+- **Stale OpenRouter-era defaults and references purged.** The in-code model
+  fallbacks used when `SKIP_VALIDATION` is set (the dev default) were still
+  OpenRouter slugs (`openai/gpt-5-mini`, `google/gemini-3.1-flash-lite-preview`)
+  that don't resolve against OpenAI — now `gpt-4o` / `gpt-4o-mini`, matching the
+  zod defaults. Also swept lingering `OPENROUTER_API_KEY` / `CHAT_PROVIDER`
+  mentions out of the docs, Dockerfiles, `setup.sh`, `turbo.json` (cache-key env),
+  the calibrate/eval scripts, and a phantom `BullMQ` reference in the worker
+  header (the worker is Postgres-only — no broker was ever shipped). The
+  contributor guide now correctly describes the engine as language-neutral
+  (multilingual bge-m3 + `simple` FTS), not English-only.
+
 ## [0.5.0] — 2026-06-03
 
 ### Added

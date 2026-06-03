@@ -25,7 +25,7 @@ const judge = async (ex: LabeledExample): Promise<boolean> => {
   const res = await completeKnowledge({
     system: JUDGE_SYSTEM,
     user: ex.input,
-    model: "openai/gpt-5-mini",
+    model: "gpt-4o",
     purpose: "judge calibration",
   })
   if (res.isErr()) {

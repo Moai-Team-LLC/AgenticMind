@@ -3,8 +3,8 @@
  * (`lib/ai`) for the RAG / cards / graphrag pipeline.
  *
  * Replaces services/knowledge/internal/llm. Rather than reimplement an
- * OpenAI client, this maps the Go interfaces onto the existing OpenRouter-
- * backed helpers:
+ * OpenAI client, this maps the Go interfaces onto the existing
+ * OpenAI-compatible chat helpers:
  *   - Embedder.Embed      → embedKnowledgeText / embedKnowledgeBatch
  *   - ChatCompleter.Complete → completeKnowledge (system + user)
  *   - CompleteJSON        → completeKnowledgeJson (zod-validated)

@@ -4,7 +4,7 @@
  * (structured output), then validates each card against the ontology (kind
  * rules + validateTriple + confidence ≥ 0.5). Invalid cards are dropped, not
  * persisted with free-form text. The llm client is imported lazily so the pure
- * validation logic is testable without OpenRouter env.
+ * validation logic is testable without a live chat backend.
  */
 
 import type { CardInput } from "@agenticmind/shared/database/query/knowledge/cards"

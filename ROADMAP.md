@@ -5,8 +5,8 @@ are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Now
 
-- **Provider-agnostic core** — local embeddings (bge-m3) by default; chat via OpenRouter *or*
-  any OpenAI-compatible endpoint. No mandatory cloud key for retrieval. ✅ shipped in v0.2.
+- **Provider-agnostic core** — local embeddings (bge-m3) by default; chat via any
+  OpenAI-compatible endpoint (OpenAI, Ollama, vLLM, OpenRouter). No mandatory cloud key for retrieval. ✅ shipped in v0.2.
 - **Observability** — OpenInference/OpenTelemetry spans across retrieve → synth → filter,
   opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`. ✅
 - **Versioned MCP contract** — `MCP_CONTRACT_VERSION` + snapshot guard + `server.json`. ✅

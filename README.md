@@ -145,9 +145,9 @@ npm run dev                        # headless MCP server on :3000  (or: bun run 
 
 **Embeddings run locally by default** — a zero-key, offline, multilingual model
 (bge-m3) downloads on first use, so retrieval needs no cloud key. Only the
-*synthesis* step needs a chat model: OpenRouter (`OPENROUTER_API_KEY`) or any
-OpenAI-compatible endpoint like a local Ollama (`CHAT_PROVIDER=openai`,
-`CHAT_BASE_URL=…`). See `.env.example`.
+*synthesis* step needs a chat model: set `CHAT_API_KEY` for OpenAI (the default),
+or point `CHAT_BASE_URL` at any OpenAI-compatible endpoint — a local Ollama, vLLM,
+or OpenRouter (`https://openrouter.ai/api/v1`). See `.env.example`.
 
 Verify the build with `npm run check` (typecheck + tests) — `bun run check` works too.
 
