@@ -1,0 +1,96 @@
+# AgenticMind — drop-in production stack from published GHCR images.
+# Postgres (+ extensions) → migrations → MCP server → worker. No clone, no build.
+#
+#   cd deploy
+#   ./gen-secrets.sh          # generates DB password + MCP_API_KEY into .env
+#   # set OPENAI_API_KEY in .env
+#   docker compose up -d
+#
+# Your app then talks to the MCP server at http://localhost:3000/mcp with
+#   Authorization: Bearer <MCP_API_KEY>
+#
+# To embed in another project's compose: copy the `agenticmind-*` services, the
+# `configs:` and `volumes:` blocks, and the three secrets into your own .env.
+# Requires Docker Compose v2.23+ (inline `configs.content`).
+
+name: agenticmind
+
+configs:
+  agenticmind-db-extensions:
+    content: |
+      CREATE EXTENSION IF NOT EXISTS vector;
+      CREATE EXTENSION IF NOT EXISTS vectorscale CASCADE;
+      CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+x-am-env: &am-env
+  DATABASE_URL: postgresql://postgres:${AGENTICMIND_DB_PASSWORD}@agenticmind-db:5432/postgres
+  DATABASE_SSL: "false"
+  # Reuse your existing OpenAI key for synthesis — no OpenRouter needed.
+  CHAT_PROVIDER: openai
+  CHAT_BASE_URL: https://api.openai.com/v1
+  CHAT_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in deploy/.env}
+  CHAT_MODEL_SIMPLE: ${AGENTICMIND_CHAT_MODEL_SIMPLE:-gpt-4o-mini}
+  CHAT_MODEL_COMPLEX: ${AGENTICMIND_CHAT_MODEL_COMPLEX:-gpt-4o}
+  # Embeddings run locally (zero-key); the image bundles the runtime.
+
+services:
+  agenticmind-db:
+    image: timescale/timescaledb-ha:pg17
+    environment:
+      POSTGRES_PASSWORD: ${AGENTICMIND_DB_PASSWORD:?run ./gen-secrets.sh first}
+    configs:
+      - source: agenticmind-db-extensions
+        target: /docker-entrypoint-initdb.d/00-extensions.sql
+    volumes:
+      - agenticmind-pgdata:/home/postgres/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  agenticmind-migrate:
+    image: ghcr.io/moai-team-llc/agenticmind-server:${AGENTICMIND_TAG:-latest}
+    working_dir: /app
+    command: ["bun", "run", "db:migrate"]
+    environment:
+      DATABASE_URL: postgresql://postgres:${AGENTICMIND_DB_PASSWORD}@agenticmind-db:5432/postgres
+      DATABASE_SSL: "false"
+    depends_on:
+      agenticmind-db:
+        condition: service_healthy
+    restart: "no"
+
+  agenticmind-server:
+    image: ghcr.io/moai-team-llc/agenticmind-server:${AGENTICMIND_TAG:-latest}
+    environment:
+      <<: *am-env
+      MCP_API_KEY: ${MCP_API_KEY:?run ./gen-secrets.sh first}
+    ports:
+      - "${AGENTICMIND_PORT:-3000}:3000"
+    depends_on:
+      agenticmind-db:
+        condition: service_healthy
+      agenticmind-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  agenticmind-worker:
+    image: ghcr.io/moai-team-llc/agenticmind-worker:${AGENTICMIND_TAG:-latest}
+    environment: *am-env
+    depends_on:
+      agenticmind-db:
+        condition: service_healthy
+      agenticmind-migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  agenticmind-pgdata:

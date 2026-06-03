@@ -12,6 +12,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `ghcr.io/moai-team-llc/agenticmind-server` and `…-worker` to GHCR on each
   release (and on demand). Self-hosters can `docker pull` instead of
   clone-and-build.
+- **`MCP_API_KEY` — one-key auth.** A static shared bearer for simple
+  single-tenant self-host: set it, send it. No `issue-token`, no `AUTH_SECRET`,
+  no DB token row; grants all scopes (constant-time compared). Minted JWTs remain
+  the least-privilege, revocable path.
+- **Drop-in deploy stack** — `deploy/docker-compose.yml` + `deploy/gen-secrets.sh`
+  bring up Postgres → migrations → server → worker from the GHCR images, reusing
+  your existing **OpenAI** key (no OpenRouter). `gen-secrets.sh` auto-generates
+  the DB password and MCP key, so the only secret you supply is the OpenAI one
+  you already have. See [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ### Fixed
 
