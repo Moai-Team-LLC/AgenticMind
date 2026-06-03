@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] — 2026-06-03
 
 ### Changed
 
@@ -21,6 +21,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `api.cohere.com/v2/rerank` with `RERANK_API_KEY` + `RERANK_MODEL` (default
   `rerank-v3.5`), overridable via `RERANK_BASE_URL`. No OpenRouter needed. Off by
   default, so retrieval is unaffected unless you had rerank enabled.
+- **`material.source` reduced to a single value, `manual`.** The dead
+  crawl-connector origins (`http_url` / `google_drive` / `notion` / `telegram`),
+  orphaned when the ingestion connectors were removed in 0.3.0, are gone from the
+  `MaterialSource` type and the `materials_source_check` constraint. Migration
+  `0001` remaps any legacy rows to `manual` before tightening the check, so it is
+  safe on pre-0.3 databases. No MCP tool exposes source selection, so the tool
+  contract (1.1.0) is unchanged.
 
 ### Fixed
 
@@ -34,6 +41,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   header (the worker is Postgres-only — no broker was ever shipped). The
   contributor guide now correctly describes the engine as language-neutral
   (multilingual bge-m3 + `simple` FTS), not English-only.
+
+### Internal
+
+- **Dropped internal Go-port provenance** from ~40 source-file comments (the
+  knowledge layer was extracted from a closed Go service). Behavioral/parity
+  notes were preserved; comments only, no code or behavior change.
+
+[0.6.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.6.0
 
 ## [0.5.0] — 2026-06-03
 
