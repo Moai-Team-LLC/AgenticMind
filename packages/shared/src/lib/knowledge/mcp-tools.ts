@@ -484,7 +484,7 @@ export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "kl_ask_global",
     description:
-      "Ask a natural-language question about the knowledge base. Retrieves the most relevant passages, synthesises an answer, and returns citation markers ([1], [2], …) keyed to source materials.",
+      "Ask a natural-language question about the knowledge base. Retrieves the most relevant passages, synthesises an answer with citation markers ([1], [2], …) keyed to source materials, and returns a faithfulness check: `groundedness.verdict` (supported / partially_supported / unsupported / unknown), `groundedness.unsupportedClaims`, and `abstained` (true = the answer is not grounded — do not trust it). Gate downstream actions on these.",
     inputSchema: klAskGlobalInput,
   },
   {

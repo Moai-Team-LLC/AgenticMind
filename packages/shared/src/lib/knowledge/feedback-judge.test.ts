@@ -4,7 +4,9 @@ import {
   buildJudgeUser,
   confidenceForScore,
   judgeAllowsPromotion,
+  parseAnswerGroundedness,
   parseJudgeResponse,
+  shouldAbstain,
   truncate,
 } from "./feedback-judge"
 
@@ -61,5 +63,31 @@ describe("buildJudgeUser", () => {
   it("numbers the snippets", () => {
     const out = buildJudgeUser("q", "a", [{ title: "Doc", snippet: "text" }])
     expect(out).toContain("[1] Doc")
+  })
+})
+
+describe("parseAnswerGroundedness", () => {
+  it("parses verdict + unsupported claims (with code fences)", () => {
+    const g = parseAnswerGroundedness(
+      '```json\n{ "verdict": "partially_supported", "unsupported": ["claim X", " ", "claim Y"] }\n```',
+    )
+    expect(g.verdict).toBe("partially_supported")
+    expect(g.unsupported).toEqual(["claim X", "claim Y"])
+  })
+  it("defaults to unknown + empty on bad JSON or bad verdict", () => {
+    expect(parseAnswerGroundedness("not json")).toEqual({ verdict: "unknown", unsupported: [] })
+    expect(parseAnswerGroundedness('{"verdict":"maybe"}')).toEqual({
+      verdict: "unknown",
+      unsupported: [],
+    })
+  })
+})
+
+describe("shouldAbstain", () => {
+  it("abstains on unsupported / unknown, not on supported / partial", () => {
+    expect(shouldAbstain({ verdict: "unsupported", unsupported: [] })).toBe(true)
+    expect(shouldAbstain({ verdict: "unknown", unsupported: [] })).toBe(true)
+    expect(shouldAbstain({ verdict: "supported", unsupported: [] })).toBe(false)
+    expect(shouldAbstain({ verdict: "partially_supported", unsupported: ["x"] })).toBe(false)
   })
 })

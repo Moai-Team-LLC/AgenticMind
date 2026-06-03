@@ -19,6 +19,7 @@
       "mustMention": [
         "98%"
       ],
+      "expectGroundedness": "supported",
       "forbidPhrases": [
         "as an AI",
         "I think",

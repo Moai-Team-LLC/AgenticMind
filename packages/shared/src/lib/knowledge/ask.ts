@@ -12,6 +12,7 @@ import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type {
   Answer,
+  Citation,
   GraphContextRow,
   CallerContext,
   Source,
@@ -34,6 +35,13 @@ import {
   classifyComplexity,
   modelForComplexity,
 } from "@agenticmind/shared/lib/knowledge/complexity"
+import {
+  ANSWER_JUDGE_SYSTEM,
+  buildJudgeUser,
+  parseAnswerGroundedness,
+  shouldAbstain,
+  truncate,
+} from "@agenticmind/shared/lib/knowledge/feedback-judge"
 import { detectOutputLeak } from "@agenticmind/shared/lib/knowledge/guard"
 import { completeKnowledge, embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
 import {
@@ -80,6 +88,9 @@ export type AskProps = {
   cacheEnabled?: boolean
   topK?: number
   chatModel?: LlmModel
+  /** Run the answer-level groundedness (faithfulness) judge. Default on; set
+   * false to skip the extra cheap LLM call for latency-sensitive callers. */
+  groundednessCheck?: boolean
   /** Optional Tier-2 graph-context provider (best-effort). */
   graphContext?: (question: string, queryEmbedding: number[]) => Promise<GraphContextRow[]>
 }
@@ -194,6 +205,76 @@ const fetchCardSources = async (
     })
   }
   return out
+}
+
+/** Answer-level faithfulness judge: reuses the calibrated feedback judge over
+ * the (question, answer, cited-snippets) triple. Returns the groundedness
+ * verdict + unsupported claims and whether the substrate should abstain. */
+const judgeGroundedness = async (
+  question: string,
+  answerText: string,
+  citations: Citation[],
+): Promise<{ groundedness: Answer["groundedness"]; abstained: boolean }> => {
+  const judged = await completeKnowledge({
+    system: ANSWER_JUDGE_SYSTEM,
+    user: buildJudgeUser(
+      question,
+      answerText,
+      citations.map((c) => {
+        return { title: c.title, snippet: truncate(c.snippet, 600) }
+      }),
+    ),
+    model: modelForComplexity("simple"),
+    purpose: "groundedness judge",
+  })
+  if (judged.isErr()) {
+    console.warn(`ask: groundedness judge failed: ${judged.error.message}`)
+    return { groundedness: undefined, abstained: false }
+  }
+  const g = parseAnswerGroundedness(judged.value)
+  return {
+    groundedness: { verdict: g.verdict, unsupportedClaims: g.unsupported },
+    abstained: shouldAbstain(g),
+  }
+}
+
+/** Best-effort answer-cache store (Tier-1). A failure must never degrade the
+ * answer; only called for grounded, cited answers we're willing to canonicalise. */
+const storeAnswerBestEffort = async (props: {
+  tx: Transaction
+  question: string
+  answerText: string
+  citations: Citation[]
+  sources: Source[]
+  queryVec: number[]
+  model: string
+}): Promise<void> => {
+  const updatedByMat = new Map<string, Date | null>()
+  for (const s of props.sources) {
+    updatedByMat.set(s.materialId, s.updatedAt)
+  }
+  const citedIds = [...new Set(props.citations.map((c) => c.materialId))]
+  const fingerprint = fingerprintSources(
+    citedIds.map((id) => {
+      return { materialId: id, updatedAt: updatedByMat.get(id) ?? new Date(0) }
+    }),
+  )
+  const stored = await storeAnswer({
+    tx: props.tx,
+    entry: {
+      questionHash: hashQuestion(props.question),
+      questionText: props.question,
+      questionEmbedding: props.queryVec,
+      answerText: props.answerText,
+      citations: props.citations,
+      sourceMaterialIds: citedIds,
+      sourceFingerprint: fingerprint,
+      answerModel: props.model,
+    },
+  })
+  if (stored.isErr()) {
+    console.warn(`ask: cache store failed: ${stored.error.message}`)
+  }
 }
 
 const runAsk = async (props: AskProps): Promise<Answer> => {
@@ -340,34 +421,28 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   const citations = leak.leaked ? [] : parseCitations(answerText, sources)
   mark("output_filter", ts)
 
-  // Tier-1: best-effort cache store.
-  if (props.cacheEnabled === true && citations.length > 0) {
-    const updatedByMat = new Map<string, Date | null>()
-    for (const s of sources) {
-      updatedByMat.set(s.materialId, s.updatedAt)
-    }
-    const citedIds = [...new Set(citations.map((c) => c.materialId))]
-    const fingerprint = fingerprintSources(
-      citedIds.map((id) => {
-        return { materialId: id, updatedAt: updatedByMat.get(id) ?? new Date(0) }
-      }),
-    )
-    const stored = await storeAnswer({
+  // Faithfulness: judge how well the answer is grounded in its cited sources
+  // and abstain (don't vouch) when it isn't. One cheap classification call,
+  // reusing the calibrated feedback judge; skippable via groundednessCheck:false.
+  let groundedness: Answer["groundedness"]
+  let abstained = false
+  if (props.groundednessCheck !== false && !leak.leaked && citations.length > 0) {
+    ts = Date.now()
+    ;({ groundedness, abstained } = await judgeGroundedness(question, answerText, citations))
+    mark("groundedness", ts)
+  }
+
+  // Tier-1: best-effort cache store. Never canonicalise an answer we abstained on.
+  if (props.cacheEnabled === true && citations.length > 0 && !abstained) {
+    await storeAnswerBestEffort({
       tx: props.tx,
-      entry: {
-        questionHash: hashQuestion(question),
-        questionText: question,
-        questionEmbedding: queryVec,
-        answerText,
-        citations,
-        sourceMaterialIds: citedIds,
-        sourceFingerprint: fingerprint,
-        answerModel: model,
-      },
+      question,
+      answerText,
+      citations,
+      sources,
+      queryVec,
+      model,
     })
-    if (stored.isErr()) {
-      console.warn(`ask: cache store failed: ${stored.error.message}`)
-    }
   }
 
   return {
@@ -381,6 +456,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     rerankUsed,
     rerankLatencyMs,
     phases,
+    ...(groundedness !== undefined ? { groundedness, abstained } : {}),
   }
 }
 
@@ -398,6 +474,10 @@ const runAskTraced = async (props: AskProps): Promise<Answer> =>
     span.setAttribute(Attr.CITATION_COUNT, answer.citations.length)
     span.setAttribute(Attr.RETRIEVAL_MS, answer.retrievalMs)
     span.setAttribute(Attr.GENERATION_MS, answer.generationMs)
+    if (answer.groundedness !== undefined) {
+      span.setAttribute(Attr.GROUNDEDNESS, answer.groundedness.verdict)
+      span.setAttribute(Attr.ABSTAINED, answer.abstained ?? false)
+    }
     for (const phase of answer.phases ?? []) {
       span.addEvent(`phase.${phase.phase}`, { ms: phase.ms })
     }

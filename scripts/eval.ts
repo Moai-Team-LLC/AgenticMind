@@ -39,6 +39,9 @@ const askForEval: AskForEval = async (query) => {
     citations: res.value.citations.map((c) => {
       return { title: c.title, materialId: c.materialId }
     }),
+    ...(res.value.groundedness !== undefined
+      ? { abstained: res.value.abstained ?? false, groundednessVerdict: res.value.groundedness.verdict }
+      : {}),
   }
 }
 

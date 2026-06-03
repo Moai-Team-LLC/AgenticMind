@@ -79,3 +79,61 @@ export const truncate = (s: string, n: number): string => {
   const runes = Array.from(s)
   return runes.length <= n ? s : runes.slice(0, n).join("")
 }
+
+// ── Answer-time groundedness (faithfulness) judge ──────────────────────────
+// Same verdict semantics as JUDGE_SYSTEM (so the calibration carries over), but
+// also returns the specific claims the snippets do NOT support, so /ask can
+// surface unsupportedClaims and decide to abstain. Reuses buildJudgeUser.
+
+export type AnswerGroundedness = { verdict: JudgeVerdict; unsupported: string[] }
+
+export const ANSWER_JUDGE_SYSTEM = `You are an auditor checking whether an answer is grounded in
+the provided source snippets.
+
+Rules:
+- The snippets are the ONLY valid grounding. Outside knowledge does not count as supported.
+- Judge factual support only — not style or completeness.
+- List every factual claim in the answer that the snippets do NOT support.
+
+Return ONLY a JSON object:
+{ "verdict": "supported" | "partially_supported" | "unsupported" | "unknown",
+  "unsupported": ["<claim the snippets do not support>", ...] }`
+
+const stripCodeFences = (raw: string): string => {
+  let clean = raw.trim()
+  if (clean.startsWith("```json")) {
+    clean = clean.slice("```json".length)
+  } else if (clean.startsWith("```")) {
+    clean = clean.slice(3)
+  }
+  if (clean.endsWith("```")) {
+    clean = clean.slice(0, -3)
+  }
+  return clean.trim()
+}
+
+/** Tolerant parse of the answer-grounding judge's JSON (verdict + unsupported claims). */
+export const parseAnswerGroundedness = (raw: string): AnswerGroundedness => {
+  let obj: { verdict?: unknown; unsupported?: unknown }
+  try {
+    obj = JSON.parse(stripCodeFences(raw)) as { verdict?: unknown; unsupported?: unknown }
+  } catch {
+    return { verdict: "unknown", unsupported: [] }
+  }
+  const v = obj.verdict
+  const verdict: JudgeVerdict =
+    v === "supported" || v === "partially_supported" || v === "unsupported" || v === "unknown"
+      ? v
+      : "unknown"
+  const unsupported = Array.isArray(obj.unsupported)
+    ? obj.unsupported
+        .filter((x): x is string => typeof x === "string")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+    : []
+  return { verdict, unsupported }
+}
+
+/** Abstention policy: the substrate refuses to vouch for an ungrounded answer. */
+export const shouldAbstain = (g: AnswerGroundedness): boolean =>
+  g.verdict === "unsupported" || g.verdict === "unknown"

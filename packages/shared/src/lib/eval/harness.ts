@@ -22,6 +22,10 @@ export type EvalAssertions = {
   /** Phrases the answer MUST NOT contain (e.g. leaked system prompt, fabrications). */
   forbidPhrases?: string[]
   minAnswerChars?: number
+  /** Expect the substrate to abstain (groundedness verdict unsupported/unknown). */
+  expectAbstained?: boolean
+  /** Expect a specific answer-level groundedness verdict. */
+  expectGroundedness?: "supported" | "partially_supported" | "unsupported" | "unknown"
   /** Optional Level-2 binary judge question; requires a `judge` dep. */
   judge?: string
 }
@@ -39,6 +43,9 @@ export type EvalObservation = {
   blocked: boolean
   answer: string
   citations: { title: string; materialId: string }[]
+  /** Answer-level faithfulness, when the groundedness judge ran. */
+  abstained?: boolean
+  groundednessVerdict?: "supported" | "partially_supported" | "unsupported" | "unknown"
 }
 
 export type AskForEval = (query: string) => Promise<EvalObservation>
@@ -56,6 +63,20 @@ export type EvalReport = {
 
 const includesCi = (haystack: string, needle: string): boolean =>
   haystack.toLowerCase().includes(needle.toLowerCase())
+
+/** Answer-level faithfulness assertions (abstention + groundedness verdict). */
+const groundednessFailures = (a: EvalAssertions, obs: EvalObservation): string[] => {
+  const failures: string[] = []
+  if (a.expectAbstained !== undefined && (obs.abstained ?? false) !== a.expectAbstained) {
+    failures.push(`expected abstained=${a.expectAbstained}, got ${obs.abstained ?? false}`)
+  }
+  if (a.expectGroundedness !== undefined && obs.groundednessVerdict !== a.expectGroundedness) {
+    failures.push(
+      `expected groundedness "${a.expectGroundedness}", got "${obs.groundednessVerdict ?? "none"}"`,
+    )
+  }
+  return failures
+}
 
 /** Applies Level-1 assertions (+ optional judge) to one observation. Pure. */
 export const evaluateCase = async (
@@ -101,6 +122,8 @@ export const evaluateCase = async (
     if (a.minAnswerChars !== undefined && obs.answer.length < a.minAnswerChars) {
       failures.push(`answer shorter than ${a.minAnswerChars} chars`)
     }
+
+    failures.push(...groundednessFailures(a, obs))
 
     if (a.judge !== undefined) {
       if (judge === undefined) {

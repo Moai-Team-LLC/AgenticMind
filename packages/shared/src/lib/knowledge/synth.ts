@@ -85,6 +85,16 @@ export type Answer = {
   phases?: { phase: string; ms: number }[]
   /** Ask_telemetry row id, set after the best-effort telemetry write. */
   telemetryId?: string
+  /** Answer-level faithfulness: how well the answer is grounded in its cited
+   * sources, plus the claims the sources do NOT support. Present when the
+   * groundedness judge ran — an agent can gate on this. */
+  groundedness?: {
+    verdict: "supported" | "partially_supported" | "unsupported" | "unknown"
+    unsupportedClaims: string[]
+  }
+  /** True when the substrate declines to vouch for the answer (ungrounded). The
+   * answer text is still returned, but a caller should treat it as low-trust. */
+  abstained?: boolean
 }
 
 export const SYSTEM_PROMPT = `You are a knowledge-base assistant. Answer the user's
