@@ -9,11 +9,37 @@
  *   *    /mcp[/*]        → MCP streamable HTTP (bearer typ="mcp" JWT required)
  */
 
+import { isClientDisconnectError } from "@agenticmind/shared/lib/client-disconnect"
+
 import { mcpFetch } from "@/mcp"
 import { initTracing } from "@/tracing"
 
 // Register the OTLP trace exporter before serving, if configured (no-op otherwise).
 initTracing()
+
+// Resilience: a dropped/timed-out MCP client whose response stream is already
+// closed makes mcp-handler write to it from inside the stream pump, throwing
+// asynchronously ("Controller is already closed") outside any request try/catch.
+// Swallow that benign disconnect class so one bad client can't take the whole
+// service down; let every genuine fault stay loud (and, if uncaught, fatal).
+process.on("unhandledRejection", (reason: unknown) => {
+  if (isClientDisconnectError(reason)) {
+    console.warn(
+      "[SERVER] client dropped mid-stream (ignored):",
+      reason instanceof Error ? reason.message : reason,
+    )
+    return
+  }
+  console.error("[SERVER] unhandledRejection:", reason)
+})
+process.on("uncaughtException", (err: Error) => {
+  if (isClientDisconnectError(err)) {
+    console.warn("[SERVER] client dropped mid-stream (ignored):", err.message)
+    return
+  }
+  console.error("[SERVER] uncaughtException — exiting:", err)
+  process.exit(1)
+})
 
 const PORT = Number(process.env.PORT ?? 3000)
 

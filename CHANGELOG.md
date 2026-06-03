@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **A dropped MCP client no longer crashes the server.** When a client aborts or
+  times out mid-request, `mcp-handler` could write to the already-closed response
+  stream (`Invalid state: Controller is already closed`), throwing
+  asynchronously — outside any per-request `try/catch` — and exiting the process.
+  One misbehaving client took down the whole knowledge service. The host now
+  swallows that benign disconnect class (and only that class) at the process
+  level via `isClientDisconnectError`; genuine faults stay loud and fatal.
+
 ## [0.4.1] — 2026-06-02
 
 ### Added

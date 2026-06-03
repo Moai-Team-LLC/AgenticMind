@@ -144,6 +144,13 @@ bearer tokens independently (HS256, `AUTH_SECRET`) and serves reads
 `mem_write`) directly against Postgres. Scale replicas to match request load; the
 bottleneck is Postgres, not the server.
 
+**Client-disconnect resilience.** A client that aborts or times out mid-stream is
+handled gracefully: the host detects the benign closed-stream error class
+(`isClientDisconnectError`) and logs-and-ignores it at the process level instead
+of crashing. One dropped client never affects other in-flight requests. Genuine
+faults are not matched, so they remain fatal (and a supervisor restarts the
+process).
+
 ### Worker — single advisory-locked runner
 
 The worker self-limits to one active sweep via the Postgres advisory lock
