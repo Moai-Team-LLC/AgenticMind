@@ -4,7 +4,7 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.5.0] — 2026-06-03
 
 ### Added
 
@@ -38,6 +38,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `onnxruntime-node` (the local-embeddings addon) cannot load on musl
   (_"__getauxval: symbol not found"_). The npm CI job installs Bun so Turbo can
   still orchestrate.
+
+[0.5.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.5.0
 
 ## [0.4.1] — 2026-06-02
 
