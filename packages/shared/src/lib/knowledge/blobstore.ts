@@ -1,8 +1,7 @@
 /**
- * Object storage for raw ingestion artifacts — ported from
- * services/knowledge/internal/blobstore. The blob is the only source of truth
- * for the unmodified file (chunks/embeddings live in pgvector); reindex flows
- * read it back. S3-compatible (DigitalOcean Spaces / MinIO / AWS) via the
+ * Object storage for raw ingestion artifacts. The blob is the only source of
+ * truth for the unmodified file (chunks/embeddings live in pgvector); reindex
+ * flows read it back. S3-compatible (DigitalOcean Spaces / MinIO / AWS) via the
  * AWS SDK, plus a Nop store for dev/tests. storageUri uses the s3://bucket/key
  * form so a row records exactly where its bytes live.
  */

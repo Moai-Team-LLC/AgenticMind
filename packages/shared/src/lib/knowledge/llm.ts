@@ -1,10 +1,6 @@
 /**
- * Knowledge LLM adapter — thin wrapper over the repo's shared AI layer
- * (`lib/ai`) for the RAG / cards / graphrag pipeline.
- *
- * Replaces services/knowledge/internal/llm. Rather than reimplement an
- * OpenAI client, this maps the Go interfaces onto the existing
- * OpenAI-compatible chat helpers:
+ * Knowledge LLM adapter — a thin wrapper over the shared AI layer (`lib/ai`)
+ * for the RAG / cards / graphrag pipeline. It exposes:
  *   - Embedder.Embed      → embedKnowledgeText / embedKnowledgeBatch
  *   - ChatCompleter.Complete → completeKnowledge (system + user)
  *   - CompleteJSON        → completeKnowledgeJson (zod-validated)
@@ -62,7 +58,7 @@ export const embedKnowledgeText = (
 
 /**
  * Embeds a batch of texts, preserving input order. Returns [] for an empty
- * input (mirrors the Go embedder's ErrEmptyInput fast-path as a no-op).
+ * input (empty input is a no-op fast-path).
  */
 export const embedKnowledgeBatch = (
   texts: string[],
@@ -98,8 +94,8 @@ export const completeKnowledge = (props: {
 }
 
 /**
- * Completes a chat turn constrained to a zod schema (JSON mode). Replaces the
- * Go `CompleteJSON` capability used by graphrag / cards / qaplan extraction.
+ * Completes a chat turn constrained to a zod schema (JSON mode). The
+ * `CompleteJSON` capability used by graphrag / cards / qaplan extraction.
  */
 export const completeKnowledgeJson = <T>(props: {
   system: string

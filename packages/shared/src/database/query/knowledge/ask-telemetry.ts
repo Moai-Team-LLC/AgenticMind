@@ -1,7 +1,7 @@
 /**
- * Ask telemetry repository — ported from services/knowledge/internal/telemetry
- * (ask.go). One audit row per /ask answer: latency/cost by served_by path,
- * citation/answer sizes, rerank + graph-context usage. Privacy: only the
+ * Ask telemetry repository. One audit row per /ask answer: latency/cost by
+ * served_by path, citation/answer sizes, rerank + graph-context usage. Privacy:
+ * only the
  * sha256 of the normalised question is stored, never the text. Best-effort —
  * a write failure must never degrade the answer (callers swallow the error).
  */

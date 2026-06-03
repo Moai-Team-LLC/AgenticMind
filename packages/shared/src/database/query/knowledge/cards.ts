@@ -1,9 +1,8 @@
 /**
- * Knowledge cards repository — ported from services/knowledge/internal/cards
- * (repo_pg.go). Vector + BM25 retrieval (with kind/subject_type/confidence
- * filters), a deterministic structured Filter (Tier-2), upsert, and the
- * re-extraction backlog queries. Follows the repo's { tx } + ResultAsync
- * convention.
+ * Knowledge cards repository. Vector + BM25 retrieval (with
+ * kind/subject_type/confidence filters), a deterministic structured Filter
+ * (Tier-2), upsert, and the re-extraction backlog queries. Follows the repo's
+ * { tx } + ResultAsync convention.
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"

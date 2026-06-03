@@ -1,6 +1,5 @@
 /**
- * Chunks repository — ported from services/knowledge/internal/index
- * (repo_pg.go). Persists chunks and serves vector (pgvector cosine) + BM25
+ * Chunks repository. Persists chunks and serves vector (pgvector cosine) + BM25
  * (FTS_CONFIG tsvector) retrieval. Hybrid fusion of the two lists is done by
  * blendHybrid (lib/knowledge/blend). Follows the repo's { tx } + ResultAsync
  * convention.

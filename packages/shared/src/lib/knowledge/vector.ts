@@ -6,7 +6,7 @@
 
 /**
  * Renders an embedding as a pgvector text literal (`[0.1,0.2,...]`) for raw
- * SQL `::vector` casts. Mirrors the Go `vectorLiteral` helper — pgvector
- * accepts no binary codec over the wire, so the query path passes a string.
+ * SQL `::vector` casts. Pgvector accepts no binary codec over the wire, so the
+ * query path passes a string.
  */
 export const toVectorLiteral = (embedding: readonly number[]): string => `[${embedding.join(",")}]`

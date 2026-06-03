@@ -1,7 +1,7 @@
 /**
  * MCP token registry repo. Issued typ="mcp" JWTs are recorded here so the
  * /api/mcp route can verify them and revoke them. checkMcpToken fails CLOSED:
- * an unknown jti is inactive (mirrors the Go RevocationChecker contract).
+ * an unknown jti is inactive (fail closed).
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"

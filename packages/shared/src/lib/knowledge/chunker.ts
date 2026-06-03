@@ -1,12 +1,11 @@
 /**
- * Deterministic text chunker — ported from services/knowledge/internal/index
- * (chunker.go). Splits a body into overlapping, embedding-sized chunks with
- * Markdown-heading awareness: the document is carved into heading-bounded
- * sections and every emitted chunk is prefixed with its parent heading so
- * vector retrieval can match on the section title literally.
+ * Deterministic text chunker. Splits a body into overlapping, embedding-sized
+ * chunks with Markdown-heading awareness: the document is carved into
+ * heading-bounded sections and every emitted chunk is prefixed with its parent
+ * heading so vector retrieval can match on the section title literally.
  *
- * Determinism: same input → same output. Rune (code-point) semantics match Go
- * via Array.from, so chunk boundaries line up with the original.
+ * Determinism: same input → same output. Rune (code-point) semantics via
+ * Array.from keep chunk boundaries stable.
  */
 
 export const DEFAULT_MAX_RUNES = 900

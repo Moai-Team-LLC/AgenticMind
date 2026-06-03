@@ -1,6 +1,6 @@
 /**
- * Ingestion orchestration — ported from services/knowledge/internal/ingestion.
- * The manual-upload path: persist bytes to the blobstore, then insert a
+ * Ingestion orchestration. The manual-upload path: persist bytes to the
+ * blobstore, then insert a
  * material row (status=ingesting). Plus end-to-end delete (row first so the
  * FK cascade drops chunks/cards, then best-effort blob cleanup) and blob fetch
  * for re-indexing.

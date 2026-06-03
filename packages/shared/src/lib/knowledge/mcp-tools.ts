@@ -1,10 +1,9 @@
 /**
- * MCP tool handlers — ported from services/knowledge/internal/mcp/mcp.go.
- * Framework-agnostic: each tool is a { name, description, inputSchema, handle }
- * record delegating to the already-ported retrieval/ask/graph functions. The
- * MCP transport (streamable HTTP) + JWT + revocation mounting is an app-surface
- * concern wired in Tier-3 with @modelcontextprotocol/sdk; this module is the
- * faithful logic those tools run.
+ * MCP tool handlers. Framework-agnostic: each tool is a
+ * { name, description, inputSchema, handle } record delegating to the retrieval
+ * /ask/graph functions. The MCP transport (streamable HTTP) + JWT + revocation
+ * mounting is an app-surface concern wired in Tier-3 with
+ * @modelcontextprotocol/sdk; this module is the logic those tools run.
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"

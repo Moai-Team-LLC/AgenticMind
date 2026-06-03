@@ -5,11 +5,10 @@ import { createEnv } from "@t3-oss/env-core"
 import * as z from "zod"
 
 /**
- * Knowledge feature flags + blob bucket. These were env-controlled inside the
- * Go service (KNOWLEDGE_CARDS_ENABLED, etc.); in the absorbed TS layer they
- * gate the cards/cache/graphrag tiers and locate the ingestion blob bucket.
- * All optional — absence = disabled / nop blob store, so a minimal deployment
- * (vector RAG only) still works.
+ * Knowledge feature flags + blob bucket. Env-controlled
+ * (KNOWLEDGE_CARDS_ENABLED, etc.); they gate the cards/cache/graphrag tiers and
+ * locate the ingestion blob bucket. All optional — absence = disabled / nop
+ * blob store, so a minimal deployment (vector RAG only) still works.
  */
 export const knowledgeFeatureSettings = createEnv({
   server: {

@@ -1,9 +1,9 @@
 /**
  * Knowledge dependency factory for the web server. Builds the singletons the
- * ported knowledge libs need — blob store (DigitalOcean Spaces), optional
+ * knowledge libs need — blob store (DigitalOcean Spaces), optional
  * GraphRAG Neo4j repo — and reads the feature flags that gate cards / cache /
  * graphrag. Used by the knowledge tRPC router (Tier-3 rewiring) so the
- * procedures call TS libs directly instead of proxying the Go service.
+ * procedures call the TS libs directly.
  */
 
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"

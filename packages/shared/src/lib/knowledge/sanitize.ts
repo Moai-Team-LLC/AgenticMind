@@ -1,6 +1,5 @@
 /**
- * Text sanitisation for the indexing pipeline — ported from sanitizeForText in
- * services/knowledge/internal/index/indexer.go. Postgres `text` columns reject
+ * Text sanitisation for the indexing pipeline. Postgres `text` columns reject
  * NUL (0x00, SQLSTATE 22021) and lone surrogates; PDF extractors occasionally
  * emit stray control characters. Strip them before chunk/embed/persist.
  */

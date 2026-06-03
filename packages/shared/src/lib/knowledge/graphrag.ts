@@ -1,6 +1,5 @@
 /**
- * GraphRAG core types + deterministic entity identity — ported from
- * services/knowledge/internal/graphrag/graphrag.go. The Layer-2 knowledge
+ * GraphRAG core types + deterministic entity identity. The Layer-2 knowledge
  * graph (Neo4j) sits on top of vector retrieval: an LLM extracts entities +
  * relations from each material. Entity identity is content-derived so
  * re-extraction converges instead of duplicating nodes. This module is pure
@@ -83,7 +82,7 @@ export type MultiHopResult = { path: HopNode[] }
 /**
  * Normalises (canonicalName, type) into a stable 32-hex id. Lowercase +
  * whitespace-collapse + trim mean "GPT-4 mini", " GPT-4 MINI " and
- * "gpt-4 mini" all map to the same id. Mirrors the Go sha1[:16] → 32 hex.
+ * "gpt-4 mini" all map to the same id (sha1[:16] → 32 hex).
  */
 export const canonicalEntityId = (canonicalName: string, entityType: string): string => {
   const name = canonicalName

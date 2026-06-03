@@ -1,6 +1,5 @@
 /**
- * /ask pipeline orchestration — ported from AskWithContext in
- * services/knowledge/internal/synth/synth.go. Glues the already-ported pieces:
+ * /ask pipeline orchestration. Glues the pieces together:
  * query variants → embed → answer-cache lookup → hybrid retrieval (chunks
  * vector+BM25 blended, recency-boosted) + knowledge cards prepended → prompt →
  * chat → citation parsing → best-effort cache store. Env/DB-coupled; the pure

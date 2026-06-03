@@ -1,6 +1,5 @@
 /**
- * Indexing pipeline orchestration — ported from the Indexer in
- * services/knowledge/internal/index/indexer.go. For one material:
+ * Indexing pipeline orchestration. For one material:
  * sanitize → status=chunking → chunk → status=embedding → embed →
  * upsertChunks → status=embedded, then best-effort card extraction
  * (deterministic tabular path or LLM) that never aborts the vector path.

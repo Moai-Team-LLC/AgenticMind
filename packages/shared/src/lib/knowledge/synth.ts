@@ -1,6 +1,5 @@
 /**
- * Answer synthesis — pure core ported from
- * services/knowledge/internal/synth/synth.go. Types, the grounded-answer
+ * Answer synthesis — pure core. Types, the grounded-answer
  * system prompt (verbatim, English), prompt building, caller-context
  * enrichment, citation parsing, and served_by classification. The DB/LLM
  * pipeline (ask) and the answer cache live in sibling files.

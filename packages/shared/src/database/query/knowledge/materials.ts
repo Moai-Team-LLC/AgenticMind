@@ -1,6 +1,5 @@
 /**
- * Materials repository — ported from services/knowledge/internal/materials
- * (repo_pg.go). CRUD + status/source/metadata mutations + a pg_trgm
+ * Materials repository. CRUD + status/source/metadata mutations + a pg_trgm
  * "did you mean" title suggester. Follows the repo's query-function
  * convention: `{ tx }` props, neverthrow ResultAsync, mapDatabaseError.
  */

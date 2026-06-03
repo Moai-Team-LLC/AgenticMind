@@ -1,6 +1,5 @@
 /**
- * Semantic answer cache repository — ported from PgCache in
- * services/knowledge/internal/synth/cache.go. Two-stage lookup (exact
+ * Semantic answer cache repository. Two-stage lookup (exact
  * question_hash → cosine ≥ threshold) gated by TTL + source-drift (every cited
  * material's updated_at must predate the cached answer), soft-invalidation,
  * and stats. Raw SQL via tx.execute — the CTE is beyond the query builder.
