@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { BeliefClaim } from "./belief"
 
-import { beliefKey, detectConflicts, resolveConflict } from "./belief"
+import { beliefKey, detectConflicts, resolveConflict, summarizeContested } from "./belief"
 
 const claim = (
   actor: string | null,
@@ -72,5 +72,27 @@ describe("resolveConflict", () => {
 
   it("returns null on no claims", () => {
     expect(resolveConflict([])).toBeNull()
+  })
+})
+
+describe("summarizeContested", () => {
+  it("surfaces a disputed (subject,predicate) with one entry per competing object", () => {
+    const out = summarizeContested([
+      claim("a", "Ireland", "corporate-tax-rate", "12.5%"),
+      claim("b", "Ireland", "corporate-tax-rate", "15%"),
+      claim("c", "Estonia", "corporate-tax-rate", "20%"),
+    ])
+    expect(out).toHaveLength(1)
+    expect(out[0]?.subject).toBe("Ireland")
+    expect(out[0]?.claims.map((c) => c.object).toSorted()).toEqual(["12.5%", "15%"])
+  })
+
+  it("returns nothing when all claims agree (whitespace-insensitive)", () => {
+    expect(
+      summarizeContested([
+        claim("a", "Ireland", "rate", "12.5%"),
+        claim("b", "Ireland", "rate", "12.5 %"),
+      ]),
+    ).toEqual([])
   })
 })

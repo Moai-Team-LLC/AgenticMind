@@ -80,6 +80,37 @@ export const detectConflicts = (claims: readonly BeliefClaim[]): ConflictGroup[]
   return conflicts
 }
 
+/** Agent-facing view of a contested belief: the competing objects, each tagged
+ * with the source (actor) and date of its most-recent assertion. */
+export type ContestedClaim = {
+  subject: string
+  predicate: string
+  claims: { object: string; actorUuid: string | null; recordedAt: Date | null }[]
+}
+
+/**
+ * Surfaces conflicts instead of silently resolving them: maps detected conflict
+ * groups to a compact, agent-consumable shape so a caller can see "this is
+ * contested: object A (src, date) vs object B (src, date)" and decide for itself.
+ */
+export const summarizeContested = (claims: readonly BeliefClaim[]): ContestedClaim[] =>
+  detectConflicts(claims).map((g) => {
+    return {
+      subject: g.subject,
+      predicate: g.predicate,
+      claims: g.variants.map((v) => {
+        const newest = v.claims.reduce((a, b) =>
+          (b.recordedAt?.getTime() ?? 0) > (a.recordedAt?.getTime() ?? 0) ? b : a,
+        )
+        return {
+          object: v.object,
+          actorUuid: newest.actorUuid,
+          recordedAt: newest.recordedAt ?? null,
+        }
+      }),
+    }
+  })
+
 /**
  * Resolution rule for consolidating conflicting claims into one shared belief.
  * Ranks each candidate object by (1) distinct-actor corroboration count,
