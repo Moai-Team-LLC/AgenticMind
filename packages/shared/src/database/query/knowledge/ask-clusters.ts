@@ -1,6 +1,5 @@
 /**
- * Ask-cluster repository — ported from PgClusterRepo in
- * services/knowledge/internal/feedback/clustering.go. Persists clusters of
+ * Ask-cluster repository. Persists clusters of
  * semantically-similar /ask questions + their members, and recomputes the
  * promotion aggregate (sum(strength)/sqrt(feedback_count)) in SQL. The
  * nightly builder/promoter drive these. Follows the repo convention:

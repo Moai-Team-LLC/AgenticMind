@@ -1,5 +1,5 @@
 /**
- * Query planner — ported from services/knowledge/internal/qaplan/planner.go.
+ * Query planner.
  * Converts an NL question into a typed graphrag.MultiHopSpec (or "not
  * applicable" for narrative questions), runs the multi-hop, and formats result
  * paths as synth graph-context rows. parsePlannerResponse + formatRows are

@@ -9,7 +9,8 @@ describe("mcp scopes", () => {
 
   it("validates scope strings", () => {
     expect(isKnowledgeScope("knowledge:signal")).toBe(true)
-    expect(isKnowledgeScope("knowledge:admin")).toBe(false)
+    expect(isKnowledgeScope("knowledge:admin")).toBe(true)
+    expect(isKnowledgeScope("knowledge:destroy")).toBe(false)
   })
 
   it("grants only what is present (fail-closed)", () => {
@@ -21,8 +22,10 @@ describe("mcp scopes", () => {
     expect(hasScope([], "knowledge:read")).toBe(false)
   })
 
-  it("maps the write tool to a write scope", () => {
+  it("maps each tool to its least-privilege scope", () => {
     expect(TOOL_SCOPE.kl_signal).toBe("knowledge:signal")
     expect(TOOL_SCOPE.kl_ask_global).toBe("knowledge:read")
+    expect(TOOL_SCOPE.kl_ingest).toBe("knowledge:write")
+    expect(TOOL_SCOPE.kl_forget).toBe("knowledge:admin")
   })
 })

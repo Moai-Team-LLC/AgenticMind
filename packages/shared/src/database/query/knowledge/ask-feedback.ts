@@ -1,8 +1,7 @@
 /**
- * Feedback event repository — ported from the Record/ListSince/CountByAsk
- * surface of services/knowledge/internal/feedback (repo_pg.go). One row per
- * /ask feedback signal; the cluster builder scans recent rows. Strength is
- * clamped to [-1, 1] on write.
+ * Feedback event repository — record / list-since / count-by-ask surface. One
+ * row per /ask feedback signal; the cluster builder scans recent rows. Strength
+ * is clamped to [-1, 1] on write.
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"

@@ -1,10 +1,9 @@
 /**
- * MCP tool handlers — ported from services/knowledge/internal/mcp/mcp.go.
- * Framework-agnostic: each tool is a { name, description, inputSchema, handle }
- * record delegating to the already-ported retrieval/ask/graph functions. The
- * MCP transport (streamable HTTP) + JWT + revocation mounting is an app-surface
- * concern wired in Tier-3 with @modelcontextprotocol/sdk; this module is the
- * faithful logic those tools run.
+ * MCP tool handlers. Framework-agnostic: each tool is a
+ * { name, description, inputSchema, handle } record delegating to the retrieval
+ * /ask/graph functions. The MCP transport (streamable HTTP) + JWT + revocation
+ * mounting is an app-surface concern wired in Tier-3 with
+ * @modelcontextprotocol/sdk; this module is the logic those tools run.
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
@@ -19,6 +18,7 @@ import { searchChunks } from "@agenticmind/shared/database/query/knowledge/chunk
 import { recordGuardEvent } from "@agenticmind/shared/database/query/knowledge/guard-events"
 import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materials"
 import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
+import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import {
   defaultStrengthFor,
@@ -27,6 +27,7 @@ import {
 } from "@agenticmind/shared/lib/knowledge/feedback"
 import { guardInput, redactPii } from "@agenticmind/shared/lib/knowledge/guard"
 import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
+import { removeMaterial } from "@agenticmind/shared/lib/knowledge/ingestion"
 import { embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
 import { hasScope } from "@agenticmind/shared/lib/knowledge/mcp-scopes"
 import { createGraphContextProvider } from "@agenticmind/shared/lib/knowledge/qaplan"
@@ -412,6 +413,7 @@ export const memRecall = async (deps: McpToolDeps, args: z.infer<typeof memRecal
 export const klIngestInput = z.object({
   title: z.string().min(1).max(300),
   text: z.string().min(1).max(200_000),
+  language: z.enum(SUPPORTED_LANGUAGES).optional(),
 })
 
 /**
@@ -434,11 +436,35 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
     text: args.text,
     cardsEnabled: deps.cardsEnabled,
     graphragEnabled: deps.graph !== undefined,
+    language: args.language,
   })
   if (res.isErr()) {
     throw new Error(`kl_ingest: ${res.error.message}`)
   }
   return res.value
+}
+
+export const klForgetInput = z.object({ id: z.string().min(1) })
+
+/**
+ * Kl_forget -- the inverse of kl_ingest: permanently delete a material by its
+ * UUID and everything derived from it (chunks, embeddings, fact cards, graph
+ * mentions; best-effort blob cleanup). For retraction / right-to-erasure.
+ * Requires the elevated knowledge:admin scope. Idempotent — removed=false when
+ * the id does not exist.
+ */
+export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetInput>) => {
+  if (!hasScope(deps.scopes, "knowledge:admin")) {
+    throw new Error("kl_forget: missing required scope 'knowledge:admin'")
+  }
+  if (deps.blobStore === undefined) {
+    throw new Error("kl_forget: blob store not configured")
+  }
+  const res = await removeMaterial({ tx: deps.tx, blobStore: deps.blobStore, id: args.id })
+  if (res.isErr()) {
+    throw new Error(`kl_forget: ${res.error.message}`)
+  }
+  return { id: args.id, ...res.value }
 }
 
 /**
@@ -448,7 +474,7 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.0.0"
+export const MCP_CONTRACT_VERSION = "1.2.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
@@ -498,5 +524,11 @@ export const KNOWLEDGE_MCP_TOOLS = [
     description:
       "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Later kl_ask_global / kl_search retrieve and cite it.",
     inputSchema: klIngestInput,
+  },
+  {
+    name: "kl_forget",
+    description:
+      "Forget (permanently delete) a single material by its UUID and everything derived from it — chunks, embeddings, fact cards, and graph mentions. The inverse of kl_ingest, for retraction or right-to-erasure. Requires the elevated knowledge:admin scope.",
+    inputSchema: klForgetInput,
   },
 ] as const

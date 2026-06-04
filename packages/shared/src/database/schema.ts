@@ -1,7 +1,6 @@
 // AgenticMind schema barrel — knowledge core + principal only.
 // The per-ask audit trail is `ask_telemetry`; feedback signals key off it.
-// (The source product's multi-route assistant tables were removed in the
-// extraction — the MCP path calls ask() directly.)
+// (There are no multi-route assistant tables — the MCP path calls ask() directly.)
 
 import * as KnowledgeAnswerCache from "@agenticmind/shared/database/schema/knowledge/answer-cache"
 import * as KnowledgeAskClusterMembers from "@agenticmind/shared/database/schema/knowledge/ask-cluster-members"

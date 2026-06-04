@@ -3,7 +3,7 @@
   "name": "io.github.Moai-Team-LLC/agenticmind",
   "title": "AgenticMind",
   "description": "Auditable, self-improving knowledge & memory layer for AI agents over MCP.",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "websiteUrl": "https://github.com/Moai-Team-LLC/AgenticMind",
   "repository": {
     "url": "https://github.com/Moai-Team-LLC/AgenticMind",
@@ -43,7 +43,7 @@
       "runtime": "Bun",
       "license": "Apache-2.0",
       "selfHosted": true,
-      "contractVersion": "1.0.0",
+      "contractVersion": "1.2.0",
       "implements": {
         "name": "Agentic Product Standard",
         "url": "https://github.com/Moai-Team-LLC/agentic-product-standard"
@@ -79,6 +79,11 @@
           "name": "kl_ingest",
           "scope": "knowledge:write",
           "summary": "Add text to the corpus (chunked, embedded, distilled into fact cards, graph-extracted)."
+        },
+        {
+          "name": "kl_forget",
+          "scope": "knowledge:admin",
+          "summary": "Permanently delete a material and everything derived from it (inverse of kl_ingest)."
         },
         {
           "name": "kl_signal",

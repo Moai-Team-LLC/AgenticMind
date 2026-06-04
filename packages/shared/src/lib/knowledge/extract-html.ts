@@ -1,6 +1,5 @@
 /**
- * HTML → plain text extraction — ported from the extractHTML path in
- * services/knowledge/internal/extract/extract.go. Walks the DOM (htmlparser2),
+ * HTML → plain text extraction. Walks the DOM (htmlparser2),
  * prefers the first <article>/<main> subtree, drops boilerplate tags, inserts
  * paragraph breaks on block elements, then prunes short footer/CTA lines.
  */

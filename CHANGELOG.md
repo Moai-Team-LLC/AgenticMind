@@ -4,6 +4,116 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-06-03
+
+### Changed
+
+- **BREAKING: OpenRouter is no longer a special-cased provider.** Chat is now a
+  single OpenAI-compatible seam configured by `CHAT_BASE_URL` (default
+  `https://api.openai.com/v1`) + `CHAT_API_KEY` — point it at OpenAI, Ollama,
+  vLLM, **or OpenRouter** (`CHAT_BASE_URL=https://openrouter.ai/api/v1`). The
+  `CHAT_PROVIDER` switch, the dedicated OpenRouter client (`@openrouter/ai-sdk-provider`),
+  and `OPENROUTER_API_KEY` are gone; default models are now `gpt-4o-mini` / `gpt-4o`.
+  No capability is lost — OpenRouter is still reachable via the base URL.
+  **Migration:** OpenRouter users set `CHAT_BASE_URL=https://openrouter.ai/api/v1`,
+  `CHAT_API_KEY=<openrouter-key>`, and `CHAT_MODEL_*` to OpenRouter slugs.
+- **Rerank moved to native Cohere.** The optional cross-encoder now calls
+  `api.cohere.com/v2/rerank` with `RERANK_API_KEY` + `RERANK_MODEL` (default
+  `rerank-v3.5`), overridable via `RERANK_BASE_URL`. No OpenRouter needed. Off by
+  default, so retrieval is unaffected unless you had rerank enabled.
+- **`material.source` reduced to a single value, `manual`.** The dead
+  crawl-connector origins (`http_url` / `google_drive` / `notion` / `telegram`),
+  orphaned when the ingestion connectors were removed in 0.3.0, are gone from the
+  `MaterialSource` type and the `materials_source_check` constraint. Migration
+  `0001` remaps any legacy rows to `manual` before tightening the check, so it is
+  safe on pre-0.3 databases. No MCP tool exposes source selection, so the tool
+  contract (1.1.0) is unchanged.
+
+### Fixed
+
+- **Stale OpenRouter-era defaults and references purged.** The in-code model
+  fallbacks used when `SKIP_VALIDATION` is set (the dev default) were still
+  OpenRouter slugs (`openai/gpt-5-mini`, `google/gemini-3.1-flash-lite-preview`)
+  that don't resolve against OpenAI — now `gpt-4o` / `gpt-4o-mini`, matching the
+  zod defaults. Also swept lingering `OPENROUTER_API_KEY` / `CHAT_PROVIDER`
+  mentions out of the docs, Dockerfiles, `setup.sh`, `turbo.json` (cache-key env),
+  the calibrate/eval scripts, and a phantom `BullMQ` reference in the worker
+  header (the worker is Postgres-only — no broker was ever shipped). The
+  contributor guide now correctly describes the engine as language-neutral
+  (multilingual bge-m3 + `simple` FTS), not English-only.
+
+### Internal
+
+- **Dropped internal Go-port provenance** from ~40 source-file comments (the
+  knowledge layer was extracted from a closed Go service). Behavioral/parity
+  notes were preserved; comments only, no code or behavior change.
+
+[0.6.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.6.0
+
+## [0.5.0] — 2026-06-03
+
+### Added
+
+- **Published container images** — a `release-images` workflow builds and pushes
+  `ghcr.io/moai-team-llc/agenticmind-server` and `…-worker` to GHCR on each
+  release (and on demand). Self-hosters can `docker pull` instead of
+  clone-and-build.
+- **`MCP_API_KEY` — one-key auth.** A static shared bearer for simple
+  single-tenant self-host: set it, send it. No `issue-token`, no `AUTH_SECRET`,
+  no DB token row; grants all scopes (constant-time compared). Minted JWTs remain
+  the least-privilege, revocable path.
+- **Drop-in deploy stack** — `deploy/docker-compose.yml` + `deploy/gen-secrets.sh`
+  bring up Postgres → migrations → server → worker from the GHCR images, reusing
+  your existing **OpenAI** key (no OpenRouter). `gen-secrets.sh` auto-generates
+  the DB password and MCP key, so the only secret you supply is the OpenAI one
+  you already have. See [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+### Fixed
+
+- **A dropped MCP client no longer crashes the server.** When a client aborts or
+  times out mid-request, `mcp-handler` could write to the already-closed response
+  stream (`Invalid state: Controller is already closed`), throwing
+  asynchronously — outside any per-request `try/catch` — and exiting the process.
+  One misbehaving client took down the whole knowledge service. The host now
+  swallows that benign disconnect class (and only that class) at the process
+  level via `isClientDisconnectError`; genuine faults stay loud and fatal.
+- **Docker images build and run again.** `packageManager` had been set to `npm`,
+  which made `turbo prune` look for a `package-lock.json` that isn't committed and
+  broke the image build (_"Cannot prune without parsed lockfile"_) — reverted to
+  `bun`. The images also moved off Alpine to a glibc base, because
+  `onnxruntime-node` (the local-embeddings addon) cannot load on musl
+  (_"__getauxval: symbol not found"_). The npm CI job installs Bun so Turbo can
+  still orchestrate.
+
+[0.5.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.5.0
+
+## [0.4.1] — 2026-06-02
+
+### Added
+
+- **Blocked-CDN / offline embeddings** — `EMBED_HF_ENDPOINT` (a Hugging Face
+  mirror such as `https://hf-mirror.com`) and `EMBED_CACHE_DIR` (a pre-seedable
+  model cache) let the default in-process embedder work when the Hugging Face CDN
+  (`cdn-lfs.huggingface.co` / `cas-bridge.xethub.hf.co`) is blocked or the host is
+  air-gapped. See `docs/OPERATIONS.md` § Switching model providers.
+
+[0.4.1]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.4.1
+
+## [0.4.0] — 2026-06-02
+
+### Added
+
+- **`kl_forget` MCP tool** — the inverse of `kl_ingest`: permanently delete a
+  material by its UUID and everything derived from it (chunks, embeddings, fact
+  cards, graph mentions; best-effort blob cleanup). For retraction /
+  right-to-erasure. Requires the new, elevated **`knowledge:admin`** scope
+  (strictly above `knowledge:write`). The MCP tool contract is bumped to
+  **1.1.0** (additive — existing clients are unaffected).
+- **README polish** — an animated `kl_ask_global` demo and the AgenticMind logo
+  in the header.
+
+[0.4.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.4.0
+
 ## [0.3.0] — 2026-06-01
 
 Runs on plain Node now — Bun is no longer required — and the knowledge layer is

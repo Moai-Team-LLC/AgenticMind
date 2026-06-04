@@ -33,9 +33,13 @@ import {
   memWriteInput,
   klIngest,
   klIngestInput,
+  klForget,
+  klForgetInput,
   MCP_CONTRACT_VERSION,
 } from "@agenticmind/shared/lib/knowledge/mcp-tools"
+import { mcpSettings } from "@agenticmind/shared/settings/mcp-settings"
 import { createMcpHandler, withMcpAuth } from "mcp-handler"
+import { timingSafeEqual } from "node:crypto"
 
 import { getDb } from "@/server/lib/database"
 import {
@@ -210,6 +214,21 @@ const handler = createMcpHandler(
       },
     )
 
+    registerKlTool(
+      server,
+      "kl_forget",
+      "Forget knowledge",
+      "Permanently delete a material by its UUID and everything derived from it (chunks, cards, graph). The inverse of kl_ingest, for retraction / right-to-erasure. Requires the knowledge:admin scope.",
+      klForgetInput,
+      async (args, extra) => {
+        try {
+          return jsonContent(await klForget(toolDeps(extra), args))
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "kl_forget failed")
+        }
+      },
+    )
+
     // Layer-2 tool only when GraphRAG is enabled.
     if (knowledgeFeatureFlags().graphragEnabled && getKnowledgeGraphRepo() !== undefined) {
       registerKlTool(
@@ -243,10 +262,42 @@ const handler = createMcpHandler(
   },
 )
 
-/** Fail-closed bearer verification: signature + typ="mcp" + active jti. */
+// Static-key principal (a fixed UUID so memory writes have a stable owner) and
+// the scopes a static key grants — everything, since it is the trusted
+// single-tenant key. For least-privilege, use minted JWTs instead.
+const API_KEY_PRINCIPAL = "00000000-0000-0000-0000-000000000001"
+const API_KEY_SCOPES = [
+  "knowledge:read",
+  "knowledge:write",
+  "knowledge:admin",
+  "memory:read",
+  "memory:write",
+]
+
+/** Constant-time string compare (avoid leaking the key through timing). */
+const constantTimeEqual = (a: string, b: string): boolean => {
+  const ab = Buffer.from(a, "utf8")
+  const bb = Buffer.from(b, "utf8")
+  return ab.length === bb.length && timingSafeEqual(ab, bb)
+}
+
+/**
+ * Fail-closed bearer verification. Two accepted forms:
+ *   1) the static `MCP_API_KEY` (simple single-tenant — no mint, no DB row), or
+ *   2) a per-token typ="mcp" JWT whose jti is active (least-privilege, revocable).
+ */
 const verifyMcpAccess = async (_req: Request, bearer?: string): Promise<AuthInfo | undefined> => {
   if (bearer === undefined || bearer === "") {
     return undefined
+  }
+  const apiKey = mcpSettings.MCP_API_KEY
+  if (apiKey !== undefined && apiKey.length > 0 && constantTimeEqual(bearer, apiKey)) {
+    return {
+      token: bearer,
+      scopes: API_KEY_SCOPES,
+      clientId: API_KEY_PRINCIPAL,
+      extra: { userUuid: API_KEY_PRINCIPAL, actorType: "service" },
+    }
   }
   const verified = await verifyMcpToken(bearer)
   if (verified === null) {

@@ -8,7 +8,7 @@
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
-import type { BeliefInsert, BeliefSelect } from "@agenticmind/shared/database/schema"
+import type { BeliefSelect } from "@agenticmind/shared/database/schema"
 import type { SQL } from "drizzle-orm"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
@@ -72,7 +72,7 @@ export const assertBelief = (props: {
         }
       }
 
-      const values: BeliefInsert = {
+      const values = {
         actorUuid: b.actorUuid,
         subject: b.subject,
         predicate: b.predicate,
@@ -83,6 +83,7 @@ export const assertBelief = (props: {
         embedding: b.embedding ?? null,
         supersedes: supersedesId,
         validFrom: b.validFrom ?? undefined,
+        objectTsv: sql`to_tsvector('simple'::regconfig, coalesce(${b.subject}, '') || ' ' || coalesce(${b.object}, ''))`,
       }
       const [created] = await tx.insert(beliefs).values(values).returning()
       if (created === undefined) {

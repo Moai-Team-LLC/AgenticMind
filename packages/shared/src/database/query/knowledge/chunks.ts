@@ -1,6 +1,5 @@
 /**
- * Chunks repository — ported from services/knowledge/internal/index
- * (repo_pg.go). Persists chunks and serves vector (pgvector cosine) + BM25
+ * Chunks repository. Persists chunks and serves vector (pgvector cosine) + BM25
  * (FTS_CONFIG tsvector) retrieval. Hybrid fusion of the two lists is done by
  * blendHybrid (lib/knowledge/blend). Follows the repo's { tx } + ResultAsync
  * convention.
@@ -8,11 +7,11 @@
 
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { ScoredHit } from "@agenticmind/shared/lib/knowledge/blend"
-import type { SQL } from "drizzle-orm"
+import type { AnyColumn, SQL } from "drizzle-orm"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { chunks } from "@agenticmind/shared/database/schema"
-import { FTS_CONFIG } from "@agenticmind/shared/database/schema/knowledge/_config"
+import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
 import { asc, eq, isNotNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
@@ -34,10 +33,16 @@ export type KnowledgeHit = ScoredHit & {
 }
 
 /** Atomically replaces a material's chunks (delete + insert). Pass a tx for atomicity. */
-export const upsertChunks = (props: { tx: Transaction; materialId: string; items: ChunkInput[] }) =>
+export const upsertChunks = (props: {
+  tx: Transaction
+  materialId: string
+  items: ChunkInput[]
+  ftsConfig?: string
+}) =>
   ResultAsync.fromPromise(
     (async () => {
       await props.tx.delete(chunks).where(eq(chunks.materialId, props.materialId))
+      const config = props.ftsConfig ?? "simple"
       if (props.items.length > 0) {
         await props.tx.insert(chunks).values(
           props.items.map((c) => {
@@ -48,6 +53,8 @@ export const upsertChunks = (props: { tx: Transaction; materialId: string; items
               tokenCount: c.tokenCount ?? null,
               embedding: c.embedding ?? null,
               embeddingModel: c.embeddingModel ?? null,
+              ftsConfig: config,
+              bodyTsv: sql`to_tsvector(${config}::regconfig, coalesce(${c.body}, ''))`,
             }
           }),
         )
@@ -146,19 +153,33 @@ export const dedupeVariants = (query: string, variants: string[] | undefined): s
 }
 
 /**
- * OR-combined tsquery fragment for the given variants under the configured FTS
- * config (FTS_CONFIG). Must use the same config as the generated `*_tsv` columns
- * or the `@@` match never fires. Default `simple` is language-neutral.
+ * OR-combined tsquery fragment for the given variants under the default FTS
+ * config. Backwards-compatible.
  */
 export const variantTsQuery = (variants: string[]): SQL => {
-  const parts = variants.map((v) => sql`plainto_tsquery(${FTS_CONFIG}, ${v})`)
+  const parts = variants.map((v) => sql`plainto_tsquery('simple', ${v})`)
   return sql`(${sql.join(parts, sql` || `)})`
 }
 
 /**
+ * Builds an index-friendly OR-expanded WHERE clause across all supported languages
+ * to allow Postgres to perform index scans on body_tsv/object_tsv.
+ */
+export const buildFtsWhereClause = (
+  table: { ftsConfig: AnyColumn; bodyTsv: AnyColumn },
+  variants: string[],
+): SQL => {
+  const branches = SUPPORTED_LANGUAGES.map((lang) => {
+    const parts = variants.map((v) => sql`plainto_tsquery(${lang}::regconfig, ${v})`)
+    const tsQuery = sql`(${sql.join(parts, sql` || `)})`
+    return sql`(${table.ftsConfig} = ${lang} AND ${table.bodyTsv} @@ ${tsQuery})`
+  })
+  return sql`(${sql.join(branches, sql` OR `)})`
+}
+
+/**
  * BM25 full-text search over the generated body_tsv. Each variant fans into a
- * plainto_tsquery under the configured FTS_CONFIG, all OR-combined. Empty
- * query → []. Score is the raw ts_rank_cd value (caller normalises before blending).
+ * plainto_tsquery under the configured ftsConfig per-row, all OR-combined.
  */
 export const searchChunksBm25 = (props: {
   tx: Transaction
@@ -173,7 +194,12 @@ export const searchChunksBm25 = (props: {
   const limit =
     props.limit !== undefined && props.limit > 0 && props.limit <= 100 ? props.limit : 10
 
-  const tsQuery = variantTsQuery(variants)
+  const whereClause = buildFtsWhereClause(chunks, variants)
+
+  const tsQueryParts = variants.map(
+    (v) => sql`plainto_tsquery(${chunks.ftsConfig}::regconfig, ${v})`,
+  )
+  const tsQuery = sql`(${sql.join(tsQueryParts, sql` || `)})`
 
   return ResultAsync.fromPromise(
     props.tx
@@ -182,11 +208,11 @@ export const searchChunksBm25 = (props: {
         materialId: chunks.materialId,
         ordinal: chunks.ordinal,
         body: chunks.body,
-        score: sql<number>`ts_rank_cd(body_tsv, ${tsQuery})`.as("score"),
+        score: sql<number>`ts_rank_cd(${chunks.bodyTsv}, ${tsQuery})`.as("score"),
       })
       .from(chunks)
-      .where(sql`body_tsv @@ ${tsQuery}`)
-      .orderBy(sql`ts_rank_cd(body_tsv, ${tsQuery}) DESC`)
+      .where(whereClause)
+      .orderBy(sql`ts_rank_cd(${chunks.bodyTsv}, ${tsQuery}) DESC`)
       .limit(limit),
     mapDatabaseError,
   )

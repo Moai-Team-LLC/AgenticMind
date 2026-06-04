@@ -1,8 +1,7 @@
 /**
  * Ontology V0 — typed-card schema with validation and free-form mapping.
  *
- * Ported from services/knowledge/internal/ontology (ontology.go +
- * confidence.go). The cards extractor uses validateTriple to drop unknown
+ * The cards extractor uses validateTriple to drop unknown
  * subject_types / predicates before write; graphrag/qaplan use the free-form
  * mappers to canonicalise LLM drift onto the frozen V0 vocabulary.
  */
@@ -18,7 +17,7 @@ import {
   PREDICATES,
 } from "@agenticmind/shared/lib/knowledge/ontology-data"
 
-// --- confidence cutoffs (ontology/confidence.go) ---
+// --- confidence cutoffs ---
 
 /** Floor for cards considered during search and the /ask hybrid pool. */
 export const RETRIEVAL_MIN_CONFIDENCE = 0.5
@@ -38,9 +37,9 @@ export type Schema = {
 }
 
 /**
- * Builds the schema and runs the same cross-reference consistency checks the
- * Go Load() does: unique names, and every predicate subject/object type must
- * reference a known entity type. Throws on inconsistency (build-time bug).
+ * Builds the schema and runs cross-reference consistency checks: unique names,
+ * and every predicate subject/object type must reference a known entity type.
+ * Throws on inconsistency (build-time bug).
  */
 const buildSchema = (entityTypes: readonly EntityType[], preds: readonly Predicate[]): Schema => {
   const types = new Map<string, EntityType>()
@@ -96,7 +95,7 @@ const buildSchema = (entityTypes: readonly EntityType[], preds: readonly Predica
   }
 }
 
-/** The frozen V0 ontology singleton (equivalent to MustLoadEmbedded). */
+/** The frozen V0 ontology singleton. */
 export const ontologyV0: Schema = buildSchema(ENTITY_TYPES, PREDICATES)
 
 export const isValidSubjectType = (name: string): boolean => ontologyV0.types.has(name)

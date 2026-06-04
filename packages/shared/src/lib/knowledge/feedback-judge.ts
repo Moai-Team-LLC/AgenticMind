@@ -1,8 +1,7 @@
 /**
  * Pure LLM-judge helpers for the feedback promoter — kept env-free (no llm /
  * db imports) so they unit-test in isolation. The promoter (feedback-
- * promoter.ts) wires these to the chat model + cluster repo. Ported from the
- * judge bits of services/knowledge/internal/feedback/promoter.go.
+ * promoter.ts) wires these to the chat model + cluster repo.
  */
 
 export type JudgeCitation = { title: string; snippet: string }

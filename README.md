@@ -122,6 +122,7 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `kl_get_material`    | `knowledge:read`   | fetch a material by id                                              |
 | `kl_graph_neighbors` | `knowledge:read`   | related materials via the knowledge graph                           |
 | `kl_ingest`          | `knowledge:write`  | add text (chunked, embedded, distilled into cards, graph-extracted) |
+| `kl_forget`          | `knowledge:admin`  | delete a material + all derived chunks/cards/graph (inverse of ingest) |
 | `kl_signal`          | `knowledge:signal` | emit a programmatic compounding signal on a prior answer            |
 | `mem_recall`         | `memory:read`      | recall beliefs (private ∪ shared); semantic or `asOf` time-travel   |
 | `mem_write`          | `memory:write`     | record a belief into private memory (bitemporal, revision-aware)    |
@@ -144,9 +145,9 @@ npm run dev                        # headless MCP server on :3000  (or: bun run 
 
 **Embeddings run locally by default** — a zero-key, offline, multilingual model
 (bge-m3) downloads on first use, so retrieval needs no cloud key. Only the
-*synthesis* step needs a chat model: OpenRouter (`OPENROUTER_API_KEY`) or any
-OpenAI-compatible endpoint like a local Ollama (`CHAT_PROVIDER=openai`,
-`CHAT_BASE_URL=…`). See `.env.example`.
+*synthesis* step needs a chat model: set `CHAT_API_KEY` for OpenAI (the default),
+or point `CHAT_BASE_URL` at any OpenAI-compatible endpoint — a local Ollama, vLLM,
+or OpenRouter (`https://openrouter.ai/api/v1`). See `.env.example`.
 
 Verify the build with `npm run check` (typecheck + tests) — `bun run check` works too.
 

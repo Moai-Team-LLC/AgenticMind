@@ -11,7 +11,9 @@ const embeddingModel = z.enum(["openai/text-embedding-3-large", "openai/text-emb
 
 type EmbeddingModel = z.infer<typeof embeddingModel>
 
-const rerankModel = z.enum(["cohere/rerank-v3.5", "cohere/rerank-4-pro", "cohere/rerank-4-fast"])
+// Free-form so any reranker id works — native Cohere (`rerank-v3.5`,
+// `rerank-multilingual-v3.0`, …) or whatever your RERANK_BASE_URL accepts.
+const rerankModel = z.string().min(1)
 
 type RerankModel = z.infer<typeof rerankModel>
 

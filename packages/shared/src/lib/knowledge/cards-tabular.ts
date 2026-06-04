@@ -1,6 +1,5 @@
 /**
- * Deterministic tabular card extractor — ported from
- * services/knowledge/internal/cards/tabular_extractor.go. An operator pins a
+ * Deterministic tabular card extractor. An operator pins a
  * column→ontology mapping on a CSV/xlsx material; each data row emits a qa
  * summary card + one fact card per mapped predicate. No LLM, no variance,
  * fully auditable.

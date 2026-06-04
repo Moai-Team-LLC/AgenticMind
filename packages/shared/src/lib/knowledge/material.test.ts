@@ -4,13 +4,14 @@ import { isMaterialSource, isMaterialStatus, MATERIAL_SOURCES, MATERIAL_STATUSES
 
 describe("material enums", () => {
   it("freezes the source and status vocabularies", () => {
-    expect(MATERIAL_SOURCES).toEqual(["manual", "http_url", "google_drive", "notion", "telegram"])
+    expect(MATERIAL_SOURCES).toEqual(["manual"])
     expect(MATERIAL_STATUSES).toEqual(["ingesting", "chunking", "embedding", "embedded", "failed"])
   })
 
   it("guards sources", () => {
-    expect(isMaterialSource("notion")).toBe(true)
-    expect(isMaterialSource("email")).toBe(false)
+    expect(isMaterialSource("manual")).toBe(true)
+    // Dropped crawl-connector origins are no longer valid sources.
+    expect(isMaterialSource("notion")).toBe(false)
   })
 
   it("guards statuses", () => {

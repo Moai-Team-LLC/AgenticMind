@@ -3,8 +3,9 @@ import { bigint, check, index, jsonb, pgTable, text, timestamp, uuid } from "dri
 
 /**
  * Materials are the unit of knowledge: PDF, DOCX, web page, Notion page,
- * Telegram chat, etc. The service does NOT own users — `created_by` is a
- * Next.js cuid (text), mirrored from the JWT subject. No FK across services.
+ * Telegram chat, etc. The knowledge layer does not own principals —
+ * `created_by` is an opaque text id (the JWT subject), so there is no
+ * cross-table FK to enforce here.
  *
  * status pipeline: ingesting → chunking → embedding → embedded | failed
  */
@@ -16,6 +17,7 @@ const materials = pgTable(
       .default(sql`gen_random_uuid()`),
     title: text("title").notNull(),
     source: text("source").notNull(),
+    ftsConfig: text("fts_config").notNull().default("simple"),
     status: text("status").notNull().default("ingesting"),
     mimeType: text("mime_type"),
     sizeBytes: bigint("size_bytes", { mode: "number" }),
@@ -37,10 +39,7 @@ const materials = pgTable(
     index("materials_created_by_idx").on(table.createdBy),
     index("materials_created_at_idx").on(table.createdAt.desc()),
     index("materials_title_trgm_idx").using("gin", sql`lower(${table.title}) gin_trgm_ops`),
-    check(
-      "materials_source_check",
-      sql`${table.source} IN ('manual', 'http_url', 'google_drive', 'notion', 'telegram')`,
-    ),
+    check("materials_source_check", sql`${table.source} IN ('manual')`),
     check(
       "materials_status_check",
       sql`${table.status} IN ('ingesting', 'chunking', 'embedding', 'embedded', 'failed')`,

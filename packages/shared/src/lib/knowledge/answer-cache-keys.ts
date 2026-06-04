@@ -1,6 +1,5 @@
 /**
- * Answer-cache key helpers — pure, ported from
- * services/knowledge/internal/synth/cache.go. Question normalisation + sha256
+ * Answer-cache key helpers — pure. Question normalisation + sha256
  * hashing drive the exact-match lookup; the source fingerprint captures what
  * the cached answer was conditioned on. No DB — unit-testable.
  */

@@ -1,6 +1,5 @@
 /**
- * Materials repository — ported from services/knowledge/internal/materials
- * (repo_pg.go). CRUD + status/source/metadata mutations + a pg_trgm
+ * Materials repository. CRUD + status/source/metadata mutations + a pg_trgm
  * "did you mean" title suggester. Follows the repo's query-function
  * convention: `{ tx }` props, neverthrow ResultAsync, mapDatabaseError.
  */
@@ -23,6 +22,7 @@ export type CreateMaterialInput = {
   storageUri?: string | null
   sourceUrl?: string | null
   createdBy?: string | null
+  ftsConfig?: string
 }
 
 export type MaterialSuggestion = {
@@ -41,6 +41,7 @@ export const createMaterial = (props: { tx: Transaction; input: CreateMaterialIn
           ...(props.input.id !== undefined ? { id: props.input.id } : {}),
           title: props.input.title,
           source: props.input.source,
+          ftsConfig: props.input.ftsConfig ?? "simple",
           status: "ingesting",
           mimeType: props.input.mimeType ?? null,
           sizeBytes: props.input.sizeBytes ?? null,

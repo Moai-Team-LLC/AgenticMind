@@ -1,8 +1,8 @@
 /**
- * Tabular extraction (CSV/TSV/xlsx shared helpers) — ported from
- * services/knowledge/internal/extract/tabular.go. Parses delimited text into a
- * Table (header auto-detect + ragged-row padding) and flattens tables into the
- * chunker-friendly "row-as-paragraph" text so each row lands in its own chunk.
+ * Tabular extraction (CSV/TSV/xlsx shared helpers). Parses delimited text into
+ * a Table (header auto-detect + ragged-row padding) and flattens tables into
+ * the chunker-friendly "row-as-paragraph" text so each row lands in its own
+ * chunk.
  */
 
 /** One parsed tabular sheet. Headers is never empty; Rows excludes the header. */
@@ -96,7 +96,7 @@ const padRows = (data: string[][], width: number): string[][] =>
 /**
  * RFC4180-ish delimited parser: handles quoted fields with embedded delimiters/
  * newlines and "" escapes, tolerant of lazy quotes, trims leading field space,
- * normalises CRLF. Mirrors the Go encoding/csv config used by extractCSV.
+ * normalises CRLF (matches a standard encoding/csv parse).
  */
 export const parseDelimited = (text: string, delim: string): string[][] => {
   const rows: string[][] = []

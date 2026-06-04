@@ -10,23 +10,46 @@ jobs:
   check-bun:
     name: check (bun)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg17
+        env:
+          POSTGRES_DB: agenticmind
+          POSTGRES_PASSWORD: mysecretpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
+      - name: Initialize DB extensions
+        run: docker exec -i ${{ job.services.postgres.id }} psql -U postgres -d agenticmind < scripts/db-init/00-extensions.sql
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.12
       - run: bun install --frozen-lockfile
+      - name: Run migrations
+        run: bun run db:migrate
+        env:
+          DATABASE_URL: postgres://postgres:mysecretpassword@localhost:5432/agenticmind
       - name: Typecheck
         run: bun run tsc
       - name: Unit tests (incl. eval harness, guardrails, judge calibration)
         run: bun test
+        env:
+          DATABASE_URL: postgres://postgres:mysecretpassword@localhost:5432/agenticmind
       # Full integration eval (lib/eval against the live engine) runs where
-      # DATABASE_URL + OPENROUTER_API_KEY are available:
+      # DATABASE_URL + CHAT_API_KEY are available:
       #   bun run eval   # exits non-zero on regression vs BASELINE_PASS_RATE
 
-  # Compatibility canary: plain Node + npm, so self-hosters without Bun keep
-  # working. No committed package-lock (bun.lock is canonical), so this resolves
-  # fresh each run; .npmrc supplies legacy-peer-deps. Runs on Node, via tsx.
+  # Compatibility canary: dependencies install under plain npm (bun.lock is
+  # canonical and not committed for npm, so this resolves fresh; .npmrc supplies
+  # legacy-peer-deps). Bun is installed only so Turbo (packageManager: bun) can
+  # orchestrate the workspace tasks; the server/worker themselves run on Node via
+  # tsx, and dependency resolution is what this job proves.
   check-npm:
     name: check (npm / Node)
     runs-on: ubuntu-latest
@@ -35,6 +58,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.12
       - run: npm install
       - name: Typecheck
         run: npm run tsc

@@ -1,7 +1,7 @@
 /**
- * Generic database error mapper. The domain-specific NotFound/state-machine
- * error classes from the source product were removed — the knowledge layer maps
- * every DB failure to one opaque `DatabaseError` and lets callers decide.
+ * Generic database error mapper. The knowledge layer deliberately keeps no
+ * domain-specific NotFound/state-machine error classes — it maps every DB
+ * failure to one opaque `DatabaseError` and lets callers decide.
  */
 
 type DatabaseError = {

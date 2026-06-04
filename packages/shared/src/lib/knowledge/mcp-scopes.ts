@@ -1,8 +1,9 @@
 /**
  * MCP capability scopes — least-privilege per token. Read tools need
  * `knowledge:read`; emitting compounding signals needs `knowledge:signal`;
- * ingestion needs `knowledge:write`. Enforcement lives in code (the tool
- * handlers + the route), never in a prompt — Cycle of Trust, Standard
+ * ingestion needs `knowledge:write`; permanently deleting a material
+ * (kl_forget) needs the elevated `knowledge:admin`. Enforcement lives in code
+ * (the tool handlers + the route), never in a prompt — Cycle of Trust, Standard
  * antipattern #4.
  */
 
@@ -10,6 +11,7 @@ export const KNOWLEDGE_SCOPES = [
   "knowledge:read",
   "knowledge:signal",
   "knowledge:write",
+  "knowledge:admin",
   "memory:read",
   "memory:write",
 ] as const
@@ -36,6 +38,7 @@ export const TOOL_SCOPE: Record<string, KnowledgeScope> = {
   kl_graph_neighbors: "knowledge:read",
   kl_signal: "knowledge:signal",
   kl_ingest: "knowledge:write",
+  kl_forget: "knowledge:admin",
   mem_recall: "memory:read",
   mem_write: "memory:write",
 }

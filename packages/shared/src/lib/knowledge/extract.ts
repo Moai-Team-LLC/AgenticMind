@@ -1,10 +1,10 @@
 /**
- * Bytes → plain text for the RAG pipeline — ported from
- * services/knowledge/internal/extract. Classifies a MIME type and dispatches:
- * text/json/yaml pass through; HTML is cleaned (extract-html); CSV/TSV/xlsx go
- * through the structured tabular parser (Tables + row-as-paragraph text); PDF
- * via unpdf; DOCX via mammoth. Unknown MIMEs return an "unsupported" error so
- * the upload handler can leave the material at status=ingesting.
+ * Bytes → plain text for the RAG pipeline. Classifies a MIME type and
+ * dispatches: text/json/yaml pass through; HTML is cleaned (extract-html);
+ * CSV/TSV/xlsx go through the structured tabular parser (Tables +
+ * row-as-paragraph text); PDF via unpdf; DOCX via mammoth. Unknown MIMEs
+ * return an "unsupported" error so the upload handler can leave the material
+ * at status=ingesting.
  */
 
 import type { Table } from "@agenticmind/shared/lib/knowledge/extract-tabular"

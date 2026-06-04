@@ -7,8 +7,8 @@ import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core"
  *
  * This doubles as the revocation store: the MCP route fails CLOSED — a token
  * whose jti is absent here (or has revoked_at set, or is past expires_at) is
- * rejected. So issuing a token inserts a row; revoking sets revoked_at. This
- * mirrors the Go RevocationChecker's "unknown jti → fail closed" contract.
+ * rejected. So issuing a token inserts a row; revoking sets revoked_at. An
+ * unknown jti fails closed.
  */
 const mcpTokens = pgTable(
   "mcp_tokens",

@@ -1,42 +1,28 @@
-FROM oven/bun:1.3.11-alpine AS base
-
+# glibc base (NOT alpine) — the worker shares the shared package's native deps
+# (onnxruntime-node) which don't load on musl. Debian-based bun avoids that.
+FROM oven/bun:1.3.11 AS base
 ENV NODE_ENV=production
-
-RUN apk add --no-cache libc6-compat
-
 WORKDIR /app
 
 FROM base AS builder
-
 COPY . .
 RUN bunx --bun turbo@2.9.6 prune @agenticmind/worker --docker
 
 FROM base AS installer
-
 COPY --from=builder /app/out/json/ .
 RUN bun install --frozen-lockfile
-
 COPY --from=builder /app/out/full/ .
-
 COPY drizzle.config.ts ./drizzle.config.ts
 COPY drizzle/ ./drizzle/
 
 FROM base AS runner
-
-WORKDIR /app
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 workeruser
-
-COPY --from=installer --chown=workeruser:nodejs /app ./
-
-USER workeruser
+# Run unprivileged (numeric uid/gid — portable, no adduser dependency).
+COPY --from=installer --chown=1001:1001 /app ./
+USER 1001:1001
 
 # Required environment variables:
 # DATABASE_URL       — Postgres (pgvector); also where the advisory-lock sweep runs
-# OPENROUTER_API_KEY — LLM judge for the feedback promoter
+# CHAT_API_KEY       — chat LLM for the feedback promoter's judge
 
 WORKDIR /app/apps/worker
-
-CMD ["bun", "--bun", "run", "start"]
-
+CMD ["bun", "--bun", "src/index.ts"]

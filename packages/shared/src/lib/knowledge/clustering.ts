@@ -1,6 +1,5 @@
 /**
- * Ask-clustering thresholds + pure helpers — ported from the constants in
- * services/knowledge/internal/feedback/clustering.go. The cluster repo (SQL)
+ * Ask-clustering thresholds + pure helpers. The cluster repo (SQL)
  * and the nightly builder/promoter import these. Kept env-free so they
  * unit-test in isolation.
  */

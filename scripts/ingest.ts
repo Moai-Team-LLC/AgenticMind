@@ -1,7 +1,7 @@
 /**
  * Ingestion CLI — populate the knowledge base from a file or raw text.
  * Runs the full engine: upload → extract → chunk → embed → cards → graph.
- * Needs DATABASE_URL + OPENROUTER_API_KEY (+ SPACES_* to retain raw bytes).
+ * Needs DATABASE_URL + CHAT_API_KEY (+ SPACES_* to retain raw bytes).
  *
  *   bun run ingest --file ./guide.pdf [--title "product manual"]
  *   bun run ingest --text "The widget API rate limit is 100 req/s." --title "Widget API"

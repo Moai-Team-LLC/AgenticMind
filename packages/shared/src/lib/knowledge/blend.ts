@@ -1,8 +1,8 @@
 /**
- * Hybrid retrieval blend — ported from services/knowledge/internal/index
- * (blend.go). Merges vector + BM25 result lists with an absolute-scale
- * weighted sum (deliberately NOT RRF and NOT per-list max-normalisation,
- * which inflated weak cosines and broke the downstream 0..1 score threshold).
+ * Hybrid retrieval blend. Merges vector + BM25 result lists with an
+ * absolute-scale weighted sum (deliberately NOT RRF and NOT per-list
+ * max-normalisation, which inflated weak cosines and broke the downstream
+ * 0..1 score threshold).
  */
 
 export type HybridWeights = {

@@ -1,7 +1,6 @@
 /**
- * Knowledge-card domain constants — ported from
- * services/knowledge/internal/cards/cards.go. Kinds back the CHECK constraint
- * on knowledge_cards; extraction caps mirror the Go extractor.
+ * Knowledge-card domain constants. Kinds back the CHECK constraint
+ * on knowledge_cards; extraction caps mirror the extractor.
  */
 
 export const CARD_KINDS = ["fact", "qa", "definition", "metric", "procedure", "resolution"] as const

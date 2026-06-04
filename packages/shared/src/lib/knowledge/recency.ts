@@ -1,7 +1,7 @@
 /**
- * Recency-aware ranking boost — ported from services/knowledge/internal/rerank
- * (recency.go). When two materials match similarly well, the fresher one wins,
- * closing the failure mode where the LLM never sees a recently updated source.
+ * Recency-aware ranking boost. When two materials match similarly well, the
+ * fresher one wins, closing the failure mode where the LLM never sees a
+ * recently updated source.
  * Pure functions; callers re-sort by the boosted score.
  */
 

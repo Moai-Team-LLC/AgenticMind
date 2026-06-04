@@ -1,7 +1,4 @@
-import {
-  EMBEDDING_DIMENSIONS,
-  FTS_CONFIG,
-} from "@agenticmind/shared/database/schema/knowledge/_config"
+import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { tsvector } from "@agenticmind/shared/database/schema/knowledge/_types"
 import { sql } from "drizzle-orm"
 import { index, pgTable, real, text, timestamp, uuid, vector } from "drizzle-orm/pg-core"
@@ -59,9 +56,8 @@ const beliefs = pgTable(
     sourceId: text("source_id"),
 
     embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
-    objectTsv: tsvector("object_tsv").generatedAlwaysAs(
-      sql`to_tsvector('${sql.raw(FTS_CONFIG)}', coalesce(subject,'') || ' ' || coalesce(object,''))`,
-    ),
+    // Computed at insert-time in database/query/knowledge/beliefs.ts (invariant moved to repo layer)
+    objectTsv: tsvector("object_tsv").notNull(),
 
     metadata: text("metadata"),
     createdAt: timestamp("created_at", { withTimezone: true })

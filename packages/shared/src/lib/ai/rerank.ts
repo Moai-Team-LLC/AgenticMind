@@ -2,12 +2,14 @@ import type { RerankModel } from "@agenticmind/shared/lib/ai/model"
 
 import { buildRetryOptions } from "@agenticmind/shared/lib/retry"
 import { parseZodSchema } from "@agenticmind/shared/lib/zod/parse"
-import { openrouterSettings } from "@agenticmind/shared/settings/openrouter-settings"
+import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
 import { ResultAsync } from "neverthrow"
 import pRetry from "p-retry"
 import * as z from "zod"
 
-const OPENROUTER_RERANK_URL = "https://openrouter.ai/api/v1/rerank"
+// Native Cohere /v2/rerank by default (OpenRouter previously just proxied this
+// identical shape). Point RERANK_BASE_URL at any Cohere-compatible endpoint.
+const DEFAULT_RERANK_URL = "https://api.cohere.com/v2/rerank"
 
 const rerankResponseSchema = z.object({
   results: z.array(
@@ -30,10 +32,10 @@ const rerankDocuments = (props: {
   ResultAsync.fromPromise(
     pRetry(
       async () => {
-        const response = await fetch(OPENROUTER_RERANK_URL, {
+        const response = await fetch(aiSettings.RERANK_BASE_URL ?? DEFAULT_RERANK_URL, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${openrouterSettings.OPENROUTER_API_KEY}`,
+            Authorization: `Bearer ${aiSettings.RERANK_API_KEY ?? ""}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -45,7 +47,7 @@ const rerankDocuments = (props: {
         })
 
         if (!response.ok) {
-          throw new Error(`OpenRouter rerank ${response.status}: ${await response.text()}`)
+          throw new Error(`rerank ${response.status}: ${await response.text()}`)
         }
 
         const raw: unknown = await response.json()

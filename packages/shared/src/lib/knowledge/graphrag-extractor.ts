@@ -1,6 +1,5 @@
 /**
- * GraphRAG LLM extractor — ported from
- * services/knowledge/internal/graphrag/extract.go. Sends material text to the
+ * GraphRAG LLM extractor. Sends material text to the
  * chat model (JSON mode) and parses entities + relations, normalising entity
  * ids, mapping free-form types/predicates onto the V0 ontology, and dropping
  * relations whose endpoints don't resolve. parseExtraction is pure (ontology

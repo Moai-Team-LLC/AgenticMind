@@ -144,6 +144,13 @@ bearer tokens independently (HS256, `AUTH_SECRET`) and serves reads
 `mem_write`) directly against Postgres. Scale replicas to match request load; the
 bottleneck is Postgres, not the server.
 
+**Client-disconnect resilience.** A client that aborts or times out mid-stream is
+handled gracefully: the host detects the benign closed-stream error class
+(`isClientDisconnectError`) and logs-and-ignores it at the process level instead
+of crashing. One dropped client never affects other in-flight requests. Genuine
+faults are not matched, so they remain fatal (and a supervisor restarts the
+process).
+
 ### Worker — single advisory-locked runner
 
 The worker self-limits to one active sweep via the Postgres advisory lock
@@ -179,6 +186,19 @@ vars — no code changes. See `.env.example` for the canonical, commented set.
   (`Xenova/bge-m3`, 1024-dim, `EMBED_POOLING=cls`). First run downloads the model;
   no API key, no network at query time. This is what makes a clean clone work with
   no cloud credentials.
+
+  > **Blocked Hugging Face CDN?** The first-run download pulls the model from
+  > `huggingface.co`, which redirects to `cdn-lfs.huggingface.co` /
+  > `cas-bridge.xethub.hf.co`. If those are blocked (corporate firewall, region),
+  > the download fails. Three options:
+  > - **Mirror** — `EMBED_HF_ENDPOINT=https://hf-mirror.com` downloads via the
+  >   mirror instead of the blocked CDN.
+  > - **Pre-seed a cache** — set `EMBED_CACHE_DIR=/path` on a machine *with*
+  >   access, let it download once, copy that directory to the blocked host, and
+  >   set the same `EMBED_CACHE_DIR` there (fully offline / air-gapped).
+  > - **Sidestep Hugging Face** — use the `openai` provider below pointed at a
+  >   local Ollama `bge-m3` (also 1024-dim): `EMBED_PROVIDER=openai`,
+  >   `EMBED_BASE_URL=http://localhost:11434/v1`, `EMBED_MODEL=bge-m3`.
 - **`openai`** — any hosted OpenAI-compatible endpoint (OpenAI, Ollama, vLLM,
   OpenRouter, …). Set `EMBED_PROVIDER=openai`, `EMBED_BASE_URL`, `EMBED_MODEL`, and
   `EMBED_API_KEY` as needed.
@@ -189,18 +209,22 @@ vars — no code changes. See `.env.example` for the canonical, commented set.
 > fast. Changing the dimension is a **breaking schema change** that requires a full
 > re-embed of every existing corpus — see "Re-embedding" below.
 
-### Chat / synthesis (`CHAT_PROVIDER`)
+### Chat / synthesis (`CHAT_BASE_URL`)
 
-- **OpenRouter** (default) — set `OPENROUTER_API_KEY`. Used for synthesis,
-  classification, and extraction.
-- **OpenAI-compatible / Ollama (offline)** — set `CHAT_PROVIDER=openai`,
-  `CHAT_BASE_URL` (e.g. `http://localhost:11434/v1` for Ollama), optional
-  `CHAT_API_KEY`, and the model tiers `CHAT_MODEL_SIMPLE` (cheap/fast) and
-  `CHAT_MODEL_COMPLEX` (flagship). Combined with `EMBED_PROVIDER=local`, this runs
-  the whole system fully offline.
+Chat is a single OpenAI-compatible seam used for synthesis, classification, and
+extraction. Set `CHAT_API_KEY` and (optionally) `CHAT_BASE_URL`:
+
+- **OpenAI** (default) — set `CHAT_API_KEY`; `CHAT_BASE_URL` defaults to
+  `https://api.openai.com/v1`, with model tiers `CHAT_MODEL_SIMPLE` (cheap/fast)
+  and `CHAT_MODEL_COMPLEX` (flagship).
+- **Ollama / vLLM / OpenRouter** — point `CHAT_BASE_URL` at the endpoint (e.g.
+  `http://localhost:11434/v1` for Ollama, `https://openrouter.ai/api/v1` for
+  OpenRouter) with the matching `CHAT_API_KEY` and model ids. Combined with
+  `EMBED_PROVIDER=local`, Ollama runs the whole system fully offline.
 
 Optional cross-encoder rerank is off by default; enable with `RERANK_ENABLED=true`
-(requires `OPENROUTER_API_KEY`).
+and set `RERANK_API_KEY` (native Cohere `https://api.cohere.com/v2/rerank` by
+default; override `RERANK_BASE_URL` for Voyage / Jina).
 
 ### Re-embedding after a model/provider change
 

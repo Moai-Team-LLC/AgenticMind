@@ -8,8 +8,8 @@ const principalKindEnum = pgEnum("principal_kind", ["agent", "service", "human"]
  * Principals. The table keeps the name `users` for FK stability (knowledge_settings,
  * mcp_tokens reference it), but an AgenticMind principal is an agent / service /
  * human identity that owns MCP tokens, asks questions, and is attributed in the
- * trace. The stored human profile from the source product was removed — caller
- * context now travels per-call as `CallerContext`, not as a stored profile.
+ * trace. There is no stored human profile — caller context travels per-call as
+ * `CallerContext`, not as a stored row.
  */
 const users = pgTable(
   "users",

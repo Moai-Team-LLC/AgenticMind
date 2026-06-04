@@ -2,7 +2,7 @@
  * Judge calibration runner — runs the feedback LLM-judge against the
  * human-labeled set (eval/judge-labels.json) and reports TPR/TNR. Exits
  * non-zero when the judge is not calibrated (both rates must clear 0.8).
- * Needs OPENROUTER_API_KEY. Run: bun run calibrate
+ * Needs CHAT_API_KEY. Run: bun run calibrate
  */
 
 import type { LabeledExample } from "@agenticmind/shared/lib/eval/judge-calibration"
@@ -25,7 +25,7 @@ const judge = async (ex: LabeledExample): Promise<boolean> => {
   const res = await completeKnowledge({
     system: JUDGE_SYSTEM,
     user: ex.input,
-    model: "openai/gpt-5-mini",
+    model: "gpt-4o",
     purpose: "judge calibration",
   })
   if (res.isErr()) {

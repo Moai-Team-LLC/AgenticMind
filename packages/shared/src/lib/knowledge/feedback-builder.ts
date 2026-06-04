@@ -1,6 +1,5 @@
 /**
- * Feedback cluster builder — ported from the Sweep method of
- * services/knowledge/internal/feedback/builder.go. Groups recent /ask rows
+ * Feedback cluster builder. Groups recent /ask rows
  * into clusters by question-embedding cosine: scans ask_telemetry rows not yet
  * clustered, recovers each question's embedding from answer_cache (or
  * re-embeds the cached text), joins the nearest cluster (cosine ≥ 0.85) or

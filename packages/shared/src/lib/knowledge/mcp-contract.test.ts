@@ -18,9 +18,10 @@ import * as z from "zod"
 /** The frozen public contract: tool → its input fields and required subset. */
 const CONTRACT: Record<string, { fields: string[]; required: string[] }> = {
   kl_ask_global: { fields: ["facts", "intent", "question"], required: ["question"] },
+  kl_forget: { fields: ["id"], required: ["id"] },
   kl_get_material: { fields: ["id"], required: ["id"] },
   kl_graph_neighbors: { fields: ["limit", "materialId"], required: ["materialId"] },
-  kl_ingest: { fields: ["text", "title"], required: ["text", "title"] },
+  kl_ingest: { fields: ["language", "text", "title"], required: ["text", "title"] },
   kl_search: { fields: ["limit", "q"], required: ["q"] },
   kl_signal: { fields: ["askId", "note", "signal", "strength"], required: ["askId", "signal"] },
   mem_recall: { fields: ["asOf", "includeShared", "limit", "query", "subject"], required: [] },

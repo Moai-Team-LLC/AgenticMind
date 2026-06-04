@@ -9,11 +9,37 @@
  *   *    /mcp[/*]        → MCP streamable HTTP (bearer typ="mcp" JWT required)
  */
 
+import { isClientDisconnectError } from "@agenticmind/shared/lib/client-disconnect"
+
 import { mcpFetch } from "@/mcp"
 import { initTracing } from "@/tracing"
 
 // Register the OTLP trace exporter before serving, if configured (no-op otherwise).
 initTracing()
+
+// Resilience: a dropped/timed-out MCP client whose response stream is already
+// closed makes mcp-handler write to it from inside the stream pump, throwing
+// asynchronously ("Controller is already closed") outside any request try/catch.
+// Swallow that benign disconnect class so one bad client can't take the whole
+// service down; let every genuine fault stay loud (and, if uncaught, fatal).
+process.on("unhandledRejection", (reason: unknown) => {
+  if (isClientDisconnectError(reason)) {
+    console.warn(
+      "[SERVER] client dropped mid-stream (ignored):",
+      reason instanceof Error ? reason.message : reason,
+    )
+    return
+  }
+  console.error("[SERVER] unhandledRejection:", reason)
+})
+process.on("uncaughtException", (err: Error) => {
+  if (isClientDisconnectError(err)) {
+    console.warn("[SERVER] client dropped mid-stream (ignored):", err.message)
+    return
+  }
+  console.error("[SERVER] uncaughtException — exiting:", err)
+  process.exit(1)
+})
 
 const PORT = Number(process.env.PORT ?? 3000)
 
@@ -36,11 +62,13 @@ const fetchHandler = (req: Request): Response | Promise<Response> => {
 // server; on Node we use @hono/node-server, which runs a `fetch` handler with
 // correct streaming for the MCP streamable-HTTP transport. The handler above is
 // byte-for-byte identical across both — only the listener differs.
+// Bind 0.0.0.0 so the port is reachable from outside the container (Bun.serve
+// otherwise defaults to loopback, which a Docker/host port map can't reach).
 if ((globalThis as { Bun?: unknown }).Bun !== undefined) {
-  Bun.serve({ port: PORT, idleTimeout: 120, fetch: fetchHandler })
+  Bun.serve({ port: PORT, hostname: "0.0.0.0", idleTimeout: 120, fetch: fetchHandler })
 } else {
   const { serve } = await import("@hono/node-server")
-  serve({ port: PORT, fetch: fetchHandler })
+  serve({ port: PORT, hostname: "0.0.0.0", fetch: fetchHandler })
 }
 
 console.log(`[SERVER] AgenticMind MCP server listening on :${PORT} (MCP at /mcp)`)

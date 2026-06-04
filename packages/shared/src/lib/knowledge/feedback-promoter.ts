@@ -1,7 +1,6 @@
 /**
- * Feedback promoter — ported from services/knowledge/internal/feedback/
- * promoter.go. Walks ready clusters, asks an LLM-judge whether the cluster's
- * best answer is grounded in its citations, and on a `supported` verdict
+ * Feedback promoter. Walks ready clusters, asks an LLM-judge whether the
+ * cluster's best answer is grounded in its citations, and on a `supported` verdict
  * writes a knowledge_cards row of kind=resolution (embedded, so it joins the
  * same hybrid retrieval pool). Two safeguards beyond user signals: the
  * factuality judge gate, and sticky terminal cluster states (no re-promotion).
@@ -209,6 +208,8 @@ export const sweepPromoteClusters = (props: {
             embedding,
             embeddingModel: embedding !== null ? KNOWLEDGE_EMBEDDING_MODEL : null,
             extractorVersion: "resolution-v1",
+            ftsConfig: "simple",
+            bodyTsv: sql`to_tsvector('simple'::regconfig, coalesce(${best.answer}, ''))`,
           })
           .returning({ id: knowledgeCards.id })
         if (card === undefined) {
