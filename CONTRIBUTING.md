@@ -56,7 +56,17 @@ bun run check                   # typecheck + tests — must pass before a PR
 
 Be direct, be kind, argue from evidence.
 
+## Contributor License Agreement (CLA)
+
+The first time you open a PR, a bot asks you to sign the project [CLA](CLA.md) by
+posting one comment — a one-time signature recorded on the `cla-signatures`
+branch that applies to all your future contributions. The CLA confirms you have
+the right to contribute and grants Moai Team LLC a broad, sublicensable license
+to your contribution. This is what lets the Project offer a future commercial
+edition on top of the open core **without** relicensing the open core, which
+stays Apache-2.0. Maintainers and bots are exempt.
+
 ## License
 
-By contributing, you agree your contributions are licensed under
-[Apache-2.0](LICENSE).
+The Project is licensed under [Apache-2.0](LICENSE). Your contributions are
+released under the same license, in addition to the grant in the [CLA](CLA.md).
