@@ -22,3 +22,27 @@ export const EMBEDDING_DIMENSIONS = 1024
  * columns are rebuilt).
  */
 export const FTS_CONFIG = "simple"
+
+export const SUPPORTED_LANGUAGES = [
+  "simple",
+  "arabic",
+  "danish",
+  "dutch",
+  "english",
+  "finnish",
+  "french",
+  "german",
+  "indonesian",
+  "italian",
+  "norwegian",
+  "portuguese",
+  "russian",
+  "spanish",
+  "swedish",
+  "turkish",
+] as const
+
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number]
+
+export const isSupportedLanguage = (lang: string): lang is SupportedLanguage =>
+  (SUPPORTED_LANGUAGES as readonly string[]).includes(lang)

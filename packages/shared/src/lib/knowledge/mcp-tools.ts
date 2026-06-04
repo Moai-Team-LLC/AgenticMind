@@ -18,6 +18,7 @@ import { searchChunks } from "@agenticmind/shared/database/query/knowledge/chunk
 import { recordGuardEvent } from "@agenticmind/shared/database/query/knowledge/guard-events"
 import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materials"
 import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
+import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import {
   defaultStrengthFor,
@@ -412,6 +413,7 @@ export const memRecall = async (deps: McpToolDeps, args: z.infer<typeof memRecal
 export const klIngestInput = z.object({
   title: z.string().min(1).max(300),
   text: z.string().min(1).max(200_000),
+  language: z.enum(SUPPORTED_LANGUAGES).optional(),
 })
 
 /**
@@ -434,6 +436,7 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
     text: args.text,
     cardsEnabled: deps.cardsEnabled,
     graphragEnabled: deps.graph !== undefined,
+    language: args.language,
   })
   if (res.isErr()) {
     throw new Error(`kl_ingest: ${res.error.message}`)
@@ -471,7 +474,7 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.1.0"
+export const MCP_CONTRACT_VERSION = "1.2.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [

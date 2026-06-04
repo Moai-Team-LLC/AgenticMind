@@ -22,6 +22,7 @@ export type CreateMaterialInput = {
   storageUri?: string | null
   sourceUrl?: string | null
   createdBy?: string | null
+  ftsConfig?: string
 }
 
 export type MaterialSuggestion = {
@@ -40,6 +41,7 @@ export const createMaterial = (props: { tx: Transaction; input: CreateMaterialIn
           ...(props.input.id !== undefined ? { id: props.input.id } : {}),
           title: props.input.title,
           source: props.input.source,
+          ftsConfig: props.input.ftsConfig ?? "simple",
           status: "ingesting",
           mimeType: props.input.mimeType ?? null,
           sizeBytes: props.input.sizeBytes ?? null,

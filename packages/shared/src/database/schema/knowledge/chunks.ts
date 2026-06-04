@@ -1,7 +1,4 @@
-import {
-  EMBEDDING_DIMENSIONS,
-  FTS_CONFIG,
-} from "@agenticmind/shared/database/schema/knowledge/_config"
+import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { tsvector } from "@agenticmind/shared/database/schema/knowledge/_types"
 import { materials } from "@agenticmind/shared/database/schema/knowledge/materials"
 import { sql } from "drizzle-orm"
@@ -38,9 +35,9 @@ const chunks = pgTable(
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
     embeddingModel: text("embedding_model"),
-    bodyTsv: tsvector("body_tsv").generatedAlwaysAs(
-      sql`to_tsvector('${sql.raw(FTS_CONFIG)}', coalesce(body, ''))`,
-    ),
+    ftsConfig: text("fts_config").notNull().default("simple"),
+    // Computed at insert-time in database/query/knowledge/chunks.ts (invariant moved to repo layer)
+    bodyTsv: tsvector("body_tsv").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),

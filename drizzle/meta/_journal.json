@@ -15,6 +15,13 @@
       "when": 1780505201439,
       "tag": "0001_tighten_material_source",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780506545711,
+      "tag": "0002_curvy_pete_wisdom",
+      "breakpoints": true
     }
   ]
 }
