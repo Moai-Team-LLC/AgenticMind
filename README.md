@@ -133,6 +133,39 @@ framework-agnostic in `packages/shared/src/lib/knowledge/mcp-tools.ts`; the host
 
 ## 🚀 Quickstart
 
+### Run it — no clone (~1 min)
+
+Needs Docker (Compose v2.23+) and an OpenAI-compatible key. One command pulls the
+published images, generates secrets, brings up Postgres + server + worker, and
+prints a ready-to-paste MCP config — **no repo clone, no token minting**:
+
+```bash
+OPENAI_API_KEY=sk-... sh -c "$(curl -fsSL https://raw.githubusercontent.com/Moai-Team-LLC/AgenticMind/main/quickstart.sh)"
+```
+
+The MCP endpoint comes up at `http://localhost:3000/mcp`, authenticated with a
+single static bearer (`MCP_API_KEY`, auto-generated). Point Claude Code / Cursor at
+it with the `Authorization: Bearer <MCP_API_KEY>` header.
+
+**Embeddings run locally by default** — a zero-key, offline, multilingual model
+(bge-m3) downloads on first use, so retrieval needs no cloud key. Only the
+*synthesis* step needs a chat model: `OPENAI_API_KEY` for OpenAI (the default), or
+point `CHAT_BASE_URL` at any OpenAI-compatible endpoint — a local Ollama or vLLM.
+
+Prefer to read before you run? Same thing, explicit (just the `deploy/` drop-in, no full clone):
+
+```bash
+mkdir agenticmind && cd agenticmind
+curl -fsSL https://raw.githubusercontent.com/Moai-Team-LLC/AgenticMind/main/deploy/docker-compose.yml -o docker-compose.yml
+curl -fsSL https://raw.githubusercontent.com/Moai-Team-LLC/AgenticMind/main/deploy/.env.example       -o .env.example
+curl -fsSL https://raw.githubusercontent.com/Moai-Team-LLC/AgenticMind/main/deploy/gen-secrets.sh     -o gen-secrets.sh && chmod +x gen-secrets.sh
+./gen-secrets.sh                   # writes DB password + MCP_API_KEY into .env
+# set OPENAI_API_KEY in .env, then:
+docker compose up -d
+```
+
+### From source (development & contributing)
+
 Requires Docker and **Node ≥22.18** (or **Bun ≥1.3**) — the server and worker run on plain Node or Bun.
 
 ```bash
@@ -143,17 +176,12 @@ cp .env.example .env.local         # set AUTH_SECRET (+ a chat key OR local Olla
 npm run dev                        # headless MCP server on :3000  (or: bun run dev)
 ```
 
-**Embeddings run locally by default** — a zero-key, offline, multilingual model
-(bge-m3) downloads on first use, so retrieval needs no cloud key. Only the
-*synthesis* step needs a chat model: set `CHAT_API_KEY` for OpenAI (the default),
-or point `CHAT_BASE_URL` at any OpenAI-compatible endpoint — a local Ollama, vLLM,
-or OpenRouter (`https://openrouter.ai/api/v1`). See `.env.example`.
-
 Verify the build with `npm run check` (typecheck + tests) — `bun run check` works too.
 
-The MCP endpoint is fail-closed, so you need a bearer `typ="mcp"` JWT. The headless
-server ships no admin UI — mint one with the issuance script (it reads `DATABASE_URL`
-+ `AUTH_SECRET` from your `.env.local`):
+In a from-source dev setup the `/mcp` route is fail-closed and accepts a bearer
+`typ="mcp"` HS256 JWT (rather than the static deploy key). The headless server
+ships no admin UI — mint one with the issuance script (it reads `DATABASE_URL` +
+`AUTH_SECRET` from your `.env.local`):
 
 ```bash
 npm run issue-token -- --label "claude-code" --ttl-days 365   # or: bun run issue-token --label …
