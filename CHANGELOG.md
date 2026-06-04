@@ -4,7 +4,16 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] — 2026-06-04
+
+### Added
+
+- **Optional per-language full-text search.** `kl_ingest` gains an optional
+  `language` parameter, and each material records its own `fts_config` (Postgres
+  text-search configuration) so language-aware stemming can be applied per
+  document — while the corpus default stays the language-neutral `simple` config.
+  Migration `0002` adds the `fts_config` column. The MCP tool contract is bumped
+  to **1.2.0** (additive — `language` is optional, existing clients unaffected).
 
 ### Changed
 
@@ -27,6 +36,8 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   credentials are resolved only at the point of use and required only when
   `S3_BUCKET` is set (a bucket without keys now fails loudly instead of silently
   dropping bytes).
+
+[0.7.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.7.0
 
 ## [0.6.0] — 2026-06-03
 
