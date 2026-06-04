@@ -22,7 +22,7 @@ const CONTRACT: Record<string, { fields: string[]; required: string[] }> = {
   kl_get_material: { fields: ["id"], required: ["id"] },
   kl_graph_neighbors: { fields: ["limit", "materialId"], required: ["materialId"] },
   kl_ingest: { fields: ["language", "text", "title"], required: ["text", "title"] },
-  kl_search: { fields: ["limit", "q"], required: ["q"] },
+  kl_search: { fields: ["limit", "q", "queries", "tokenBudget"], required: ["q"] },
   kl_signal: { fields: ["askId", "note", "signal", "strength"], required: ["askId", "signal"] },
   mem_recall: { fields: ["asOf", "includeShared", "limit", "query", "subject"], required: [] },
   mem_write: {
