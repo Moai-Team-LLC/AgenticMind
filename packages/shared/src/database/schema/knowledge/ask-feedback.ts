@@ -1,3 +1,4 @@
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { askTelemetry } from "@agenticmind/shared/database/schema/knowledge/ask-telemetry"
 import { sql } from "drizzle-orm"
 import { check, index, jsonb, pgTable, real, text, timestamp, uuid } from "drizzle-orm/pg-core"
@@ -10,6 +11,7 @@ import { check, index, jsonb, pgTable, real, text, timestamp, uuid } from "drizz
 const askFeedback = pgTable(
   "ask_feedback",
   {
+    ...tenantColumn,
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),

@@ -1,3 +1,4 @@
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { materials } from "@agenticmind/shared/database/schema/knowledge/materials"
 import { sql } from "drizzle-orm"
 import { index, pgTable, primaryKey, real, text, timestamp, uuid } from "drizzle-orm/pg-core"
@@ -14,6 +15,7 @@ import { index, pgTable, primaryKey, real, text, timestamp, uuid } from "drizzle
 const kgEntities = pgTable(
   "kg_entities",
   {
+    ...tenantColumn,
     entityId: text("entity_id").primaryKey(),
     canonicalName: text("canonical_name").notNull(),
     type: text("type").notNull(),
@@ -39,6 +41,7 @@ const kgEntities = pgTable(
 const kgMentions = pgTable(
   "kg_mentions",
   {
+    ...tenantColumn,
     materialId: uuid("material_id")
       .notNull()
       .references(() => materials.id, { onDelete: "cascade" }),
@@ -61,6 +64,7 @@ const kgMentions = pgTable(
 const kgRelations = pgTable(
   "kg_relations",
   {
+    ...tenantColumn,
     fromEntity: text("from_entity")
       .notNull()
       .references(() => kgEntities.entityId, { onDelete: "cascade" }),

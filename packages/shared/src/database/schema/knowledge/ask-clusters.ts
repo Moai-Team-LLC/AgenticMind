@@ -1,4 +1,5 @@
 import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { knowledgeCards } from "@agenticmind/shared/database/schema/knowledge/knowledge-cards"
 import { sql } from "drizzle-orm"
 import {
@@ -21,6 +22,7 @@ import {
 const askClusters = pgTable(
   "ask_clusters",
   {
+    ...tenantColumn,
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
