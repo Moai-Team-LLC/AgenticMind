@@ -9,13 +9,18 @@ import * as z from "zod"
  * (KNOWLEDGE_CARDS_ENABLED, etc.); they gate the cards/cache/graphrag tiers and
  * locate the ingestion blob bucket. All optional — absence = disabled / nop
  * blob store, so a minimal deployment (vector RAG only) still works.
+ *
+ * `S3_BUCKET` is the storage on/off switch (kept here, in the all-optional
+ * module, so reading it never forces the required S3 credentials in
+ * storage-settings to validate). The deprecated `SPACES_KNOWLEDGE_BUCKET` is
+ * accepted as a fallback.
  */
 export const knowledgeFeatureSettings = createEnv({
   server: {
     KNOWLEDGE_CARDS_ENABLED: z.string().optional(),
     KNOWLEDGE_CACHE_ENABLED: z.string().optional(),
     KNOWLEDGE_GRAPHRAG_ENABLED: z.string().optional(),
-    SPACES_KNOWLEDGE_BUCKET: z.string().optional(),
+    S3_BUCKET: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
   },
@@ -23,7 +28,7 @@ export const knowledgeFeatureSettings = createEnv({
     KNOWLEDGE_CARDS_ENABLED: process.env.KNOWLEDGE_CARDS_ENABLED,
     KNOWLEDGE_CACHE_ENABLED: process.env.KNOWLEDGE_CACHE_ENABLED,
     KNOWLEDGE_GRAPHRAG_ENABLED: process.env.KNOWLEDGE_GRAPHRAG_ENABLED,
-    SPACES_KNOWLEDGE_BUCKET: process.env.SPACES_KNOWLEDGE_BUCKET,
+    S3_BUCKET: process.env.S3_BUCKET ?? process.env.SPACES_KNOWLEDGE_BUCKET,
     GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
   },

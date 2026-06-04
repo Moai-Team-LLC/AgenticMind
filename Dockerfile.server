@@ -28,7 +28,7 @@ USER 1001:1001
 # DATABASE_URL       — Postgres (pgvector + pgvectorscale)
 # AUTH_SECRET        — signs/verifies MCP bearer tokens
 # CHAT_API_KEY       — chat/synthesis LLM (OpenAI-compatible; CHAT_BASE_URL to override)
-# SPACES_*           — optional blob storage for ingested materials
+# S3_*               — optional S3-compatible blob storage for ingested materials
 
 ARG PORT
 ENV PORT=${PORT:-3000}

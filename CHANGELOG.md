@@ -4,6 +4,30 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Blob storage is now provider-neutral S3, not DigitalOcean-specific.** The
+  `SPACES_*` env vars are renamed to `S3_*` (`S3_BUCKET`, `S3_ACCESS_KEY_ID`,
+  `S3_SECRET_ACCESS_KEY`, `S3_REGION`), and a new `S3_ENDPOINT`
+  (+ `S3_FORCE_PATH_STYLE` for MinIO) points at any S3-compatible provider — AWS
+  S3 (default), Cloudflare R2, MinIO, Backblaze B2, or DigitalOcean Spaces.
+  Previously the endpoint was hard-coded to `*.digitaloceanspaces.com` with no
+  way to override it. The old `SPACES_*` names are still read as a fallback, so
+  existing configs keep working. The drop-in `deploy/` stack passes the `S3_*`
+  vars through (off unless `S3_BUCKET` is set).
+
+### Fixed
+
+- **Blob storage is now genuinely optional.** The storage settings module
+  validated its credentials eagerly at import and the MCP server imports it on
+  boot — so a deployment without object-storage keys failed to start, despite the
+  code having a no-op fallback. Storage config is now all-optional (import-safe);
+  credentials are resolved only at the point of use and required only when
+  `S3_BUCKET` is set (a bucket without keys now fails loudly instead of silently
+  dropping bytes).
+
 ## [0.6.0] — 2026-06-03
 
 ### Changed

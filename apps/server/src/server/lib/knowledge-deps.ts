@@ -1,18 +1,18 @@
 /**
  * Knowledge dependency factory for the web server. Builds the singletons the
- * knowledge libs need — blob store (DigitalOcean Spaces), optional
- * GraphRAG Neo4j repo — and reads the feature flags that gate cards / cache /
- * graphrag. Used by the knowledge tRPC router (Tier-3 rewiring) so the
- * procedures call the TS libs directly.
+ * knowledge libs need — blob store (S3-compatible), optional GraphRAG repo —
+ * and reads the feature flags that gate cards / cache / graphrag. Used by the
+ * knowledge tRPC router (Tier-3 rewiring) so the procedures call the TS libs
+ * directly.
  */
 
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 
-import { createS3BlobStore, nopBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
+import { blobStoreForBucket } from "@agenticmind/shared/lib/knowledge/blobstore"
 import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
 import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
-import { spacesSettings } from "@agenticmind/shared/settings/spaces-settings"
+import { storageSettings } from "@agenticmind/shared/settings/storage-settings"
 
 import { getDb } from "@/server/lib/database"
 
@@ -35,23 +35,21 @@ let cachedBlobStore: KnowledgeBlobStore | undefined
 
 /**
  * The ingestion blob store. Falls back to a no-op store (returns nop:// URIs,
- * never persists) when SPACES_KNOWLEDGE_BUCKET is unset — uploads still create
- * material rows; the raw bytes just aren't retained for re-indexing.
+ * never persists) when S3_BUCKET is unset — uploads still create material rows;
+ * the raw bytes just aren't retained for re-indexing.
  */
 export const getKnowledgeBlobStore = (): KnowledgeBlobStore => {
   if (cachedBlobStore !== undefined) {
     return cachedBlobStore
   }
-  const bucket = knowledgeFeatureSettings.SPACES_KNOWLEDGE_BUCKET
-  cachedBlobStore =
-    bucket === undefined || bucket === ""
-      ? nopBlobStore
-      : createS3BlobStore({
-          region: spacesSettings.SPACES_REGION,
-          accessKeyId: spacesSettings.SPACES_ACCESS_KEY,
-          secretAccessKey: spacesSettings.SPACES_SECRET_KEY,
-          bucket,
-        })
+  cachedBlobStore = blobStoreForBucket({
+    bucket: knowledgeFeatureSettings.S3_BUCKET,
+    accessKeyId: storageSettings.S3_ACCESS_KEY_ID,
+    secretAccessKey: storageSettings.S3_SECRET_ACCESS_KEY,
+    region: storageSettings.S3_REGION,
+    endpoint: storageSettings.S3_ENDPOINT,
+    forcePathStyle: storageSettings.S3_FORCE_PATH_STYLE === "true",
+  })
   return cachedBlobStore
 }
 

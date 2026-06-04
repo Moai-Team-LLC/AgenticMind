@@ -79,8 +79,8 @@ ingestion idempotency at the source if you need exactly-once).
 ## 2. Backup & restore
 
 All durable state is in Postgres. There is nothing else to back up (blob storage
-for raw ingested bytes is optional and external — see `SPACES_*` in
-`.env.example`).
+for raw ingested bytes is optional and external — any S3-compatible provider, see
+`S3_*` in `.env.example`).
 
 ### Required extensions
 

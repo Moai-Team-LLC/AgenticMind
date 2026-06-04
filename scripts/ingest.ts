@@ -1,19 +1,19 @@
 /**
  * Ingestion CLI — populate the knowledge base from a file or raw text.
  * Runs the full engine: upload → extract → chunk → embed → cards → graph.
- * Needs DATABASE_URL + CHAT_API_KEY (+ SPACES_* to retain raw bytes).
+ * Needs DATABASE_URL + CHAT_API_KEY (+ S3_* to retain raw bytes).
  *
  *   bun run ingest --file ./guide.pdf [--title "product manual"]
  *   bun run ingest --text "The widget API rate limit is 100 req/s." --title "Widget API"
  */
 
 import { createClient } from "@agenticmind/shared/database/client"
-import { createS3BlobStore, nopBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
+import { blobStoreForBucket } from "@agenticmind/shared/lib/knowledge/blobstore"
 import { extract } from "@agenticmind/shared/lib/knowledge/extract"
 import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
 import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
-import { spacesSettings } from "@agenticmind/shared/settings/spaces-settings"
+import { storageSettings } from "@agenticmind/shared/settings/storage-settings"
 import { readFileSync } from "node:fs"
 import { basename, extname } from "node:path"
 
@@ -37,16 +37,14 @@ const MIME_BY_EXT: Record<string, string> = {
 }
 
 const db = createClient(databaseSettings.DATABASE_URL)
-const bucket = process.env.SPACES_KNOWLEDGE_BUCKET
-const blobStore =
-  bucket !== undefined && bucket !== ""
-    ? createS3BlobStore({
-        region: spacesSettings.SPACES_REGION,
-        accessKeyId: spacesSettings.SPACES_ACCESS_KEY,
-        secretAccessKey: spacesSettings.SPACES_SECRET_KEY,
-        bucket,
-      })
-    : nopBlobStore
+const blobStore = blobStoreForBucket({
+  bucket: process.env.S3_BUCKET ?? process.env.SPACES_KNOWLEDGE_BUCKET,
+  accessKeyId: storageSettings.S3_ACCESS_KEY_ID,
+  secretAccessKey: storageSettings.S3_SECRET_ACCESS_KEY,
+  region: storageSettings.S3_REGION,
+  endpoint: storageSettings.S3_ENDPOINT,
+  forcePathStyle: storageSettings.S3_FORCE_PATH_STYLE === "true",
+})
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
 const graphragEnabled = process.env.KNOWLEDGE_GRAPHRAG_ENABLED === "true"
 const graph = graphragEnabled ? createPostgresGraphStore(db) : undefined
