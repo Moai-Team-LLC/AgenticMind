@@ -4,6 +4,48 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-06-05
+
+### Added
+
+- **Contested beliefs surfaced on recall.** `mem_recall` now returns a
+  `contested` list: any recalled fact where sources disagree (same
+  subject+predicate, different objects), each competing variant tagged with its
+  source actor and recording date. The agent can flag a dispute instead of
+  silently trusting one side.
+- **Time-decayed belief confidence.** Each recalled belief carries an
+  `effectiveConfidence` — its stored confidence after exponential time-decay
+  (90-day half-life). A belief that is not re-asserted loses weight as it ages
+  (recency is trust); re-assertion resets it. Prefer it over raw `confidence`
+  when deciding how much to trust a fact.
+- **Batch + token-budget retrieval.** `kl_search` accepts a batch of `queries`
+  fanned out in one round-trip (results merged and deduped by chunk, best score
+  wins) and an optional `tokenBudget` to return the best ~N tokens of context
+  instead of a fixed passage count.
+- **Opt-in multi-tenant isolation.** Every knowledge table gains a `tenant_id`
+  column and a Postgres row-level-security policy (migration `0003`); MCP tokens
+  carry a tenant and each request runs inside a tenant context, so RLS scopes
+  every read and write below the application and the model. Single-tenant
+  deployments configure nothing — rows carry the default tenant and it just
+  works. (Multi-tenant enforcement requires the app to connect as a
+  non-superuser database role, since superusers bypass RLS.)
+- **Multi-arch container images.** The release image build now publishes
+  `linux/amd64` **and** `linux/arm64`, so `docker pull`/`run` works unchanged on
+  Apple Silicon dev machines and arm64 cloud (Graviton/Ampere) without a
+  `--platform` flag.
+- **Contributor CLA gate and one-command quickstart.** A CLA check guards
+  contributions, and a no-clone quickstart script stands the stack up from the
+  published images. Engineering deep-dive blog posts document the why-trace,
+  Postgres-only, and provenance design choices.
+
+### Changed
+
+- **MCP tool contract bumped 1.2.0 → 1.3.0** (additive — existing clients are
+  unaffected): `kl_search` gains optional `queries` and `tokenBudget`;
+  `mem_recall` results gain `contested` and `effectiveConfidence`.
+
+[0.8.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.8.0
+
 ## [0.7.0] — 2026-06-04
 
 ### Added
