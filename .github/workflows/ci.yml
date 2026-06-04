@@ -37,6 +37,8 @@ jobs:
           DATABASE_URL: postgres://postgres:mysecretpassword@localhost:5432/agenticmind
       - name: Typecheck
         run: bun run tsc
+      - name: Lint (check-only, no autofix)
+        run: bun run lint:ci
       - name: Unit tests (incl. eval harness, guardrails, judge calibration)
         run: bun test
         env:

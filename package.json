@@ -15,6 +15,7 @@
     "start-dev": "turbo run start-dev --framework-inference=false",
     "format": "turbo run format",
     "lint": "turbo run lint",
+    "lint:ci": "oxlint --type-aware",
     "tsc": "turbo run tsc",
     "test": "vitest run",
     "test:watch": "vitest",
