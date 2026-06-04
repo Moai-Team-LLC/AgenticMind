@@ -12,7 +12,7 @@
   "remotes": [
     {
       "type": "streamable-http",
-      "url": "{baseUrl}/mcp",
+      "url": "https://{host}/mcp",
       "headers": [
         {
           "name": "Authorization",
@@ -30,9 +30,8 @@
         }
       ],
       "variables": {
-        "baseUrl": {
-          "description": "Base URL of your self-hosted AgenticMind server (headless Bun service).",
-          "default": "http://localhost:3000",
+        "host": {
+          "description": "Host (and optional port) of your self-hosted AgenticMind instance, e.g. agenticmind.example.com. For local dev use http://localhost:3000/mcp directly.",
           "isRequired": true
         }
       }
