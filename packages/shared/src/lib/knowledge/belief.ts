@@ -134,3 +134,28 @@ export const resolveConflict = (
   const confidence = Math.min(1, Math.max(0, 0.5 * corroborationBoost + 0.5 * avgConf))
   return { object: best.object, confidence, corroborators: best.actors }
 }
+
+/** Default half-life for belief-confidence decay: 90 days. After one half-life
+ * an un-reasserted belief's effective confidence has halved. */
+export const BELIEF_CONFIDENCE_HALF_LIFE_MS = 90 * 24 * 60 * 60 * 1000
+
+/**
+ * Effective confidence after time decay. A belief that hasn't been re-asserted
+ * loses weight as it ages — recency is trust — via exponential half-life decay,
+ * clamped to [0,1]. A null `recordedAt` (unknown age) means no decay. This is
+ * how memory "forgets" gradually instead of trusting a stale fact forever;
+ * re-assertion (assertBelief) resets the age by writing a fresh current row.
+ */
+export const decayedConfidence = (
+  confidence: number,
+  recordedAt: Date | null,
+  now: number,
+  halfLifeMs: number = BELIEF_CONFIDENCE_HALF_LIFE_MS,
+): number => {
+  if (recordedAt === null || halfLifeMs <= 0) {
+    return Math.max(0, Math.min(1, confidence))
+  }
+  const ageMs = Math.max(0, now - recordedAt.getTime())
+  const factor = 0.5 ** (ageMs / halfLifeMs)
+  return Math.max(0, Math.min(1, confidence * factor))
+}
