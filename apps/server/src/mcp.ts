@@ -92,12 +92,12 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
  * scopes every query (and the answer cache) to that tenant. Single-tenant tokens
  * carry the default tenant, so this is uniform and safe for both modes.
  */
-const runTenantScoped = <T>(
+const runTenantScoped = async <T>(
   extra: ToolExtra,
   run: (deps: McpToolDeps) => Promise<T>,
 ): Promise<T> => {
   const tenantId = extra.authInfo?.extra?.tenantId ?? DEFAULT_TENANT_ID
-  return withTenant(getDb(), tenantId, (tx) => run({ ...toolDeps(extra), tx }))
+  return withTenant(getDb(), tenantId, async (tx) => run({ ...toolDeps(extra), tx }))
 }
 
 /**
@@ -135,7 +135,7 @@ const handler = createMcpHandler(
       klSearchInput,
       async (args, extra) => {
         try {
-          return jsonContent(await runTenantScoped(extra, (d) => klSearch(d, args)))
+          return jsonContent(await runTenantScoped(extra, async (d) => klSearch(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_search failed")
         }
@@ -150,7 +150,7 @@ const handler = createMcpHandler(
       klAskGlobalInput,
       async (args, extra) => {
         try {
-          return jsonContent(await runTenantScoped(extra, (d) => klAskGlobal(d, args)))
+          return jsonContent(await runTenantScoped(extra, async (d) => klAskGlobal(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_ask_global failed")
         }
@@ -165,7 +165,7 @@ const handler = createMcpHandler(
       klGetMaterialInput,
       async (args, extra) => {
         try {
-          return jsonContent(await runTenantScoped(extra, (d) => klGetMaterial(d, args)))
+          return jsonContent(await runTenantScoped(extra, async (d) => klGetMaterial(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_get_material failed")
         }
@@ -180,7 +180,7 @@ const handler = createMcpHandler(
       klSignalInput,
       async (args, extra) => {
         try {
-          return jsonContent(await runTenantScoped(extra, (d) => klSignal(d, args)))
+          return jsonContent(await runTenantScoped(extra, async (d) => klSignal(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_signal failed")
         }
@@ -195,7 +195,7 @@ const handler = createMcpHandler(
       memRecallInput,
       async (args, extra) => {
         try {
-          return jsonContent(await runTenantScoped(extra, (d) => memRecall(d, args)))
+          return jsonContent(await runTenantScoped(extra, async (d) => memRecall(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "mem_recall failed")
         }
@@ -210,7 +210,7 @@ const handler = createMcpHandler(
       memWriteInput,
       async (args, extra) => {
         try {
-          return jsonContent(await runTenantScoped(extra, (d) => memWrite(d, args)))
+          return jsonContent(await runTenantScoped(extra, async (d) => memWrite(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "mem_write failed")
         }
@@ -225,7 +225,7 @@ const handler = createMcpHandler(
       klIngestInput,
       async (args, extra) => {
         try {
-          return jsonContent(await runTenantScoped(extra, (d) => klIngest(d, args)))
+          return jsonContent(await runTenantScoped(extra, async (d) => klIngest(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_ingest failed")
         }
@@ -240,7 +240,7 @@ const handler = createMcpHandler(
       klForgetInput,
       async (args, extra) => {
         try {
-          return jsonContent(await runTenantScoped(extra, (d) => klForget(d, args)))
+          return jsonContent(await runTenantScoped(extra, async (d) => klForget(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_forget failed")
         }
@@ -257,7 +257,7 @@ const handler = createMcpHandler(
         klGraphNeighborsInput,
         async (args, extra) => {
           try {
-            return jsonContent(await runTenantScoped(extra, (d) => klGraphNeighbors(d, args)))
+            return jsonContent(await runTenantScoped(extra, async (d) => klGraphNeighbors(d, args)))
           } catch (error) {
             return errorContent(
               error instanceof Error ? error.message : "kl_graph_neighbors failed",

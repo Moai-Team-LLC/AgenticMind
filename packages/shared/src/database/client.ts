@@ -34,7 +34,7 @@ const createClient = (databaseUrl: string): NodePgDatabase<typeof schema> => {
  * directly (rows default to DEFAULT_TENANT_ID). Fails closed: an empty tenantId is
  * rejected rather than silently widening scope to the default tenant.
  */
-const withTenant = <T>(
+const withTenant = async <T>(
   db: Database,
   tenantId: string,
   fn: (tx: Transaction) => Promise<T>,

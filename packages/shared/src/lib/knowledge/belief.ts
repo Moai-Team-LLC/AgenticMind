@@ -99,13 +99,19 @@ export const summarizeContested = (claims: readonly BeliefClaim[]): ContestedCla
       subject: g.subject,
       predicate: g.predicate,
       claims: g.variants.map((v) => {
-        const newest = v.claims.reduce((a, b) =>
-          (b.recordedAt?.getTime() ?? 0) > (a.recordedAt?.getTime() ?? 0) ? b : a,
-        )
+        let newest = v.claims[0]
+        for (const c of v.claims) {
+          if (
+            newest === undefined ||
+            (c.recordedAt?.getTime() ?? 0) > (newest.recordedAt?.getTime() ?? 0)
+          ) {
+            newest = c
+          }
+        }
         return {
           object: v.object,
-          actorUuid: newest.actorUuid,
-          recordedAt: newest.recordedAt ?? null,
+          actorUuid: newest?.actorUuid ?? null,
+          recordedAt: newest?.recordedAt ?? null,
         }
       }),
     }
