@@ -9,10 +9,21 @@ import {
 } from "@agenticmind/shared/database/query/knowledge/chunks"
 import { sql } from "drizzle-orm"
 import { PgDialect } from "drizzle-orm/pg-core"
-import { describe, expect, it, beforeAll, afterAll } from "vitest"
+import { okAsync } from "neverthrow"
+import { describe, expect, it, beforeAll, afterAll, vi } from "vitest"
 
 import { nopBlobStore } from "./blobstore"
 import { ingestText } from "./ingest"
+
+vi.mock("@agenticmind/shared/lib/knowledge/llm", () => {
+  return {
+    KNOWLEDGE_EMBEDDING_MODEL: "Xenova/bge-m3",
+    embedKnowledgeBatch: (texts: string[]) => {
+      const dummyVector = Array.from({ length: 1024 }, () => 0)
+      return okAsync(texts.map(() => dummyVector))
+    },
+  }
+})
 
 describe("buildFtsWhereClause", () => {
   it("builds an OR-expanded query covering all supported languages", () => {
