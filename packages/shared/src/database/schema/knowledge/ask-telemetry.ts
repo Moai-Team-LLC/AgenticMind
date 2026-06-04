@@ -1,3 +1,4 @@
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { sql } from "drizzle-orm"
 import {
   boolean,
@@ -19,6 +20,7 @@ import {
 const askTelemetry = pgTable(
   "ask_telemetry",
   {
+    ...tenantColumn,
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),

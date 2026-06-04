@@ -1,4 +1,5 @@
 import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { tsvector } from "@agenticmind/shared/database/schema/knowledge/_types"
 import { sql } from "drizzle-orm"
 import { index, pgTable, real, text, timestamp, uuid, vector } from "drizzle-orm/pg-core"
@@ -22,6 +23,7 @@ import { index, pgTable, real, text, timestamp, uuid, vector } from "drizzle-orm
 const beliefs = pgTable(
   "beliefs",
   {
+    ...tenantColumn,
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),

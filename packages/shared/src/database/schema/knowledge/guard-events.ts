@@ -1,3 +1,4 @@
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { sql } from "drizzle-orm"
 import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
@@ -10,6 +11,7 @@ import { index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 const guardEvents = pgTable(
   "guard_events",
   {
+    ...tenantColumn,
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),

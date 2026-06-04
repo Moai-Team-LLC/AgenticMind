@@ -1,3 +1,4 @@
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { askClusters } from "@agenticmind/shared/database/schema/knowledge/ask-clusters"
 import { askTelemetry } from "@agenticmind/shared/database/schema/knowledge/ask-telemetry"
 import { sql } from "drizzle-orm"
@@ -10,6 +11,7 @@ import { index, pgTable, primaryKey, real, timestamp, uuid } from "drizzle-orm/p
 const askClusterMembers = pgTable(
   "ask_cluster_members",
   {
+    ...tenantColumn,
     clusterId: uuid("cluster_id")
       .notNull()
       .references(() => askClusters.id, { onDelete: "cascade" }),

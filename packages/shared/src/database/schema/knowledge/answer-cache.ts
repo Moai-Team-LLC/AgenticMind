@@ -1,4 +1,5 @@
 import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { sql } from "drizzle-orm"
 import {
   check,
@@ -22,6 +23,7 @@ import {
 const answerCache = pgTable(
   "answer_cache",
   {
+    ...tenantColumn,
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
