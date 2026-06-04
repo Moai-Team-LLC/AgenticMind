@@ -14,28 +14,28 @@
  * does not fire around Cyrillic). */
 const INJECTION_PATTERNS: readonly RegExp[] = [
   // English
-  /ignore\s+(all\s+)?(the\s+)?(previous|prior|above|earlier)\s+(instructions?|prompts?|rules?)/i,
-  /disregard\s+(the\s+)?(above|previous|prior|system|earlier)/i,
-  /forget\s+(everything|all|your|the)\b/i,
-  /you\s+are\s+now\s+(a|an|the)?\b/i,
-  /(reveal|show|print|repeat|leak)\s+(me\s+)?(your\s+)?(the\s+)?(system\s+)?(prompt|instructions?)/i,
-  /(act|behave|pretend|roleplay)\s+as\s+(if\s+)?/i,
-  /\b(jailbreak|DAN\s+mode|developer\s+mode)\b/i,
-  /override\s+(the\s+)?(rules?|instructions?|system)/i,
+  /ignore\s+(?:all\s+)?(?:the\s+)?(?:previous|prior|above|earlier)\s+(?:instructions?|prompts?|rules?)/i,
+  /disregard\s+(?:the\s+)?(?:above|previous|prior|system|earlier)/i,
+  /forget\s+(?:everything|all|your|the)\b/i,
+  /you\s+are\s+now\s+(?:a|an|the)?\b/i,
+  /(?:reveal|show|print|repeat|leak)\s+(?:me\s+)?(?:your\s+)?(?:the\s+)?(?:system\s+)?(?:prompt|instructions?)/i,
+  /(?:act|behave|pretend|roleplay)\s+as\s+(?:if\s+)?/i,
+  /\b(?:jailbreak|DAN\s+mode|developer\s+mode)\b/i,
+  /override\s+(?:the\s+)?(?:rules?|instructions?|system)/i,
   /\bnew\s+instructions?\s*:/i,
   // "system prompt" only when paired with an exfiltration verb (so benign
   // questions that merely mention the system prompt are not over-blocked).
-  /(reveal|show|print|repeat|leak|dump|expose|share|output)\b[\s\S]{0,40}?system\s+prompt/i,
+  /(?:reveal|show|print|repeat|leak|dump|expose|share|output)\b[\s\S]{0,40}?system\s+prompt/i,
   // Russian
-  /игнорир[а-яё]*\s+[а-яё\s]{0,30}?(инструкц|указани|правил|промпт)/iu,
-  /забуд[а-яё]*\s+[а-яё\s]{0,20}?(инструкц|правил|указани|промпт|контекст|вс[её])/iu,
-  /ты\s+(теперь|больше\s+не|отныне)/iu,
-  /(покаж|раскро|выв[еэ]д|повтори|сообщи|напечат)[а-яё]*\s+[а-яё\s]{0,20}?(систем[а-яё]*\s*)?промпт/iu,
-  /(притвор[а-яё]*|прикинься|веди\s+себя\s+как\s+будто|сыгра[а-яё]+\s+роль)/iu,
-  /(обойд|обход|отключ|сними|сброс)[а-яё]*\s+[а-яё\s]{0,20}?(правил|ограничени|инструкц|фильтр|цензур|защит)/iu,
-  /нов[а-яё]+\s+(инструкц|указани|правил)[а-яё]*\s*:/iu,
-  /у\s+теб[яе]\s+нет\s+[а-яё\s]{0,20}?(правил|ограничени|инструкц|фильтр)/iu,
-  /(джейлбрейк|режим\s+разработчика)/iu,
+  /игнорир[а-яё]*\s+[а-яё\s]{0,30}?(?:инструкц|указани|правил|промпт)/iu,
+  /забуд[а-яё]*\s+[а-яё\s]{0,20}?(?:инструкц|правил|указани|промпт|контекст|вс[её])/iu,
+  /ты\s+(?:теперь|больше\s+не|отныне)/iu,
+  /(?:покаж|раскро|выв[еэ]д|повтори|сообщи|напечат)[а-яё]*\s+[а-яё\s]{0,20}?(?:систем[а-яё]*\s*)?промпт/iu,
+  /(?:притвор[а-яё]*|прикинься|веди\s+себя\s+как\s+будто|сыгра[а-яё]+\s+роль)/iu,
+  /(?:обойд|обход|отключ|сними|сброс)[а-яё]*\s+[а-яё\s]{0,20}?(?:правил|ограничени|инструкц|фильтр|цензур|защит)/iu,
+  /нов[а-яё]+\s+(?:инструкц|указани|правил)[а-яё]*\s*:/iu,
+  /у\s+теб[яе]\s+нет\s+[а-яё\s]{0,20}?(?:правил|ограничени|инструкц|фильтр)/iu,
+  /(?:джейлбрейк|режим\s+разработчика)/iu,
 ]
 
 export const detectInjection = (text: string): { injection: boolean; pattern?: string } => {
