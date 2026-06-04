@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest"
 
 import type { BeliefClaim } from "./belief"
 
-import { beliefKey, detectConflicts, resolveConflict, summarizeContested } from "./belief"
+import {
+  BELIEF_CONFIDENCE_HALF_LIFE_MS,
+  beliefKey,
+  decayedConfidence,
+  detectConflicts,
+  resolveConflict,
+  summarizeContested,
+} from "./belief"
 
 const claim = (
   actor: string | null,
@@ -94,5 +101,32 @@ describe("summarizeContested", () => {
         claim("b", "Ireland", "rate", "12.5 %"),
       ]),
     ).toEqual([])
+  })
+})
+
+describe("decayedConfidence", () => {
+  const now = 1_000_000_000_000
+
+  it("does not decay a freshly recorded belief", () => {
+    expect(decayedConfidence(0.8, new Date(now), now)).toBeCloseTo(0.8, 10)
+  })
+
+  it("halves confidence after one half-life", () => {
+    const old = new Date(now - BELIEF_CONFIDENCE_HALF_LIFE_MS)
+    expect(decayedConfidence(0.8, old, now)).toBeCloseTo(0.4, 6)
+  })
+
+  it("quarters confidence after two half-lives", () => {
+    const older = new Date(now - 2 * BELIEF_CONFIDENCE_HALF_LIFE_MS)
+    expect(decayedConfidence(0.8, older, now)).toBeCloseTo(0.2, 6)
+  })
+
+  it("treats unknown age (null) as no decay, clamped to [0,1]", () => {
+    expect(decayedConfidence(0.9, null, now)).toBe(0.9)
+    expect(decayedConfidence(2, null, now)).toBe(1)
+  })
+
+  it("never decays below 0 and ignores future timestamps", () => {
+    expect(decayedConfidence(0.5, new Date(now + 1_000_000), now)).toBeCloseTo(0.5, 10)
   })
 })
