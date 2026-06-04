@@ -21,6 +21,7 @@ import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materi
 import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
+import { summarizeContested } from "@agenticmind/shared/lib/knowledge/belief"
 import { approxTokens } from "@agenticmind/shared/lib/knowledge/chunker"
 import { packByTokenBudget } from "@agenticmind/shared/lib/knowledge/context-budget"
 import {
@@ -453,7 +454,22 @@ export const memRecall = async (deps: McpToolDeps, args: z.infer<typeof memRecal
   if (res.isErr()) {
     throw new Error(`mem_recall: ${res.error.message}`)
   }
-  return { beliefs: res.value }
+  // Surface conflicts instead of silently resolving them: which recalled beliefs
+  // are contested (same subject+predicate, different objects), each variant
+  // tagged with its source actor + date so the agent can judge for itself.
+  const contested = summarizeContested(
+    res.value.map((b) => {
+      return {
+        actorUuid: b.actorUuid,
+        subject: b.subject,
+        predicate: b.predicate,
+        object: b.object,
+        confidence: b.confidence,
+        recordedAt: b.recordedAt ?? undefined,
+      }
+    }),
+  )
+  return { beliefs: res.value, contested }
 }
 
 export const klIngestInput = z.object({
@@ -556,7 +572,7 @@ export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "mem_recall",
     description:
-      "Recall your beliefs (subject-predicate-object facts) — your own private memory unioned with the shared/collective memory. Filter by subject or semantic query; pass `asOf` (ISO time) to time-travel to what was believed then.",
+      "Recall your beliefs (subject-predicate-object facts) — your own private memory unioned with the shared/collective memory. Filter by subject or semantic query; pass `asOf` (ISO time) to time-travel to what was believed then. Also returns `contested`: any recalled fact where sources disagree (same subject+predicate, different objects), each variant tagged with its source and date — so you can flag a disputed fact instead of trusting one side.",
     inputSchema: memRecallInput,
   },
   {
