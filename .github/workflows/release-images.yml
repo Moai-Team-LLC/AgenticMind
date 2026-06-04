@@ -1,7 +1,9 @@
 name: release-images
 
-# Publish the AgenticMind server + worker images to GHCR so self-hosters can
-# `docker pull` instead of clone-and-build:
+# Publish multi-arch (linux/amd64 + linux/arm64) AgenticMind server + worker
+# images to GHCR so self-hosters can `docker pull` instead of clone-and-build —
+# and run them unchanged on Apple Silicon dev machines and arm64 cloud
+# (Graviton/Ampere) without a --platform flag:
 #   ghcr.io/moai-team-llc/agenticmind-server:<version>   (and :latest)
 #   ghcr.io/moai-team-llc/agenticmind-worker:<version>
 # Fires on each published GitHub Release; also runnable on demand.
@@ -27,6 +29,9 @@ jobs:
             dockerfile: Dockerfile.worker
     steps:
       - uses: actions/checkout@v4
+
+      - name: Set up QEMU (for cross-arch emulation)
+        uses: docker/setup-qemu-action@v3
 
       - uses: docker/setup-buildx-action@v3
 
@@ -54,8 +59,8 @@ jobs:
           context: .
           file: ${{ matrix.dockerfile }}
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}

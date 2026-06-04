@@ -1,0 +1,47 @@
+name: cla
+
+# Contributor License Agreement gate. Every external contributor signs once, by
+# posting a single comment on their pull request; the signature is recorded as
+# JSON on the (unprotected) `cla-signatures` branch. The CLA grants Moai Team LLC
+# a broad, sublicensable license so the project can ship a future commercial
+# edition on top of the Apache-2.0 core WITHOUT relicensing the open core. See
+# CLA.md for the agreement text.
+#
+# One-time setup before this is useful (run once, then enable in repo settings):
+#   git switch --orphan cla-signatures
+#   git commit --allow-empty -m "chore: init CLA signatures branch"
+#   git push -u origin cla-signatures
+#   git switch -
+#
+# Note: contributor-assistant/github-action is archived but its releases remain
+# functional; it is pinned to a fixed tag. Re-evaluate if a maintained fork wins.
+on:
+  issue_comment:
+    types: [created]
+  pull_request_target:
+    types: [opened, closed, synchronize]
+
+# Explicit permissions in case the repo default GITHUB_TOKEN is read-only.
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+  statuses: write
+
+jobs:
+  cla:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CLA Assistant
+        if: (github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA') || github.event_name == 'pull_request_target'
+        uses: contributor-assistant/github-action@v2.6.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-signatures: 'signatures/version1/cla.json'
+          path-to-document: 'https://github.com/Moai-Team-LLC/AgenticMind/blob/main/CLA.md'
+          # Dedicated unprotected branch keeps signature commits out of main's history.
+          branch: 'cla-signatures'
+          # Maintainers and bots never need to sign.
+          allowlist: 'AlexDuchDev,dependabot[bot],bot*'
+          custom-allsigned-prcomment: 'All contributors have signed the CLA — thank you!'

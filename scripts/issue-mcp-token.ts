@@ -52,6 +52,8 @@ const scopes = (
   .split(",")
   .map((s) => s.trim())
   .filter((s) => s.length > 0)
+// Tenant this token grants (multi-tenant). Omit for single-tenant (default tenant).
+const tenantId = arg("tenant")
 
 const jti = randomUUID()
 const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000)
@@ -70,7 +72,15 @@ const token = signHs256(
 )
 
 const db = createClient(databaseSettings.DATABASE_URL)
-const res = await issueMcpToken({ tx: db, jti, userUuid, label, expiresAt, scopes })
+const res = await issueMcpToken({
+  tx: db,
+  jti,
+  userUuid,
+  label,
+  expiresAt,
+  scopes,
+  ...(tenantId !== undefined ? { tenantId } : {}),
+})
 if (res.isErr()) {
   console.error("failed to register token:", res.error.message)
   process.exit(1)

@@ -80,6 +80,43 @@ export const detectConflicts = (claims: readonly BeliefClaim[]): ConflictGroup[]
   return conflicts
 }
 
+/** Agent-facing view of a contested belief: the competing objects, each tagged
+ * with the source (actor) and date of its most-recent assertion. */
+export type ContestedClaim = {
+  subject: string
+  predicate: string
+  claims: { object: string; actorUuid: string | null; recordedAt: Date | null }[]
+}
+
+/**
+ * Surfaces conflicts instead of silently resolving them: maps detected conflict
+ * groups to a compact, agent-consumable shape so a caller can see "this is
+ * contested: object A (src, date) vs object B (src, date)" and decide for itself.
+ */
+export const summarizeContested = (claims: readonly BeliefClaim[]): ContestedClaim[] =>
+  detectConflicts(claims).map((g) => {
+    return {
+      subject: g.subject,
+      predicate: g.predicate,
+      claims: g.variants.map((v) => {
+        let newest = v.claims[0]
+        for (const c of v.claims) {
+          if (
+            newest === undefined ||
+            (c.recordedAt?.getTime() ?? 0) > (newest.recordedAt?.getTime() ?? 0)
+          ) {
+            newest = c
+          }
+        }
+        return {
+          object: v.object,
+          actorUuid: newest?.actorUuid ?? null,
+          recordedAt: newest?.recordedAt ?? null,
+        }
+      }),
+    }
+  })
+
 /**
  * Resolution rule for consolidating conflicting claims into one shared belief.
  * Ranks each candidate object by (1) distinct-actor corroboration count,
@@ -133,4 +170,29 @@ export const resolveConflict = (
   const avgConf = best.sumConf / winningClaims.length
   const confidence = Math.min(1, Math.max(0, 0.5 * corroborationBoost + 0.5 * avgConf))
   return { object: best.object, confidence, corroborators: best.actors }
+}
+
+/** Default half-life for belief-confidence decay: 90 days. After one half-life
+ * an un-reasserted belief's effective confidence has halved. */
+export const BELIEF_CONFIDENCE_HALF_LIFE_MS = 90 * 24 * 60 * 60 * 1000
+
+/**
+ * Effective confidence after time decay. A belief that hasn't been re-asserted
+ * loses weight as it ages — recency is trust — via exponential half-life decay,
+ * clamped to [0,1]. A null `recordedAt` (unknown age) means no decay. This is
+ * how memory "forgets" gradually instead of trusting a stale fact forever;
+ * re-assertion (assertBelief) resets the age by writing a fresh current row.
+ */
+export const decayedConfidence = (
+  confidence: number,
+  recordedAt: Date | null,
+  now: number,
+  halfLifeMs: number = BELIEF_CONFIDENCE_HALF_LIFE_MS,
+): number => {
+  if (recordedAt === null || halfLifeMs <= 0) {
+    return Math.max(0, Math.min(1, confidence))
+  }
+  const ageMs = Math.max(0, now - recordedAt.getTime())
+  const factor = 0.5 ** (ageMs / halfLifeMs)
+  return Math.max(0, Math.min(1, confidence * factor))
 }

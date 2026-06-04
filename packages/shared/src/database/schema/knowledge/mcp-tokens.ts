@@ -1,3 +1,4 @@
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { sql } from "drizzle-orm"
 import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 
@@ -13,6 +14,7 @@ import { index, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 const mcpTokens = pgTable(
   "mcp_tokens",
   {
+    ...tenantColumn,
     jti: text("jti").primaryKey(),
     /** The principal this token acts as (the agent / service / human id). */
     userUuid: text("user_uuid").notNull(),

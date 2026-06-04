@@ -13,7 +13,7 @@ import { desc, eq, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 export type McpTokenCheck =
-  | { active: true; userUuid: string; actorType: string; scopes: string[] }
+  | { active: true; userUuid: string; actorType: string; scopes: string[]; tenantId: string }
   | { active: false; reason: "unknown" | "revoked" | "expired" }
 
 /** Records a freshly-minted token (status active). */
@@ -27,6 +27,8 @@ export const issueMcpToken = (props: {
   actorType?: string
   /** Granted scopes (default ["knowledge:read"]). */
   scopes?: string[]
+  /** Tenant this token grants access to (default = the single-tenant default). */
+  tenantId?: string
 }) =>
   ResultAsync.fromPromise(
     props.tx
@@ -38,6 +40,7 @@ export const issueMcpToken = (props: {
         expiresAt: props.expiresAt,
         ...(props.actorType !== undefined ? { actorType: props.actorType } : {}),
         ...(props.scopes !== undefined ? { scopes: props.scopes } : {}),
+        ...(props.tenantId !== undefined ? { tenantId: props.tenantId } : {}),
       })
       .returning({ jti: mcpTokens.jti }),
     mapDatabaseError,
@@ -64,6 +67,7 @@ export const checkMcpToken = (props: { tx: Transaction; jti: string }) =>
       userUuid: row.userUuid,
       actorType: row.actorType,
       scopes: row.scopes,
+      tenantId: row.tenantId,
     }
   })
 

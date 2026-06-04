@@ -1,3 +1,4 @@
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { sql } from "drizzle-orm"
 import { bigint, check, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core"
 
@@ -12,6 +13,7 @@ import { bigint, check, index, jsonb, pgTable, text, timestamp, uuid } from "dri
 const materials = pgTable(
   "materials",
   {
+    ...tenantColumn,
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),

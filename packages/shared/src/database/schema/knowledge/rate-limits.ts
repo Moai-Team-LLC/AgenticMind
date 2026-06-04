@@ -1,3 +1,4 @@
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core"
 
 /**
@@ -6,6 +7,7 @@ import { integer, pgTable, text, timestamp } from "drizzle-orm/pg-core"
  * Postgres-only.
  */
 const rateLimits = pgTable("rate_limits", {
+  ...tenantColumn,
   key: text("key").primaryKey(),
   windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
   count: integer("count").notNull().default(0),

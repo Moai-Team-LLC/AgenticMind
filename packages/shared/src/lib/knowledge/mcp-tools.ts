@@ -7,6 +7,7 @@
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
+import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/chunks"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
@@ -20,6 +21,9 @@ import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materi
 import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
+import { decayedConfidence, summarizeContested } from "@agenticmind/shared/lib/knowledge/belief"
+import { approxTokens } from "@agenticmind/shared/lib/knowledge/chunker"
+import { packByTokenBudget } from "@agenticmind/shared/lib/knowledge/context-budget"
 import {
   defaultStrengthFor,
   isAgentSignal,
@@ -108,10 +112,49 @@ const enforceGuards = async (deps: McpToolDeps, tool: string, text: string): Pro
 
 export const klSearchInput = z.object({
   q: z.string().min(1),
+  /** Extra sub-queries fanned out in one round-trip; results merged + deduped. */
+  queries: z.array(z.string().min(1)).max(8).optional(),
   limit: z.number().int().positive().max(50).optional(),
+  /** Return the best ~N tokens of context instead of a fixed count of passages. */
+  tokenBudget: z.number().int().positive().max(32_000).optional(),
 })
 
-/** Kl_search — vector retrieval over the chunks index. */
+/** Fan out sub-queries concurrently, merge hits by chunk (keep the best score). */
+const searchMerged = async (
+  deps: McpToolDeps,
+  queries: string[],
+  limit: number,
+): Promise<KnowledgeHit[]> => {
+  const perQuery = await Promise.all(
+    queries.map(async (query): Promise<KnowledgeHit[]> => {
+      const e = await embedKnowledgeText(query)
+      if (e.isErr()) {
+        throw new Error(`kl_search: embed: ${e.error.message}`)
+      }
+      const h = await searchChunks({ tx: deps.tx, queryEmbedding: e.value, limit })
+      if (h.isErr()) {
+        throw new Error(`kl_search: ${h.error.message}`)
+      }
+      return h.value
+    }),
+  )
+  const byChunk = new Map<string, KnowledgeHit>()
+  for (const hits of perQuery) {
+    for (const h of hits) {
+      const existing = byChunk.get(h.chunkId)
+      if (existing === undefined || h.score > existing.score) {
+        byChunk.set(h.chunkId, h)
+      }
+    }
+  }
+  return [...byChunk.values()].toSorted((a, b) => b.score - a.score)
+}
+
+/**
+ * Kl_search — vector retrieval over the chunks index. Accepts a batch of
+ * sub-queries (`queries`) fanned out in one round-trip, and an optional
+ * `tokenBudget` to return the best ~N tokens of context instead of a fixed count.
+ */
 export const klSearch = async (
   deps: McpToolDeps,
   args: z.infer<typeof klSearchInput>,
@@ -119,19 +162,23 @@ export const klSearch = async (
   query: string
   hits: { materialId: string; title: string; snippet: string; score: number }[]
 }> => {
-  await enforceGuards(deps, "kl_search", args.q)
+  const queries = [...new Set([args.q, ...(args.queries ?? [])].map((s) => s.trim()))].filter(
+    (s) => s.length > 0,
+  )
+  for (const query of queries) {
+    await enforceGuards(deps, "kl_search", query)
+  }
   const limit = args.limit !== undefined && args.limit > 0 && args.limit <= 50 ? args.limit : 10
-  const embedded = await embedKnowledgeText(args.q)
-  if (embedded.isErr()) {
-    throw new Error(`kl_search: embed: ${embedded.error.message}`)
-  }
-  const hits = await searchChunks({ tx: deps.tx, queryEmbedding: embedded.value, limit })
-  if (hits.isErr()) {
-    throw new Error(`kl_search: ${hits.error.message}`)
-  }
+
+  const ranked = await searchMerged(deps, queries, limit)
+  const selected =
+    args.tokenBudget !== undefined
+      ? packByTokenBudget(ranked, args.tokenBudget, (h) => approxTokens(h.body))
+      : ranked.slice(0, limit)
+
   const titles = new Map<string, string>()
   const out = []
-  for (const h of hits.value) {
+  for (const h of selected) {
     out.push({
       materialId: h.materialId,
       title: await resolveTitle(deps.tx, h.materialId, titles),
@@ -407,7 +454,28 @@ export const memRecall = async (deps: McpToolDeps, args: z.infer<typeof memRecal
   if (res.isErr()) {
     throw new Error(`mem_recall: ${res.error.message}`)
   }
-  return { beliefs: res.value }
+  // Time-decay: surface an age-adjusted `effectiveConfidence` per belief so the
+  // caller can down-weight stale facts. Recency is trust; re-assertion resets it.
+  const now = Date.now()
+  const beliefs = res.value.map((b) => {
+    return { ...b, effectiveConfidence: decayedConfidence(b.confidence, b.recordedAt, now) }
+  })
+  // Surface conflicts instead of silently resolving them: which recalled beliefs
+  // are contested (same subject+predicate, different objects), each variant
+  // tagged with its source actor + date so the agent can judge for itself.
+  const contested = summarizeContested(
+    res.value.map((b) => {
+      return {
+        actorUuid: b.actorUuid,
+        subject: b.subject,
+        predicate: b.predicate,
+        object: b.object,
+        confidence: b.confidence,
+        recordedAt: b.recordedAt ?? undefined,
+      }
+    }),
+  )
+  return { beliefs, contested }
 }
 
 export const klIngestInput = z.object({
@@ -474,14 +542,14 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.2.0"
+export const MCP_CONTRACT_VERSION = "1.3.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "kl_search",
     description:
-      "Search the knowledge base by keyword/semantic similarity. Returns the top-K matching passages with material titles and similarity scores. Prefer for exploratory lookups; use kl_ask_global for a synthesised answer with citations.",
+      "Search the knowledge base by keyword/semantic similarity. Returns matching passages with material titles and similarity scores. Pass `queries` (a batch of sub-questions) to retrieve for several angles in one round-trip — results are merged and deduped. Pass `tokenBudget` to get the best ~N tokens of context instead of a fixed count (agents on a context budget). Prefer for exploratory lookups; use kl_ask_global for a synthesised answer with citations.",
     inputSchema: klSearchInput,
   },
   {
@@ -510,7 +578,7 @@ export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "mem_recall",
     description:
-      "Recall your beliefs (subject-predicate-object facts) — your own private memory unioned with the shared/collective memory. Filter by subject or semantic query; pass `asOf` (ISO time) to time-travel to what was believed then.",
+      "Recall your beliefs (subject-predicate-object facts) — your own private memory unioned with the shared/collective memory. Filter by subject or semantic query; pass `asOf` (ISO time) to time-travel to what was believed then. Each belief carries `effectiveConfidence`: its stored confidence after time-decay (a belief not re-asserted loses weight as it ages) — prefer it over raw `confidence` when deciding how much to trust a fact. Also returns `contested`: any recalled fact where sources disagree (same subject+predicate, different objects), each variant tagged with its source and date — so you can flag a disputed fact instead of trusting one side.",
     inputSchema: memRecallInput,
   },
   {

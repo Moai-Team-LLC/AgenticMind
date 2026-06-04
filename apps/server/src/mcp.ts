@@ -15,7 +15,9 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import type { z } from "zod"
 
+import { withTenant } from "@agenticmind/shared/database/client"
 import { checkMcpToken } from "@agenticmind/shared/database/query/knowledge/mcp-tokens"
+import { DEFAULT_TENANT_ID } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import {
   klAskGlobal,
   klAskGlobalInput,
@@ -67,7 +69,9 @@ const errorContent = (message: string): ToolResult => {
   }
 }
 
-type ToolExtra = { authInfo?: { scopes?: string[]; clientId?: string } }
+type ToolExtra = {
+  authInfo?: { scopes?: string[]; clientId?: string; extra?: { tenantId?: string } }
+}
 
 const toolDeps = (extra?: ToolExtra): McpToolDeps => {
   const flags = knowledgeFeatureFlags()
@@ -80,6 +84,20 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     actorUuid: extra?.authInfo?.clientId ?? null,
     blobStore: getKnowledgeBlobStore(),
   }
+}
+
+/**
+ * Runs a tool inside the caller's tenant context: opens a transaction with the
+ * `app.current_tenant` GUC set from the verified token, so row-level security
+ * scopes every query (and the answer cache) to that tenant. Single-tenant tokens
+ * carry the default tenant, so this is uniform and safe for both modes.
+ */
+const runTenantScoped = async <T>(
+  extra: ToolExtra,
+  run: (deps: McpToolDeps) => Promise<T>,
+): Promise<T> => {
+  const tenantId = extra.authInfo?.extra?.tenantId ?? DEFAULT_TENANT_ID
+  return withTenant(getDb(), tenantId, async (tx) => run({ ...toolDeps(extra), tx }))
 }
 
 /**
@@ -117,7 +135,7 @@ const handler = createMcpHandler(
       klSearchInput,
       async (args, extra) => {
         try {
-          return jsonContent(await klSearch(toolDeps(extra), args))
+          return jsonContent(await runTenantScoped(extra, async (d) => klSearch(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_search failed")
         }
@@ -132,7 +150,7 @@ const handler = createMcpHandler(
       klAskGlobalInput,
       async (args, extra) => {
         try {
-          return jsonContent(await klAskGlobal(toolDeps(extra), args))
+          return jsonContent(await runTenantScoped(extra, async (d) => klAskGlobal(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_ask_global failed")
         }
@@ -147,7 +165,7 @@ const handler = createMcpHandler(
       klGetMaterialInput,
       async (args, extra) => {
         try {
-          return jsonContent(await klGetMaterial(toolDeps(extra), args))
+          return jsonContent(await runTenantScoped(extra, async (d) => klGetMaterial(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_get_material failed")
         }
@@ -162,7 +180,7 @@ const handler = createMcpHandler(
       klSignalInput,
       async (args, extra) => {
         try {
-          return jsonContent(await klSignal(toolDeps(extra), args))
+          return jsonContent(await runTenantScoped(extra, async (d) => klSignal(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_signal failed")
         }
@@ -177,7 +195,7 @@ const handler = createMcpHandler(
       memRecallInput,
       async (args, extra) => {
         try {
-          return jsonContent(await memRecall(toolDeps(extra), args))
+          return jsonContent(await runTenantScoped(extra, async (d) => memRecall(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "mem_recall failed")
         }
@@ -192,7 +210,7 @@ const handler = createMcpHandler(
       memWriteInput,
       async (args, extra) => {
         try {
-          return jsonContent(await memWrite(toolDeps(extra), args))
+          return jsonContent(await runTenantScoped(extra, async (d) => memWrite(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "mem_write failed")
         }
@@ -207,7 +225,7 @@ const handler = createMcpHandler(
       klIngestInput,
       async (args, extra) => {
         try {
-          return jsonContent(await klIngest(toolDeps(extra), args))
+          return jsonContent(await runTenantScoped(extra, async (d) => klIngest(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_ingest failed")
         }
@@ -222,7 +240,7 @@ const handler = createMcpHandler(
       klForgetInput,
       async (args, extra) => {
         try {
-          return jsonContent(await klForget(toolDeps(extra), args))
+          return jsonContent(await runTenantScoped(extra, async (d) => klForget(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_forget failed")
         }
@@ -239,7 +257,7 @@ const handler = createMcpHandler(
         klGraphNeighborsInput,
         async (args, extra) => {
           try {
-            return jsonContent(await klGraphNeighbors(toolDeps(extra), args))
+            return jsonContent(await runTenantScoped(extra, async (d) => klGraphNeighbors(d, args)))
           } catch (error) {
             return errorContent(
               error instanceof Error ? error.message : "kl_graph_neighbors failed",
@@ -296,7 +314,7 @@ const verifyMcpAccess = async (_req: Request, bearer?: string): Promise<AuthInfo
       token: bearer,
       scopes: API_KEY_SCOPES,
       clientId: API_KEY_PRINCIPAL,
-      extra: { userUuid: API_KEY_PRINCIPAL, actorType: "service" },
+      extra: { userUuid: API_KEY_PRINCIPAL, actorType: "service", tenantId: DEFAULT_TENANT_ID },
     }
   }
   const verified = await verifyMcpToken(bearer)
@@ -315,7 +333,12 @@ const verifyMcpAccess = async (_req: Request, bearer?: string): Promise<AuthInfo
     token: bearer,
     scopes,
     clientId: verified.userUuid,
-    extra: { userUuid: verified.userUuid, jti: verified.jti, actorType: check.actorType },
+    extra: {
+      userUuid: verified.userUuid,
+      jti: verified.jti,
+      actorType: check.actorType,
+      tenantId: check.tenantId,
+    },
   }
 }
 

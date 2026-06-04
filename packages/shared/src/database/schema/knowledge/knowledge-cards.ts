@@ -1,4 +1,5 @@
 import { EMBEDDING_DIMENSIONS } from "@agenticmind/shared/database/schema/knowledge/_config"
+import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { tsvector } from "@agenticmind/shared/database/schema/knowledge/_types"
 import { materials } from "@agenticmind/shared/database/schema/knowledge/materials"
 import { sql } from "drizzle-orm"
@@ -22,6 +23,7 @@ import {
 const knowledgeCards = pgTable(
   "knowledge_cards",
   {
+    ...tenantColumn,
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
