@@ -20,6 +20,7 @@ import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materi
 import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
+import { decayedConfidence } from "@agenticmind/shared/lib/knowledge/belief"
 import {
   defaultStrengthFor,
   isAgentSignal,
@@ -407,7 +408,13 @@ export const memRecall = async (deps: McpToolDeps, args: z.infer<typeof memRecal
   if (res.isErr()) {
     throw new Error(`mem_recall: ${res.error.message}`)
   }
-  return { beliefs: res.value }
+  // Time-decay: surface an age-adjusted `effectiveConfidence` per belief so the
+  // caller can down-weight stale facts. Recency is trust; re-assertion resets it.
+  const now = Date.now()
+  const beliefs = res.value.map((b) => {
+    return { ...b, effectiveConfidence: decayedConfidence(b.confidence, b.recordedAt, now) }
+  })
+  return { beliefs }
 }
 
 export const klIngestInput = z.object({
@@ -510,7 +517,7 @@ export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "mem_recall",
     description:
-      "Recall your beliefs (subject-predicate-object facts) — your own private memory unioned with the shared/collective memory. Filter by subject or semantic query; pass `asOf` (ISO time) to time-travel to what was believed then.",
+      "Recall your beliefs (subject-predicate-object facts) — your own private memory unioned with the shared/collective memory. Filter by subject or semantic query; pass `asOf` (ISO time) to time-travel to what was believed then. Each belief carries `effectiveConfidence`: its stored confidence after time-decay (a belief not re-asserted loses weight as it ages) — prefer it over raw `confidence` when deciding how much to trust a fact.",
     inputSchema: memRecallInput,
   },
   {
