@@ -170,7 +170,7 @@ export const buildFtsWhereClause = (
   variants: string[],
 ): SQL => {
   const branches = SUPPORTED_LANGUAGES.map((lang) => {
-    const parts = variants.map((v) => sql`plainto_tsquery(${lang}, ${v})`)
+    const parts = variants.map((v) => sql`plainto_tsquery(${lang}::regconfig, ${v})`)
     const tsQuery = sql`(${sql.join(parts, sql` || `)})`
     return sql`(${table.ftsConfig} = ${lang} AND ${table.bodyTsv} @@ ${tsQuery})`
   })
