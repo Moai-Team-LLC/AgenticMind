@@ -77,7 +77,7 @@ describe.skipIf(process.env.DATABASE_URL === undefined || process.env.DATABASE_U
 
       const searchResult = await searchChunksBm25({
         tx: db,
-        query: "laufen",
+        query: "schnell",
       })
 
       expect(searchResult.isOk()).toBe(true)
@@ -85,7 +85,7 @@ describe.skipIf(process.env.DATABASE_URL === undefined || process.env.DATABASE_U
         const hits = searchResult.value
         expect(hits.length).toBeGreaterThan(0)
         const firstHit = hits[0]!
-        expect(firstHit.body).toContain("läuft")
+        expect(firstHit.body).toContain("schnelle")
       }
     })
   },
