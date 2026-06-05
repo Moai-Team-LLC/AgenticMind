@@ -95,6 +95,36 @@ export const assertBelief = (props: {
   )
 }
 
+/**
+ * Retract one of an actor's OWN current beliefs by id — soft + bitemporal: sets
+ * `valid_to` + `invalidated_at` to now so the row drops from current memory but
+ * stays recallable via `asOf` for audit. Ownership-gated by `actor_uuid` (an
+ * agent can only retract its own private memory, never shared/collective beliefs).
+ * Tenant isolation is enforced by RLS on the caller's transaction. Returns
+ * `{ retracted: false }` when nothing matched (wrong id / not owned / already retracted).
+ */
+export const retractBelief = (props: {
+  tx: Transaction
+  actorUuid: string
+  id: string
+}): ResultAsync<{ retracted: boolean }, ReturnType<typeof mapDatabaseError>> =>
+  ResultAsync.fromPromise(
+    props.tx
+      .update(beliefs)
+      .set({ validTo: sql`now()`, invalidatedAt: sql`now()` })
+      .where(
+        and(
+          eq(beliefs.id, props.id),
+          eq(beliefs.actorUuid, props.actorUuid),
+          isNull(beliefs.invalidatedAt),
+        ),
+      )
+      .returning({ id: beliefs.id }),
+    mapDatabaseError,
+  ).map((rows) => {
+    return { retracted: rows.length > 0 }
+  })
+
 /** Bitemporal predicate: "still held" now, or held as-of transaction time T. */
 const temporalPredicate = (asOf?: Date): SQL => {
   if (asOf === undefined) {

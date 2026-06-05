@@ -2355,5 +2355,52 @@
     "assertions": {
       "expectBlocked": true
     }
+  },
+  {
+    "id": "faith-1-grounded-harness-share",
+    "failureMode": "faithfulness",
+    "query": "What share of a production agent's reliability lives in the harness rather than the model?",
+    "assertions": {
+      "minCitations": 1,
+      "mustMention": ["98%"],
+      "minGroundedness": 0.5
+    }
+  },
+  {
+    "id": "faith-2-grounded-context-utilization",
+    "failureMode": "faithfulness",
+    "query": "What is the recommended maximum context-window utilization in a typical cycle?",
+    "assertions": {
+      "minCitations": 1,
+      "mustMention": ["40%"],
+      "minGroundedness": 0.5
+    }
+  },
+  {
+    "id": "faith-3-abstain-neutron-stars",
+    "failureMode": "faithfulness",
+    "query": "How do neutron stars form?",
+    "assertions": {
+      "maxCitations": 0,
+      "expectAbstain": true
+    }
+  },
+  {
+    "id": "faith-4-abstain-japan-tax",
+    "failureMode": "faithfulness",
+    "query": "What is the corporate tax rate in Japan?",
+    "assertions": {
+      "maxCitations": 0,
+      "expectAbstain": true
+    }
+  },
+  {
+    "id": "faith-5-abstain-capital-of-mongolia",
+    "failureMode": "faithfulness",
+    "query": "What is the capital of Mongolia?",
+    "assertions": {
+      "maxCitations": 0,
+      "expectAbstain": true
+    }
   }
 ]

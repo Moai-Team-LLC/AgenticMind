@@ -35,6 +35,9 @@ export const Attr = {
   CITATION_COUNT: "agenticmind.citation_count",
   RETRIEVAL_MS: "agenticmind.retrieval_ms",
   GENERATION_MS: "agenticmind.generation_ms",
+  GROUNDEDNESS: "agenticmind.groundedness",
+  UNSUPPORTED_CLAIM_COUNT: "agenticmind.unsupported_claim_count",
+  ABSTAINED: "agenticmind.abstained",
 } as const
 
 /** Truncate attribute values so a span never carries an unbounded payload. */

@@ -22,6 +22,12 @@ export type EvalAssertions = {
   /** Phrases the answer MUST NOT contain (e.g. leaked system prompt, fabrications). */
   forbidPhrases?: string[]
   minAnswerChars?: number
+  /** Min Tier-A faithfulness groundedness (0..1) the answer must reach. */
+  minGroundedness?: number
+  /** Max groundedness (for cases that should be ungrounded). */
+  maxGroundedness?: number
+  /** The engine should abstain (decline) on this query. */
+  expectAbstain?: boolean
   /** Optional Level-2 binary judge question; requires a `judge` dep. */
   judge?: string
 }
@@ -39,6 +45,10 @@ export type EvalObservation = {
   blocked: boolean
   answer: string
   citations: { title: string; materialId: string }[]
+  /** Tier-A faithfulness groundedness (0..1); defaults to 1 when the engine omits it. */
+  groundedness?: number
+  /** Whether the engine declined to answer. */
+  abstained?: boolean
 }
 
 export type AskForEval = (query: string) => Promise<EvalObservation>
@@ -56,6 +66,25 @@ export type EvalReport = {
 
 const includesCi = (haystack: string, needle: string): boolean =>
   haystack.toLowerCase().includes(needle.toLowerCase())
+
+/** Tier-A faithfulness Level-1 checks: groundedness floor/ceiling + abstention. Pure. */
+const faithfulnessFailures = (a: EvalAssertions, obs: EvalObservation): string[] => {
+  const failures: string[] = []
+  const grounded = obs.groundedness ?? 1
+  if (a.minGroundedness !== undefined && grounded < a.minGroundedness) {
+    failures.push(`groundedness ${grounded.toFixed(2)} < ${a.minGroundedness}`)
+  }
+  if (a.maxGroundedness !== undefined && grounded > a.maxGroundedness) {
+    failures.push(`groundedness ${grounded.toFixed(2)} > ${a.maxGroundedness}`)
+  }
+  if (a.expectAbstain === true && obs.abstained !== true) {
+    failures.push("expected the engine to abstain")
+  }
+  if (a.expectAbstain === false && obs.abstained === true) {
+    failures.push("engine unexpectedly abstained")
+  }
+  return failures
+}
 
 /** Applies Level-1 assertions (+ optional judge) to one observation. Pure. */
 export const evaluateCase = async (
@@ -101,6 +130,8 @@ export const evaluateCase = async (
     if (a.minAnswerChars !== undefined && obs.answer.length < a.minAnswerChars) {
       failures.push(`answer shorter than ${a.minAnswerChars} chars`)
     }
+
+    failures.push(...faithfulnessFailures(a, obs))
 
     if (a.judge !== undefined) {
       if (judge === undefined) {

@@ -29,6 +29,8 @@ import {
   klSearchInput,
   klSignal,
   klSignalInput,
+  memForget,
+  memForgetInput,
   memRecall,
   memRecallInput,
   memWrite,
@@ -39,6 +41,8 @@ import {
   klForgetInput,
   MCP_CONTRACT_VERSION,
 } from "@agenticmind/shared/lib/knowledge/mcp-tools"
+import { resolveRetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
+import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 import { mcpSettings } from "@agenticmind/shared/settings/mcp-settings"
 import { createMcpHandler, withMcpAuth } from "mcp-handler"
 import { timingSafeEqual } from "node:crypto"
@@ -73,6 +77,10 @@ type ToolExtra = {
   authInfo?: { scopes?: string[]; clientId?: string; extra?: { tenantId?: string } }
 }
 
+// The active corpus-adaptive retrieval profile (Lever 3.2), resolved once at
+// boot from RETRIEVAL_PARAMS. Unset / malformed ⇒ undefined ⇒ engine defaults.
+const ACTIVE_RETRIEVAL_PARAMS = resolveRetrievalParams(knowledgeFeatureSettings.RETRIEVAL_PARAMS)
+
 const toolDeps = (extra?: ToolExtra): McpToolDeps => {
   const flags = knowledgeFeatureFlags()
   return {
@@ -83,6 +91,7 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     scopes: extra?.authInfo?.scopes,
     actorUuid: extra?.authInfo?.clientId ?? null,
     blobStore: getKnowledgeBlobStore(),
+    retrievalParams: ACTIVE_RETRIEVAL_PARAMS,
   }
 }
 
@@ -219,6 +228,21 @@ const handler = createMcpHandler(
 
     registerKlTool(
       server,
+      "mem_forget",
+      "Forget memory",
+      "Retract one of your own beliefs by id. Soft + bitemporal: it drops from current memory but stays recallable via mem_recall `asOf`. The memory counterpart of kl_forget. Requires the elevated memory:admin scope.",
+      memForgetInput,
+      async (args, extra) => {
+        try {
+          return jsonContent(await runTenantScoped(extra, async (d) => memForget(d, args)))
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "mem_forget failed")
+        }
+      },
+    )
+
+    registerKlTool(
+      server,
       "kl_ingest",
       "Ingest knowledge",
       "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Later kl_ask_global / kl_search can cite it.",
@@ -290,6 +314,7 @@ const API_KEY_SCOPES = [
   "knowledge:admin",
   "memory:read",
   "memory:write",
+  "memory:admin",
 ]
 
 /** Constant-time string compare (avoid leaking the key through timing). */

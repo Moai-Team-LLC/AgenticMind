@@ -85,6 +85,12 @@ export type Answer = {
   phases?: { phase: string; ms: number }[]
   /** Ask_telemetry row id, set after the best-effort telemetry write. */
   telemetryId?: string
+  /** Tier-A faithfulness: fraction of claim-sentences carrying a resolving citation (0..1). */
+  groundedness?: number
+  /** Claim-sentences with no resolving citation — the "confident but uncited" surface. */
+  unsupportedClaims?: string[]
+  /** The answer declined: no sources retrieved, or it cited nothing and hedged. */
+  abstained?: boolean
 }
 
 export const SYSTEM_PROMPT = `You are a knowledge-base assistant. Answer the user's

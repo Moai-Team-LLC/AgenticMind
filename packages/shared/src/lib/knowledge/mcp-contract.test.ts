@@ -29,6 +29,7 @@ const CONTRACT: Record<string, { fields: string[]; required: string[] }> = {
     fields: ["confidence", "embed", "object", "predicate", "subject"],
     required: ["object", "predicate", "subject"],
   },
+  mem_forget: { fields: ["id"], required: ["id"] },
 }
 
 const shapeOf = (schema: unknown): { fields: string[]; required: string[] } => {
