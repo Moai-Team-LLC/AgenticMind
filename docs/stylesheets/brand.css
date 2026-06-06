@@ -1,14 +1,14 @@
-/* AgenticMind brand palette — overrides Material's named primary/accent with the
-   exact brand hex (teal #1E607A structural / copper #CD7722 accent). */
+/* Moai Team brand palette (sourced from moaiteam.com / moai-next): teal primary +
+   copper/amber accent. Overrides Material's named palette with the exact brand hex. */
 :root {
-  --md-primary-fg-color:        #1E607A;
-  --md-primary-fg-color--light: #2a8fa8;
-  --md-primary-fg-color--dark:  #1a2f3a;
-  --md-accent-fg-color:         #CD7722;
+  --md-primary-fg-color:        #1E607A; /* deep Moai Team teal — header, nav, links */
+  --md-primary-fg-color--light: #4991AD; /* brand teal */
+  --md-primary-fg-color--dark:  #0C394A; /* deepest teal */
+  --md-accent-fg-color:         #CD7722; /* Moai Team copper accent */
 }
 
-/* Dark scheme: brighter teal + warm copper highlight. */
+/* Dark scheme: brighter teal + warm amber, matching the Moai Team site. */
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color:        #2a8fa8;
-  --md-accent-fg-color:         #e69044;
+  --md-primary-fg-color:        #4991AD; /* brighter Moai Team teal on dark */
+  --md-accent-fg-color:         #DE9145; /* warm amber accent on dark */
 }
