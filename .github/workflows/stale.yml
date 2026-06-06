@@ -1,0 +1,37 @@
+name: stale
+
+# Gently age out abandoned issues/PRs so the backlog reflects reality and a solo
+# maintainer isn't drowning in zombies. Conservative windows; security and pinned items
+# are exempt.
+on:
+  schedule:
+    - cron: "0 9 * * 1" # weekly, Monday 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: "stale"
+          stale-pr-label: "stale"
+          exempt-issue-labels: "pinned,security,good first issue,help wanted"
+          exempt-pr-labels: "pinned,security"
+          exempt-all-milestones: true
+          stale-issue-message: >
+            This issue has had no activity for 60 days, so it's marked stale.
+            Comment to keep it open — otherwise it closes in 14 days.
+          stale-pr-message: >
+            This PR has had no activity for 60 days, so it's marked stale.
+            Push or comment to keep it open — otherwise it closes in 14 days.
+          close-issue-message: >
+            Closing after 60+14 days of inactivity. Comment to reopen anytime.
+          close-pr-message: >
+            Closing after 60+14 days of inactivity. Reopen anytime.
