@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+<!-- Structured data (JSON-LD) for SEO/AEO. AgenticMind is published by Moai Team LLC. -->
+{% block extrahead %}
+  {{ super() }}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "Moai Team LLC",
+    "url": "https://moaiteam.com",
+    "sameAs": ["https://github.com/Moai-Team-LLC"]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "AgenticMind",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Docker (Linux, macOS)",
+    "description": "Auditable, self-improving knowledge & memory layer for AI agents over MCP. Citation-enforced answers, replayable why-trace, judge-gated compounding loop. Self-hosted on Postgres alone.",
+    "url": "https://moai-team-llc.github.io/AgenticMind/",
+    "codeRepository": "https://github.com/Moai-Team-LLC/AgenticMind",
+    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "publisher": { "@type": "Organization", "name": "Moai Team LLC", "url": "https://moaiteam.com" },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+  }
+  </script>
+  {% if page and page.url and "faq" in page.url %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is AgenticMind?",
+        "acceptedAnswer": { "@type": "Answer", "text": "An auditable, self-improving knowledge and memory layer for AI agents, served over MCP. Answers are citation-enforced (no source, no claim) and carry a replayable why-trace. Self-hosted on Postgres alone, Apache-2.0, maintained by Moai Team LLC." }
+      },
+      {
+        "@type": "Question",
+        "name": "How is it different from a vector store or memory SDK?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Plain memory gives fuzzy recall with no accountability. AgenticMind refuses unsupported answers, keys every claim to a numbered source, records a replayable why-trace, and promotes validated knowledge through a judge-gated compounding loop. The differentiator is provenance and governance, not raw recall." }
+      },
+      {
+        "@type": "Question",
+        "name": "How do I run it?",
+        "acceptedAnswer": { "@type": "Answer", "text": "One command, no clone: OPENAI_API_KEY=... sh -c \"$(curl -fsSL https://raw.githubusercontent.com/Moai-Team-LLC/AgenticMind/main/quickstart.sh)\". It needs Docker and an OpenAI-compatible key; embeddings run locally with zero keys." }
+      },
+      {
+        "@type": "Question",
+        "name": "Does my data leave my infrastructure?",
+        "acceptedAnswer": { "@type": "Answer", "text": "No. AgenticMind is self-hosted and runs embeddings locally (bge-m3), so ingested text stays in your Postgres. Only the optional synthesis step calls your configured chat model." }
+      },
+      {
+        "@type": "Question",
+        "name": "Is it secure and multi-tenant?",
+        "acceptedAnswer": { "@type": "Answer", "text": "The MCP endpoint is fail-closed and bearer-gated with least-privilege, revocable scopes. Every request runs inside a Postgres row-level-security tenant context. See the security model documentation." }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the license and who maintains it?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Apache-2.0, maintained by Moai Team LLC. AgenticMind is the reference implementation of the Agentic Product Standard." }
+      }
+    ]
+  }
+  </script>
+  {% endif %}
+{% endblock %}
