@@ -23,6 +23,10 @@ export const knowledgeFeatureSettings = createEnv({
     S3_BUCKET: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+    // Active corpus-adaptive retrieval profile (Lever 3.2) — a JSON object
+    // (hybridWeights / recencyConfig / topK / rerankTopN). Unset = engine defaults.
+    // Produced by scripts/tune.ts. Malformed values fall back to defaults.
+    RETRIEVAL_PARAMS: z.string().optional(),
   },
   runtimeEnv: {
     KNOWLEDGE_CARDS_ENABLED: process.env.KNOWLEDGE_CARDS_ENABLED,
@@ -31,6 +35,7 @@ export const knowledgeFeatureSettings = createEnv({
     S3_BUCKET: process.env.S3_BUCKET ?? process.env.SPACES_KNOWLEDGE_BUCKET,
     GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+    RETRIEVAL_PARAMS: process.env.RETRIEVAL_PARAMS,
   },
   isServer: typeof window === "undefined",
   skipValidation: process.env.SKIP_VALIDATION?.toLowerCase() === "true",

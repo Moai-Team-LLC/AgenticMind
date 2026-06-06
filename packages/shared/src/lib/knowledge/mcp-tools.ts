@@ -11,10 +11,15 @@ import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
+import type { RetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
 import type { CallerContext } from "@agenticmind/shared/lib/knowledge/synth"
 
 import { recordEvent } from "@agenticmind/shared/database/query/knowledge/ask-feedback"
-import { assertBelief, recallBeliefs } from "@agenticmind/shared/database/query/knowledge/beliefs"
+import {
+  assertBelief,
+  recallBeliefs,
+  retractBelief,
+} from "@agenticmind/shared/database/query/knowledge/beliefs"
 import { searchChunks } from "@agenticmind/shared/database/query/knowledge/chunks"
 import { recordGuardEvent } from "@agenticmind/shared/database/query/knowledge/guard-events"
 import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materials"
@@ -55,6 +60,8 @@ export type McpToolDeps = {
   actorUuid?: string | null
   /** Blob store for ingested material bytes (kl_ingest). */
   blobStore?: KnowledgeBlobStore
+  /** Active corpus-adaptive retrieval profile (Lever 3.2); unset = engine defaults. */
+  retrievalParams?: RetrievalParams
 }
 
 const snippet = (s: string, max = 240): string => {
@@ -218,6 +225,12 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     cardsEnabled: deps.cardsEnabled,
     cacheEnabled: deps.cacheEnabled,
     chatModel: deps.chatModel,
+    // Corpus-adaptive retrieval profile (Lever 3.2); each field falls back to the
+    // engine default when the profile is unset or omits it.
+    hybridWeights: deps.retrievalParams?.hybridWeights,
+    recencyConfig: deps.retrievalParams?.recencyConfig,
+    topK: deps.retrievalParams?.topK,
+    rerankTopN: deps.retrievalParams?.rerankTopN,
     // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
     // Provider when a graph store is configured.
     graphContext:
@@ -412,6 +425,28 @@ export const memWrite = async (
   return { id: res.value.id, revised: res.value.supersedes !== null }
 }
 
+export const memForgetInput = z.object({ id: z.uuid() })
+
+/**
+ * Mem_forget — retract one of your OWN beliefs by id. Soft + bitemporal: the
+ * belief drops from current memory but stays recallable via `asOf` for audit
+ * (the memory counterpart of kl_forget). Requires the elevated memory:admin scope.
+ */
+export const memForget = async (deps: McpToolDeps, args: z.infer<typeof memForgetInput>) => {
+  if (!hasScope(deps.scopes, "memory:admin")) {
+    throw new Error("mem_forget: missing required scope 'memory:admin'")
+  }
+  const actorUuid = deps.actorUuid ?? null
+  if (actorUuid === null) {
+    throw new Error("mem_forget: no agent identity on the token")
+  }
+  const res = await retractBelief({ tx: deps.tx, actorUuid, id: args.id })
+  if (res.isErr()) {
+    throw new Error(`mem_forget: ${res.error.message}`)
+  }
+  return { id: args.id, retracted: res.value.retracted }
+}
+
 export const memRecallInput = z.object({
   /** Exact subject filter (optional). */
   subject: z.string().max(200).optional(),
@@ -542,7 +577,7 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.3.0"
+export const MCP_CONTRACT_VERSION = "1.4.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
@@ -586,6 +621,12 @@ export const KNOWLEDGE_MCP_TOOLS = [
     description:
       "Record a belief into your private memory (subject, predicate, object, confidence). Belief-revision-aware: a contradicting claim supersedes the old one non-destructively. Corroborated beliefs consolidate into shared memory over time.",
     inputSchema: memWriteInput,
+  },
+  {
+    name: "mem_forget",
+    description:
+      "Retract one of your own beliefs by id. Soft + bitemporal: it drops from current memory but stays recallable via mem_recall `asOf` for audit. The memory counterpart of kl_forget. Requires the elevated memory:admin scope.",
+    inputSchema: memForgetInput,
   },
   {
     name: "kl_ingest",

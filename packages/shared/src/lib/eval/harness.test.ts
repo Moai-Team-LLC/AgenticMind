@@ -57,6 +57,35 @@ describe("evaluateCase (Level-1 assertions)", () => {
     expect((await evaluateCase(c, obs({ blocked: false }))).passed).toBe(false)
   })
 
+  it("checks groundedness floor and abstention", async () => {
+    const grounded: EvalCase = {
+      id: "g1",
+      failureMode: "faithfulness",
+      query: "x",
+      assertions: { minGroundedness: 0.8 },
+    }
+    expect(
+      (
+        await evaluateCase(
+          grounded,
+          obs({ answer: "a [1]", groundedness: 1, citations: [{ title: "t", materialId: "m" }] }),
+        )
+      ).passed,
+    ).toBe(true)
+    expect((await evaluateCase(grounded, obs({ answer: "a", groundedness: 0.5 }))).passed).toBe(
+      false,
+    )
+
+    const oos: EvalCase = {
+      id: "o1",
+      failureMode: "faithfulness",
+      query: "y",
+      assertions: { expectAbstain: true, maxCitations: 0 },
+    }
+    expect((await evaluateCase(oos, obs({ abstained: true }))).passed).toBe(true)
+    expect((await evaluateCase(oos, obs({ abstained: false, answer: "x [1]" }))).passed).toBe(false)
+  })
+
   it("runs an optional binary judge", async () => {
     const c: EvalCase = {
       id: "j1",

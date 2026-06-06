@@ -36,6 +36,8 @@ const askForEval: AskForEval = async (query) => {
   return {
     blocked: false,
     answer: res.value.answer,
+    groundedness: res.value.groundedness,
+    abstained: res.value.abstained,
     citations: res.value.citations.map((c) => {
       return { title: c.title, materialId: c.materialId }
     }),
