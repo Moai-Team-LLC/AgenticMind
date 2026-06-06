@@ -38,6 +38,10 @@ export const Attr = {
   GROUNDEDNESS: "agenticmind.groundedness",
   UNSUPPORTED_CLAIM_COUNT: "agenticmind.unsupported_claim_count",
   ABSTAINED: "agenticmind.abstained",
+  // Cost / FinOps (Layer 9): per-call token usage, OpenInference conventions.
+  LLM_TOKEN_PROMPT: "llm.token_count.prompt",
+  LLM_TOKEN_COMPLETION: "llm.token_count.completion",
+  LLM_TOKEN_TOTAL: "llm.token_count.total",
 } as const
 
 /** Truncate attribute values so a span never carries an unbounded payload. */
