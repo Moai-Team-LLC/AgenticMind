@@ -97,9 +97,53 @@ tenant's data. Single-tenant deployments carry the default tenant and configure 
 ## Supply chain
 
 - Conventional Commits + commitlint + CI (typecheck, tests, lint) gate every change.
-- Container images are built and published to GHCR on each release (multi-arch).
+- Container images are built and published to GHCR on each release (multi-arch),
+  **cosign-signed (keyless / Sigstore) with an SBOM + SLSA build-provenance** attestation.
 - Dependency hygiene: GitHub Actions are watched by Dependabot. (Bun dependency updates
   are best handled by Renovate — see `.github/dependabot.yml`.)
+
+## Alignment with the Agentic Product Standard (v2.0, Layer 8)
+
+AgenticMind is the reference implementation of the
+[Agentic Product Standard](https://github.com/Moai-Team-LLC/agentic-product-standard),
+whose v2.0 makes security a first-class layer. This section records the two analyses that
+layer asks every product to make explicit.
+
+### Lethal-trifecta analysis
+
+The "lethal trifecta" is the dangerous combination of **access to private data**,
+**exposure to untrusted content**, and **the ability to exfiltrate**. All three are
+reachable here:
+
+- **Private data** — the corpus and memory you ingest.
+- **Untrusted content** — `kl_ingest` accepts arbitrary text; retrieved passages are, by
+  definition, attacker-influenceable.
+- **Egress** — synthesis sends retrieved context to your configured chat model.
+
+**Which leg is broken:** the exfiltration leg is structurally constrained. The model
+receives only **retrieved, citation-gated** context; its answer is **faithfulness-checked**
+and citation-enforced; and the server exposes **data, not actions** — there is **no
+outbound tool surface** the model can drive (no web fetch, no email, no shell), and the
+only egress is the single configured synthesis endpoint with no model-chosen destination. A
+manipulated prompt cannot make AgenticMind *do* anything beyond returning text to the caller.
+
+### Indirect prompt injection
+
+Direct injection in the *question* is caught by `guardInput` (fail-closed, EN+RU markers)
+and is a first-class eval mode. **Indirect** injection — a poisoned *ingested* document
+steering a later answer — is mitigated by citation-enforcement (an injected instruction is
+not a cited source) and the faithfulness check, but treat **all ingested content as
+untrusted** and scope write/ingest tokens accordingly. A dedicated poisoned-corpus red-team
+pass (against the standard's `templates/security/` kit) is on the roadmap.
+
+### Identity & OAuth posture
+
+Identity and tenant are derived from the **verified token, never the model**, and row-level
+security enforces isolation below the application (see *Tenant isolation* above). Tokens are
+scoped, short-lived (JWT `exp`), and revocable. Full **OAuth 2.1 + external IdP**
+(audience-bound, no over-scoping) is an enterprise-edition item; the static `MCP_API_KEY` is
+an all-scope key for trusted single-tenant use, so prefer minted scoped tokens for least
+privilege.
 
 ## Honest limits (not yet in the open core)
 
