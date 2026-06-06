@@ -72,8 +72,13 @@ security** then scopes every read and write — including the answer cache — t
 comes from the token, never from a tool argument, so an agent cannot ask for another
 tenant's data. Single-tenant deployments carry the default tenant and configure nothing.
 
-> Multi-tenant enforcement requires the app to connect as a **non-superuser** database
-> role, because superusers bypass RLS.
+> **Multi-tenant enforcement** requires a **non-superuser** database role, because
+> superusers and `BYPASSRLS` owners skip RLS. Migration `0004_tenant_app_role.sql`
+> provisions a least-privilege, NOLOGIN role `agenticmind_app`; set
+> `DATABASE_APP_ROLE=agenticmind_app` and `withTenant(...)` issues `SET LOCAL ROLE`
+> per transaction, downgrading the connection so the policy applies — no extra
+> credential or login role to manage. Verified by
+> `packages/shared/src/lib/knowledge/tenant-app-role.test.ts`.
 
 ## Input & output guardrails
 

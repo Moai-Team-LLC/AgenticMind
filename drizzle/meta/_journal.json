@@ -29,6 +29,13 @@
       "when": 1780588508631,
       "tag": "0003_tenant_isolation",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780750880833,
+      "tag": "0004_tenant_app_role",
+      "breakpoints": true
     }
   ]
 }
