@@ -1,0 +1,86 @@
+site_name: AgenticMind
+site_description: >-
+  Auditable, self-improving knowledge & memory layer for AI agents over MCP.
+  Citation-enforced answers, replayable why-trace, judge-gated compounding loop.
+  Self-hosted on Postgres alone, zero-key local embeddings. Apache-2.0.
+site_url: https://moai-team-llc.github.io/AgenticMind/
+site_author: Moai Team LLC
+
+repo_name: Moai-Team-LLC/AgenticMind
+repo_url: https://github.com/Moai-Team-LLC/AgenticMind
+edit_uri: edit/main/docs/
+
+# docs/ already holds the content; the site sources it directly (single source,
+# still browsable on GitHub). Build output goes to ./site (gitignored by CI).
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - navigation.tracking
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+extra_css:
+  - stylesheets/brand.css
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.details
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - Deep dives:
+      - Overview: blog/README.md
+      - The why-trace: blog/why-trace.md
+      - Postgres-only: blog/postgres-only.md
+      - Provenance vs memory SDKs: blog/auditability-vs-memory-sdks.md
+      - Safe by construction: blog/safe-by-construction.md
+  - Security model: security-model.md
+  - Operations:
+      - Deploy: DEPLOY.md
+      - Operations: OPERATIONS.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Moai-Team-LLC/AgenticMind

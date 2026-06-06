@@ -15,7 +15,7 @@ cd deploy
 docker compose up -d
 ```
 
-The stack ([`deploy/docker-compose.yml`](../deploy/docker-compose.yml)):
+The stack ([`deploy/docker-compose.yml`](https://github.com/Moai-Team-LLC/AgenticMind/blob/main/deploy/docker-compose.yml)):
 
 | Service | Role |
 | --- | --- |
