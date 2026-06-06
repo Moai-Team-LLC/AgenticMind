@@ -37,6 +37,10 @@ export const aiSettings = createEnv({
     // Tiered routing: cheap/fast model for simple lookups, flagship for complex.
     CHAT_MODEL_SIMPLE: z.string().min(1).default("gpt-4o-mini"),
     CHAT_MODEL_COMPLEX: z.string().min(1).default("gpt-4o"),
+    // Per-run output-token ceiling for synthesis/extraction — a cost circuit
+    // breaker (Layer 9). Caps a single generation; the input side is bounded by
+    // retrieval token-budgeting. Configurable per deployment.
+    CHAT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(4096),
 
     // ── Rerank (optional cross-encoder, off by default) ─────────────────
     // When off, retrieval falls back to the fused vector+BM25 order (no extra
@@ -59,6 +63,7 @@ export const aiSettings = createEnv({
     CHAT_API_KEY: process.env.CHAT_API_KEY,
     CHAT_MODEL_SIMPLE: process.env.CHAT_MODEL_SIMPLE,
     CHAT_MODEL_COMPLEX: process.env.CHAT_MODEL_COMPLEX,
+    CHAT_MAX_OUTPUT_TOKENS: process.env.CHAT_MAX_OUTPUT_TOKENS,
     RERANK_ENABLED: process.env.RERANK_ENABLED,
     RERANK_BASE_URL: process.env.RERANK_BASE_URL,
     RERANK_API_KEY: process.env.RERANK_API_KEY,

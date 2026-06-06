@@ -19,8 +19,10 @@ import {
   configuredEmbeddingModelId,
   embeddingsProvider,
 } from "@agenticmind/shared/lib/ai/embeddings"
+import { Attr, recordChildSpan, SpanKind } from "@agenticmind/shared/lib/observability/trace"
 import { buildRetryOptions } from "@agenticmind/shared/lib/retry"
 import { parseZodSchema } from "@agenticmind/shared/lib/zod/parse"
+import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
 import { generateText, Output } from "ai"
 import { okAsync, ResultAsync } from "neverthrow"
 import pRetry from "p-retry"
@@ -45,6 +47,33 @@ const aiError = (message: string, originalError: unknown): KnowledgeAiError => {
     message,
     originalError,
   }
+}
+
+/** Output-token ceiling fallback when the env default is skipped (SKIP_VALIDATION). */
+const DEFAULT_MAX_OUTPUT_TOKENS = 4096
+
+/**
+ * Emits a child LLM span carrying per-call token usage (Cost/FinOps, Layer 9),
+ * using OpenInference attribute conventions. A no-op until an exporter is
+ * registered, so it is safe on the hot path. Undefined usage fields are omitted.
+ */
+const recordLlmUsage = (
+  name: string,
+  modelId: string,
+  usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number },
+  startMs: number,
+): void => {
+  const attrs: Record<string, string | number> = { [Attr.LLM_MODEL]: modelId }
+  if (usage.inputTokens !== undefined) {
+    attrs[Attr.LLM_TOKEN_PROMPT] = usage.inputTokens
+  }
+  if (usage.outputTokens !== undefined) {
+    attrs[Attr.LLM_TOKEN_COMPLETION] = usage.outputTokens
+  }
+  if (usage.totalTokens !== undefined) {
+    attrs[Attr.LLM_TOKEN_TOTAL] = usage.totalTokens
+  }
+  recordChildSpan(name, SpanKind.LLM, startMs, Date.now(), attrs)
 }
 
 /** Embeds a single text into an EMBEDDING_DIMENSIONS-dim vector. */
@@ -82,11 +111,14 @@ export const completeKnowledge = (props: {
   const purpose = props.purpose ?? "knowledge complete"
   return ResultAsync.fromPromise(
     pRetry(async () => {
-      const { text } = await generateText({
+      const start = Date.now()
+      const { text, usage } = await generateText({
         model: chatModel(props.model ?? KNOWLEDGE_CHAT_MODEL),
         system: props.system,
         prompt: props.user,
+        maxOutputTokens: aiSettings.CHAT_MAX_OUTPUT_TOKENS ?? DEFAULT_MAX_OUTPUT_TOKENS,
       })
+      recordLlmUsage("llm.complete", props.model ?? KNOWLEDGE_CHAT_MODEL, usage, start)
       return text
     }, buildRetryOptions(purpose)),
     (error) => aiError(`Failed to complete for ${purpose}`, error),
@@ -107,12 +139,15 @@ export const completeKnowledgeJson = <T>(props: {
   const purpose = props.purpose ?? "knowledge complete json"
   return ResultAsync.fromPromise(
     pRetry(async () => {
-      const { output } = await generateText({
+      const start = Date.now()
+      const { output, usage } = await generateText({
         model: chatModel(props.model ?? KNOWLEDGE_CHAT_MODEL),
         system: props.system,
         prompt: props.user,
         output: Output.object({ schema: props.schema }),
+        maxOutputTokens: aiSettings.CHAT_MAX_OUTPUT_TOKENS ?? DEFAULT_MAX_OUTPUT_TOKENS,
       })
+      recordLlmUsage("llm.complete.json", props.model ?? KNOWLEDGE_CHAT_MODEL, usage, start)
       return output
     }, buildRetryOptions(purpose)),
     (error) => aiError(`Failed to complete json for ${purpose}`, error),
