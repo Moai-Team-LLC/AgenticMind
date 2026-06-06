@@ -83,6 +83,13 @@ tenant's data. Single-tenant deployments carry the default tenant and configure 
   unsupported parts of a question, and runs a faithfulness check; guard events are logged
   (`packages/shared/src/lib/knowledge/guard.ts`, `faithfulness.ts`). See the
   [why-trace deep-dive](./blog/why-trace.md).
+- **Indirect prompt injection (Layer 8).** Ingested content is untrusted, so an
+  injection can ride in on a *retrieved source*, not just the question. The synthesis
+  prompt treats the numbered sources as data and refuses any instructions embedded in
+  them; citation-enforcement and the faithfulness check bound the blast radius
+  (an obeyed injection produces uncited claims, which are stripped). A red-team
+  fixture (`eval/corpus/redteam-indirect-injection.md`) plus `indirect_injection`
+  cases in the eval suite are the falsifying probe, run by the eval-gate.
 
 ## Data residency
 

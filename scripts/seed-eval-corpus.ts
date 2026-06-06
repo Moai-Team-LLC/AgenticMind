@@ -53,15 +53,21 @@ const splitSections = (markdown: string): Section[] => {
   return sections
 }
 
-const corpusPath = join(import.meta.dir, "..", "eval", "corpus", "agentic-product-standard.md")
-const sections = splitSections(readFileSync(corpusPath, "utf8"))
+const corpusDir = join(import.meta.dir, "..", "eval", "corpus")
+// The standard provides factual_retrieval / citation_grounding ground truth; the
+// red-team fixture carries an embedded indirect injection for the
+// indirect_injection cases (Layer 8 / DoD 13).
+const sections = [
+  ...splitSections(readFileSync(join(corpusDir, "agentic-product-standard.md"), "utf8")),
+  ...splitSections(readFileSync(join(corpusDir, "redteam-indirect-injection.md"), "utf8")),
+]
 
 const db = createClient(databaseSettings.DATABASE_URL)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
 const graphragEnabled = process.env.KNOWLEDGE_GRAPHRAG_ENABLED === "true"
 const graph = graphragEnabled ? createPostgresGraphStore(db) : undefined
 
-console.log(`[SEED] ingesting ${sections.length} sections from the Agentic Product Standard`)
+console.log(`[SEED] ingesting ${sections.length} sections from the eval corpus`)
 
 let ok = 0
 let failed = 0
