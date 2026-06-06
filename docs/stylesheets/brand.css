@@ -1,0 +1,14 @@
+/* AgenticMind brand palette — overrides Material's named primary/accent with the
+   exact brand hex (teal #1E607A structural / copper #CD7722 accent). */
+:root {
+  --md-primary-fg-color:        #1E607A;
+  --md-primary-fg-color--light: #2a8fa8;
+  --md-primary-fg-color--dark:  #1a2f3a;
+  --md-accent-fg-color:         #CD7722;
+}
+
+/* Dark scheme: brighter teal + warm copper highlight. */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:        #2a8fa8;
+  --md-accent-fg-color:         #e69044;
+}

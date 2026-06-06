@@ -35,6 +35,9 @@ coverage
 out/
 build
 dist
+
+# MkDocs (docs site) build output
+/site/
 next-env.d.ts
 packages/shared/src/scripts/output
 

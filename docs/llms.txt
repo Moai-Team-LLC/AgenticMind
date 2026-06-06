@@ -1,0 +1,27 @@
+# AgenticMind
+
+> Auditable, self-improving knowledge & memory layer for AI agents over MCP.
+> Citation-enforced answers (no source, no claim), a replayable why-trace per answer,
+> and a judge-gated loop that promotes validated knowledge back into the corpus.
+> Self-hosted on Postgres alone, zero-key local (bge-m3) embeddings, multilingual.
+> Apache-2.0. Reference implementation of the Agentic Product Standard.
+
+## Docs
+
+- [Home / Quickstart](https://agenticmind.moaiteam.com/): one-command self-host; MCP endpoint at /mcp with a bearer token.
+- [The why-trace](https://agenticmind.moaiteam.com/blog/why-trace/): every answer ships a replayable, citation-keyed receipt (phases, citations, telemetryId).
+- [Postgres-only](https://agenticmind.moaiteam.com/blog/postgres-only/): vectors (pgvector), full-text, graph (recursive CTE), and the durable queue in one database — no Redis/Neo4j/vector-DB.
+- [Provenance is the differentiator](https://agenticmind.moaiteam.com/blog/auditability-vs-memory-sdks/): agent memory commoditizes at recall; auditability and governance are the axis that survives.
+- [Safe by construction](https://agenticmind.moaiteam.com/blog/safe-by-construction/): fail-closed scoped tokens, RLS tenant isolation, local embeddings.
+- [Security model](https://agenticmind.moaiteam.com/security-model/): auth (fail-closed bearer), least-privilege scopes, Postgres RLS, data residency.
+
+## Agent surface (MCP tools)
+
+- kl_search, kl_ask_global, kl_get_material, kl_graph_neighbors (knowledge:read)
+- kl_ingest (knowledge:write), kl_signal (knowledge:signal), kl_forget (knowledge:admin)
+- mem_recall (memory:read), mem_write (memory:write), mem_forget (memory:admin)
+
+## Source
+
+- [Repository](https://github.com/Moai-Team-LLC/AgenticMind)
+- [Agentic Product Standard](https://github.com/Moai-Team-LLC/agentic-product-standard)

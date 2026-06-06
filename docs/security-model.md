@@ -1,7 +1,7 @@
 # Security model
 
 How AgenticMind is built to be safe by construction. This is the architecture/posture
-document; for **reporting** a vulnerability see [`SECURITY.md`](../SECURITY.md).
+document; for **reporting** a vulnerability see [`SECURITY.md`](https://github.com/Moai-Team-LLC/AgenticMind/blob/main/SECURITY.md).
 
 > TL;DR — The `/mcp` endpoint is **fail-closed** and bearer-gated. Tokens are
 > **scoped, least-privilege, and revocable**. Every request runs inside a
