@@ -1,0 +1,84 @@
+name: eval-gate
+
+# CI eval-regression gate (Agentic Product Standard v2.0, DoD 12): the live
+# pass-rate run of the integration eval (lib/eval against the real engine).
+# `scripts/eval.ts` exits non-zero when the pass rate drops below
+# BASELINE_PASS_RATE — that non-zero is the gate.
+#
+# Cost-aware: it makes real chat-model calls, so it runs weekly + on demand,
+# not on every PR. It is INERT until a CHAT_API_KEY secret is set (steps skip
+# cleanly), so the workflow can land before the secret exists. Add CHAT_API_KEY
+# (and optionally a CHAT_BASE_URL repo variable) in Settings → Secrets to enable.
+on:
+  workflow_dispatch:
+    inputs:
+      baseline:
+        description: "Minimum pass rate (0..1)"
+        default: "0.8"
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg17
+        env:
+          POSTGRES_DB: agenticmind
+          POSTGRES_PASSWORD: mysecretpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:mysecretpassword@localhost:5432/agenticmind
+      SKIP_VALIDATION: "true"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Gate on CHAT_API_KEY secret
+        id: gate
+        env:
+          CHAT_API_KEY: ${{ secrets.CHAT_API_KEY }}
+        run: |
+          if [ -n "$CHAT_API_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::eval-gate is inert — set the CHAT_API_KEY secret to enable the live eval run."
+          fi
+
+      - name: Initialize DB extensions
+        if: steps.gate.outputs.enabled == 'true'
+        run: docker exec -i ${{ job.services.postgres.id }} psql -U postgres -d agenticmind < scripts/db-init/00-extensions.sql
+
+      - uses: oven-sh/setup-bun@v2
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          bun-version: 1.3.12
+
+      - run: bun install --frozen-lockfile
+        if: steps.gate.outputs.enabled == 'true'
+
+      - name: Run migrations
+        if: steps.gate.outputs.enabled == 'true'
+        run: bun run db:migrate
+
+      - name: Seed the eval corpus
+        if: steps.gate.outputs.enabled == 'true'
+        run: bunx tsx scripts/seed-eval-corpus.ts
+
+      - name: Run the eval (non-zero exit on regression = the gate)
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          CHAT_API_KEY: ${{ secrets.CHAT_API_KEY }}
+          CHAT_BASE_URL: ${{ vars.CHAT_BASE_URL || 'https://api.openai.com/v1' }}
+          BASELINE_PASS_RATE: ${{ github.event.inputs.baseline || '0.8' }}
+        run: bunx tsx scripts/eval.ts
