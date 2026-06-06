@@ -8,12 +8,12 @@
 
 ## Docs
 
-- [Home / Quickstart](https://moai-team-llc.github.io/AgenticMind/): one-command self-host; MCP endpoint at /mcp with a bearer token.
-- [The why-trace](https://moai-team-llc.github.io/AgenticMind/blog/why-trace/): every answer ships a replayable, citation-keyed receipt (phases, citations, telemetryId).
-- [Postgres-only](https://moai-team-llc.github.io/AgenticMind/blog/postgres-only/): vectors (pgvector), full-text, graph (recursive CTE), and the durable queue in one database — no Redis/Neo4j/vector-DB.
-- [Provenance is the differentiator](https://moai-team-llc.github.io/AgenticMind/blog/auditability-vs-memory-sdks/): agent memory commoditizes at recall; auditability and governance are the axis that survives.
-- [Safe by construction](https://moai-team-llc.github.io/AgenticMind/blog/safe-by-construction/): fail-closed scoped tokens, RLS tenant isolation, local embeddings.
-- [Security model](https://moai-team-llc.github.io/AgenticMind/security-model/): auth (fail-closed bearer), least-privilege scopes, Postgres RLS, data residency.
+- [Home / Quickstart](https://agenticmind.moaiteam.com/): one-command self-host; MCP endpoint at /mcp with a bearer token.
+- [The why-trace](https://agenticmind.moaiteam.com/blog/why-trace/): every answer ships a replayable, citation-keyed receipt (phases, citations, telemetryId).
+- [Postgres-only](https://agenticmind.moaiteam.com/blog/postgres-only/): vectors (pgvector), full-text, graph (recursive CTE), and the durable queue in one database — no Redis/Neo4j/vector-DB.
+- [Provenance is the differentiator](https://agenticmind.moaiteam.com/blog/auditability-vs-memory-sdks/): agent memory commoditizes at recall; auditability and governance are the axis that survives.
+- [Safe by construction](https://agenticmind.moaiteam.com/blog/safe-by-construction/): fail-closed scoped tokens, RLS tenant isolation, local embeddings.
+- [Security model](https://agenticmind.moaiteam.com/security-model/): auth (fail-closed bearer), least-privilege scopes, Postgres RLS, data residency.
 
 ## Agent surface (MCP tools)
 

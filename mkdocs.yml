@@ -3,7 +3,7 @@ site_description: >-
   Auditable, self-improving knowledge & memory layer for AI agents over MCP.
   Citation-enforced answers, replayable why-trace, judge-gated compounding loop.
   Self-hosted on Postgres alone, zero-key local embeddings. Apache-2.0.
-site_url: https://moai-team-llc.github.io/AgenticMind/
+site_url: https://agenticmind.moaiteam.com/
 site_author: Moai Team LLC
 copyright: '© Moai Team LLC — <a href="https://moaiteam.com">moaiteam.com</a>'
 
