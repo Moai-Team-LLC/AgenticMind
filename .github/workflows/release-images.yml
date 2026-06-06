@@ -15,6 +15,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write # keyless cosign signing + build provenance via Sigstore/OIDC
 
 jobs:
   images:
@@ -54,6 +55,7 @@ jobs:
             type=sha,enable=${{ github.event_name == 'workflow_dispatch' }}
 
       - name: Build & push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -62,5 +64,17 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          sbom: true # attach an SBOM attestation to the image
+          provenance: mode=max # attach SLSA build provenance
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign the pushed image (keyless via Sigstore)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${{ matrix.image }}"
+          cosign sign --yes "${IMAGE}@${DIGEST}"

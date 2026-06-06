@@ -1,0 +1,22 @@
+version: 2
+
+# Dependency hygiene. This repo is Bun-first (bun.lock is the canonical lockfile), and
+# Dependabot's npm ecosystem does not update bun.lock — so it is intentionally NOT enabled
+# for application dependencies here (it would open lockfile-inconsistent PRs that fail the
+# frozen-lockfile CI gate). For automated Bun dependency PRs, install the Renovate GitHub
+# App (native Bun support) and add a renovate.json.
+#
+# GitHub Actions versions ARE watched here — pinning/updating action refs is a real
+# supply-chain win with no lockfile coupling.
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
