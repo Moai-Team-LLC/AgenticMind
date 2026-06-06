@@ -1,0 +1,25 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard"],
+  "semanticCommits": "enabled",
+  "semanticCommitType": "build",
+  "semanticCommitScope": "deps",
+  "rangeStrategy": "bump",
+  "schedule": ["before 9am on monday"],
+  "labels": ["dependencies"],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 9am on monday"]
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["bun"],
+      "groupName": "bun dependencies"
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "enabled": false,
+      "description": "GitHub Actions are handled by Dependabot (.github/dependabot.yml) to avoid duplicate PRs."
+    }
+  ]
+}
