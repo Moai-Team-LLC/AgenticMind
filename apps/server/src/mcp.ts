@@ -93,6 +93,7 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     blobStore: getKnowledgeBlobStore(),
     retrievalParams: ACTIVE_RETRIEVAL_PARAMS,
     faithfulnessTierB: flags.faithfulnessTierBEnabled,
+    contestedSources: flags.contestedSourcesEnabled,
   }
 }
 

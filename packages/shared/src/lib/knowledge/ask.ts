@@ -11,6 +11,10 @@ import type { CardHit } from "@agenticmind/shared/database/query/knowledge/cards
 import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/chunks"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type { HybridWeights } from "@agenticmind/shared/lib/knowledge/blend"
+import type {
+  ContestedFact,
+  ContestedSourceInput,
+} from "@agenticmind/shared/lib/knowledge/contested-sources"
 import type { EntailmentClaim } from "@agenticmind/shared/lib/knowledge/faithfulness-entailment"
 import type { RecencyConfig } from "@agenticmind/shared/lib/knowledge/recency"
 import type {
@@ -38,6 +42,12 @@ import {
   classifyComplexity,
   modelForComplexity,
 } from "@agenticmind/shared/lib/knowledge/complexity"
+import {
+  buildContestedUser,
+  CONTESTED_SYSTEM,
+  contestedResponseSchema,
+  toContestedFacts,
+} from "@agenticmind/shared/lib/knowledge/contested-sources"
 import { scoreFaithfulness, supportedClaims } from "@agenticmind/shared/lib/knowledge/faithfulness"
 import {
   aggregateEntailment,
@@ -106,6 +116,9 @@ export type AskProps = {
   /** Tier-B faithfulness: run the semantic-entailment judge (one extra LLM call).
    * Default off — the structural Tier-A signals are always computed for free. */
   faithfulnessTierB?: boolean
+  /** Contested-sources detection: run a judge pass that surfaces facts where the
+   * retrieved sources disagree (one extra LLM call). Default off. */
+  contestedSources?: boolean
 }
 
 type MatMeta = { title: string; updatedAt: Date | null }
@@ -421,6 +434,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // against its own snippet. Returns {} when off / nothing to check / judge fails,
   // so it spreads cleanly and never fails the answer.
   const tierBFields = await tierBFaithfulness(props, answerText, citations, model)
+  // Contested-sources (flag-gated, best-effort): surface facts the retrieved
+  // sources disagree on instead of silently trusting the recency-preferred one.
+  const contestedFields = await contestedSourcesCheck(props, sources, model)
 
   return {
     answer: answerText,
@@ -437,7 +453,41 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     unsupportedClaims: faith.unsupportedClaims,
     abstained: faith.abstained,
     ...tierBFields,
+    ...contestedFields,
   }
+}
+
+/**
+ * Contested-sources judge: one batched call asking whether any two retrieved
+ * sources directly disagree on a fact, returning each side tagged with its source
+ * title + date. Best-effort — returns `{}` when the flag is off, there are fewer
+ * than two sources, or the judge call fails, so it spreads straight into the
+ * Answer and never breaks the answer path.
+ */
+const contestedSourcesCheck = async (
+  props: AskProps,
+  sources: readonly Source[],
+  model: LlmModel,
+): Promise<{ contested?: ContestedFact[] }> => {
+  if (props.contestedSources !== true || sources.length < 2) {
+    return {}
+  }
+  const inputs: ContestedSourceInput[] = sources.map((s) => {
+    return { number: s.number, title: s.title, body: s.body, updatedAt: s.updatedAt }
+  })
+  const res = await completeKnowledgeJson({
+    system: CONTESTED_SYSTEM,
+    user: buildContestedUser(inputs),
+    schema: contestedResponseSchema,
+    model,
+    purpose: "contested sources",
+  })
+  if (res.isErr()) {
+    console.warn(`ask: contested-sources check failed: ${res.error.message}`)
+    return {}
+  }
+  const contested = toContestedFacts(res.value, inputs)
+  return contested.length > 0 ? { contested } : {}
 }
 
 /**

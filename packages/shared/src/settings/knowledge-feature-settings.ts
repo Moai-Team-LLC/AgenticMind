@@ -24,6 +24,9 @@ export const knowledgeFeatureSettings = createEnv({
     // its snippet (one extra LLM call per kl_ask_global). Off by default — Tier-A
     // structural groundedness is always computed for free.
     KNOWLEDGE_FAITHFULNESS_TIER_B: z.string().optional(),
+    // Contested-sources detection: surface facts the retrieved sources disagree on
+    // (one extra LLM call per kl_ask_global). Off by default.
+    KNOWLEDGE_CONTESTED_SOURCES: z.string().optional(),
     S3_BUCKET: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
@@ -37,6 +40,7 @@ export const knowledgeFeatureSettings = createEnv({
     KNOWLEDGE_CACHE_ENABLED: process.env.KNOWLEDGE_CACHE_ENABLED,
     KNOWLEDGE_GRAPHRAG_ENABLED: process.env.KNOWLEDGE_GRAPHRAG_ENABLED,
     KNOWLEDGE_FAITHFULNESS_TIER_B: process.env.KNOWLEDGE_FAITHFULNESS_TIER_B,
+    KNOWLEDGE_CONTESTED_SOURCES: process.env.KNOWLEDGE_CONTESTED_SOURCES,
     S3_BUCKET: process.env.S3_BUCKET ?? process.env.SPACES_KNOWLEDGE_BUCKET,
     GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,

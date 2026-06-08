@@ -65,6 +65,9 @@ export type McpToolDeps = {
   /** Run the Tier-B semantic-entailment faithfulness judge on kl_ask_global
    * (one extra LLM call). Default off; Tier-A signals are always computed. */
   faithfulnessTierB?: boolean
+  /** Run the contested-sources judge on kl_ask_global (one extra LLM call).
+   * Default off. Surfaces facts the retrieved sources disagree on. */
+  contestedSources?: boolean
 }
 
 const snippet = (s: string, max = 240): string => {
@@ -235,6 +238,7 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     topK: deps.retrievalParams?.topK,
     rerankTopN: deps.retrievalParams?.rerankTopN,
     faithfulnessTierB: deps.faithfulnessTierB,
+    contestedSources: deps.contestedSources,
     // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
     // Provider when a graph store is configured.
     graphContext:
