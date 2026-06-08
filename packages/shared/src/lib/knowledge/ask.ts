@@ -37,6 +37,7 @@ import {
   fingerprintSources,
   hashQuestion,
 } from "@agenticmind/shared/lib/knowledge/answer-cache-keys"
+import { deriveAnswerStatus } from "@agenticmind/shared/lib/knowledge/answer-status"
 import { blendHybrid, clamp01, defaultHybridWeights } from "@agenticmind/shared/lib/knowledge/blend"
 import {
   classifyComplexity,
@@ -283,6 +284,10 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         groundedness: faith.groundedness,
         unsupportedClaims: faith.unsupportedClaims,
         abstained: faith.abstained,
+        status: deriveAnswerStatus({
+          groundedness: faith.groundedness,
+          abstained: faith.abstained,
+        }),
       }
     }
     if (cached.isErr()) {
@@ -440,6 +445,13 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // Contested-sources (flag-gated, best-effort): surface facts the retrieved
   // sources disagree on instead of silently trusting the recency-preferred one.
   const contestedFields = await contestedSourcesCheck(props, sources, model)
+  const status = deriveAnswerStatus({
+    groundedness: faith.groundedness,
+    semanticGroundedness: tierBFields.semanticGroundedness,
+    contradictedClaims: tierBFields.contradictedClaims,
+    contested: contestedFields.contested,
+    abstained: faith.abstained,
+  })
 
   return {
     answer: answerText,
@@ -457,6 +469,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     abstained: faith.abstained,
     ...tierBFields,
     ...contestedFields,
+    status,
   }
 }
 

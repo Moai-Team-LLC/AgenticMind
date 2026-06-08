@@ -158,7 +158,7 @@ const handler = createMcpHandler(
       server,
       "kl_ask_global",
       "Ask the knowledge base",
-      "Ask a natural-language question. Retrieves relevant passages, synthesises an answer, and returns citation markers keyed to source materials. Optional intent/facts tailor the answer to the calling agent's goal.",
+      "Ask a natural-language question. Retrieves relevant passages, synthesises an answer, and returns citation markers keyed to source materials. The result carries a `status` you can gate on (supported | partial | unsupported | conflicted | needs_review) plus the signals behind it (groundedness, unsupportedClaims, optional semanticGroundedness/contradictedClaims, contested). Optional intent/facts tailor the answer to the calling agent's goal.",
       klAskGlobalInput,
       async (args, extra) => {
         try {
