@@ -21,7 +21,8 @@ derived from the signals above (free, always present):
 `supported` · `partial` · `unsupported` · `conflicted` · `needs_review`
 
 > Severity precedence: an honest decline → `unsupported`; conflicting sources →
-> `conflicted`; a cited-but-unentailed claim → `needs_review`; otherwise the
+> `conflicted`; a cited-but-unentailed claim **or an answer resting only on stale
+> (non-active) sources** (`staleSourcesOnly`) → `needs_review`; otherwise the
 > grounded/partial/unsupported gradient.
 
 Example policy (refuse weakly-grounded answers, flag conflicts for a human):

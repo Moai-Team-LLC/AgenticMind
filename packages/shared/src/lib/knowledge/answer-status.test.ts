@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { deriveAnswerStatus } from "./answer-status"
+import { deriveAnswerStatus, restsOnlyOnStaleSources } from "./answer-status"
 
 describe("deriveAnswerStatus", () => {
   it("supported: every claim cited, no conflicts", () => {
@@ -46,5 +46,34 @@ describe("deriveAnswerStatus", () => {
 
   it("defaults to grounded when no signals are present (groundedness assumed 1)", () => {
     expect(deriveAnswerStatus({})).toBe("supported")
+  })
+})
+
+describe("restsOnlyOnStaleSources", () => {
+  it("true when every cited source is non-active", () => {
+    expect(
+      restsOnlyOnStaleSources([{ lifecycle: "superseded" }, { lifecycle: "deprecated" }]),
+    ).toBe(true)
+  })
+
+  it("false when any cited source is active or unknown", () => {
+    expect(restsOnlyOnStaleSources([{ lifecycle: "superseded" }, { lifecycle: "active" }])).toBe(
+      false,
+    )
+    expect(restsOnlyOnStaleSources([{ lifecycle: "superseded" }, {}])).toBe(false)
+  })
+
+  it("false when there are no citations", () => {
+    expect(restsOnlyOnStaleSources([])).toBe(false)
+  })
+})
+
+describe("deriveAnswerStatus — stale sources", () => {
+  it("escalates a grounded answer to needs_review when it rests only on stale sources", () => {
+    expect(deriveAnswerStatus({ groundedness: 1, staleSourcesOnly: true })).toBe("needs_review")
+  })
+
+  it("conflict still outranks stale-only", () => {
+    expect(deriveAnswerStatus({ contested: [{}], staleSourcesOnly: true })).toBe("conflicted")
   })
 })

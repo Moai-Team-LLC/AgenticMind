@@ -32,7 +32,22 @@ export type AnswerStatusSignals = {
   contradictedClaims?: readonly string[]
   contested?: readonly unknown[]
   abstained?: boolean
+  /** Every cited source is non-active (deprecated/superseded/archived) — the
+   * answer rests only on stale knowledge. Escalates to needs_review. */
+  staleSourcesOnly?: boolean
 }
+
+/** Lifecycle states that are NOT current — a citation in one of these is stale. */
+const STALE_LIFECYCLES = new Set<string>(["deprecated", "superseded", "archived"])
+
+/**
+ * True when the answer cites at least one source and EVERY cited source is in a
+ * non-active lifecycle state — i.e. it rests only on stale knowledge. A citation
+ * with unknown lifecycle counts as current (not stale), so this never false-flags.
+ */
+export const restsOnlyOnStaleSources = (citations: readonly { lifecycle?: string }[]): boolean =>
+  citations.length > 0 &&
+  citations.every((c) => c.lifecycle !== undefined && STALE_LIFECYCLES.has(c.lifecycle))
 
 /** Groundedness at/above this (≈ every claim cited) is eligible for "supported". */
 export const SUPPORTED_GROUNDEDNESS = 0.999
@@ -54,7 +69,8 @@ export const deriveAnswerStatus = (signals: AnswerStatusSignals): AnswerStatus =
     return "conflicted"
   }
   // Cited but the snippet doesn't actually support it — the most dangerous case.
-  if ((signals.contradictedClaims?.length ?? 0) > 0) {
+  // Or: the answer rests only on stale (non-active) sources. Either way, escalate.
+  if ((signals.contradictedClaims?.length ?? 0) > 0 || signals.staleSourcesOnly === true) {
     return "needs_review"
   }
   const grounded = signals.groundedness ?? 1

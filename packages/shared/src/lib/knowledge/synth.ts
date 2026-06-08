@@ -115,6 +115,9 @@ export type Answer = {
   /** Single trust verdict derived from the faithfulness signals — the field an
    * agent gates on: supported | partial | unsupported | conflicted | needs_review. */
   status?: AnswerStatus
+  /** True when every cited source is non-active (deprecated/superseded/archived) —
+   * the answer rests only on stale knowledge (also escalates `status` to needs_review). */
+  staleSourcesOnly?: boolean
   /** Answer-policy decision (allow | review | block) + reasons, when a policy is
    * configured (KNOWLEDGE_ANSWER_POLICY). A blocked answer is replaced by a refusal. */
   policy?: PolicyDecision
