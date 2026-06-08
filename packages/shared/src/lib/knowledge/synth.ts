@@ -5,6 +5,8 @@
  * pipeline (ask) and the answer cache live in sibling files.
  */
 
+import type { ContestedFact } from "@agenticmind/shared/lib/knowledge/contested-sources"
+
 /** Chunks fed into the prompt as context. */
 export const DEFAULT_TOP_K = 8
 /** Max runes of each cited body returned in the response envelope. */
@@ -96,6 +98,9 @@ export type Answer = {
   semanticGroundedness?: number
   /** Tier-B: cited claims whose own snippet does not support them (capped). */
   contradictedClaims?: string[]
+  /** Sources that directly disagree on a fact, each side tagged with its source +
+   * date. Present only when the contested-sources check ran (flag-gated). */
+  contested?: ContestedFact[]
 }
 
 export const SYSTEM_PROMPT = `You are a knowledge-base assistant. Answer the user's
