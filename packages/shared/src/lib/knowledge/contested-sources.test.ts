@@ -59,6 +59,37 @@ describe("toContestedFacts", () => {
     })
   })
 
+  it("carries each side's lifecycle when the source has one", () => {
+    const withLifecycle: ContestedSourceInput[] = [
+      {
+        number: 1,
+        title: "Old policy",
+        body: "rate 12.5%",
+        updatedAt: null,
+        lifecycle: "superseded",
+      },
+      {
+        number: 2,
+        title: "Current policy",
+        body: "rate 15%",
+        updatedAt: null,
+        lifecycle: "active",
+      },
+    ]
+    const resp: ContestedResponse = {
+      contested: [
+        {
+          subject: "rate",
+          a: { source: 1, statement: "12.5%" },
+          b: { source: 2, statement: "15%" },
+        },
+      ],
+    }
+    const out = toContestedFacts(resp, withLifecycle)
+    expect(out[0]?.claims[0]?.lifecycle).toBe("superseded")
+    expect(out[0]?.claims[1]?.lifecycle).toBe("active")
+  })
+
   it("drops entries citing the same source on both sides", () => {
     const resp: ContestedResponse = {
       contested: [

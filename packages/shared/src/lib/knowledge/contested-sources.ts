@@ -39,6 +39,8 @@ export type ContestedSourceInput = {
   title: string
   body: string
   updatedAt: Date | null
+  /** Content lifecycle (active | deprecated | superseded | archived), when known. */
+  lifecycle?: string
 }
 
 export const contestedResponseSchema = z.object({
@@ -56,7 +58,7 @@ export type ContestedResponse = z.infer<typeof contestedResponseSchema>
  * with its source title and (when known) the source's last-updated date. */
 export type ContestedFact = {
   subject: string
-  claims: { statement: string; source: string; date: string | null }[]
+  claims: { statement: string; source: string; date: string | null; lifecycle?: string }[]
 }
 
 /** Cap on returned contested facts, to bound the response envelope. */
@@ -71,7 +73,8 @@ export const buildContestedUser = (sources: readonly ContestedSourceInput[]): st
   sources
     .map((s) => {
       const date = s.updatedAt === null ? "" : ` (updated ${isoDate(s.updatedAt)})`
-      return `[${s.number}] ${s.title}${date}\n${s.body}`
+      const life = s.lifecycle !== undefined && s.lifecycle !== "active" ? ` [${s.lifecycle}]` : ""
+      return `[${s.number}] ${s.title}${date}${life}\n${s.body}`
     })
     .join("\n\n")
 
@@ -98,8 +101,18 @@ export const toContestedFacts = (
     out.push({
       subject: entry.subject,
       claims: [
-        { statement: entry.a.statement, source: a.title, date: isoDate(a.updatedAt) },
-        { statement: entry.b.statement, source: b.title, date: isoDate(b.updatedAt) },
+        {
+          statement: entry.a.statement,
+          source: a.title,
+          date: isoDate(a.updatedAt),
+          ...(a.lifecycle !== undefined ? { lifecycle: a.lifecycle } : {}),
+        },
+        {
+          statement: entry.b.statement,
+          source: b.title,
+          date: isoDate(b.updatedAt),
+          ...(b.lifecycle !== undefined ? { lifecycle: b.lifecycle } : {}),
+        },
       ],
     })
   }
