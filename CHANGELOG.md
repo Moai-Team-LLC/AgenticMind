@@ -4,6 +4,63 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-06-08
+
+The **auditable-contract** release: the engine's faithfulness signals become a
+single verdict an agent can gate on and a policy an operator can enforce, source
+trust is modelled and made visible, and every new signal is provable by the eval
+harness. Still drop-in to deploy — DB + `OPENAI_KEY`, no new runtime stack; every
+new behaviour is off/neutral by default.
+
+### Added
+
+- **Answer faithfulness, two tiers.** Tier-A structural groundedness +
+  `unsupportedClaims` + honest `abstained`, computed for free on every answer;
+  Tier-B semantic entailment of each cited claim against its snippet
+  (`semanticGroundedness`, `contradictedClaims`) behind `KNOWLEDGE_FAITHFULNESS_TIER_B`.
+- **A single answer `status`.** `supported | partial | unsupported | conflicted |
+  needs_review`, derived from the signals — the one field an agent gates on.
+- **Answer policy enforcement.** `KNOWLEDGE_ANSWER_POLICY` (JSON, default unset)
+  blocks under-grounded answers and review-gates conflicted / cited-but-unentailed
+  ones, with the decision attached to the trace.
+- **Contested sources on `kl_ask_global`.** Facts the retrieved sources disagree
+  on are surfaced (each side tagged with source + date), not silently resolved —
+  behind `KNOWLEDGE_CONTESTED_SOURCES`. Complements `mem_recall`'s `contested`.
+- **Source lifecycle + trust tier.** Materials carry a content lifecycle
+  (`active | deprecated | superseded | archived`) and a trust tier; retrieval
+  down-weights stale/low-trust sources, citations and contested sides expose it,
+  an answer resting only on stale sources is flagged (`staleSourcesOnly` →
+  `needs_review`), and both are settable at ingest via `kl_ingest`. Migration `0006`.
+- **Self-improving read path.** `mem_forget`, corpus-adaptive retrieval tuning,
+  and a closed loop that folds net-positively-signalled real queries into the
+  tuner's eval set (opt-in `KNOWLEDGE_EVAL_HARVEST`; migration `0005`).
+- **Eval discipline.** Citation precision/recall metrics + gold-relevance gates,
+  and validated failure-mode buckets for conflicting sources, stale versions, and
+  source hierarchy.
+- **Multi-tenant hardening.** A cross-tenant RLS leakage eval that blocks CI, and
+  a least-privilege app role (`DATABASE_APP_ROLE`, migration `0004`) so RLS holds
+  even on an owner connection.
+- **Cost controls.** Per-run output ceiling + per-call token usage in the trace.
+- **Embeddings.** Optional `dimensions` (`EMBED_SEND_DIMENSIONS`) so OpenAI's
+  `text-embedding-3-*` models can serve the schema's 1024 dims.
+- **Operations & docs.** A published docs site (MkDocs), security model + MCP
+  client cookbook, a config-knobs reference, and supply-chain signing (cosign +
+  SBOM + SLSA provenance) on the multi-arch release images.
+
+### Changed
+
+- **MCP tool contract `1.2.0` → `1.8.0`** (all additive — existing clients
+  unaffected): `kl_search` gains `queries` + `tokenBudget`; answers gain
+  `status`, `contested`, `effectiveConfidence`, `semanticGroundedness`,
+  `contradictedClaims`, `staleSourcesOnly`, and citation `lifecycle`/`trustTier`;
+  `kl_ingest` gains `lifecycle` + `trustTier`.
+
+### Security
+
+- Synthesis hardened against indirect prompt injection carried in source content.
+
+[0.9.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.9.0
+
 ## [0.8.0] — 2026-06-05
 
 ### Added
