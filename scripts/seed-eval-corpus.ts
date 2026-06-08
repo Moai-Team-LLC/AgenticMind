@@ -60,7 +60,23 @@ const corpusDir = join(import.meta.dir, "..", "eval", "corpus")
 const sections = [
   ...splitSections(readFileSync(join(corpusDir, "agentic-product-standard.md"), "utf8")),
   ...splitSections(readFileSync(join(corpusDir, "redteam-indirect-injection.md"), "utf8")),
+  ...splitSections(readFileSync(join(corpusDir, "trust-fixtures.md"), "utf8")),
 ]
+
+// Trust tags for the source-lifecycle / source-hierarchy eval fixtures: the
+// titles below are seeded non-active or higher-trust so the trust buckets
+// (stale_version, source_hierarchy) have ground truth. Everything else defaults
+// to active / tier 0.
+const TRUST_TAGS: Record<
+  string,
+  { lifecycle?: "active" | "deprecated" | "superseded" | "archived"; trustTier?: number }
+> = {
+  "Project Zephyr API rate limit (v1, deprecated)": { lifecycle: "superseded" },
+  // Deprecated (still served, down-weighted) on a topic nothing else covers — so
+  // an answer to it rests ONLY on a stale source (staleSourcesOnly → needs_review).
+  "Project Zephyr legacy export format": { lifecycle: "deprecated" },
+  "Project Zephyr refund window — signed policy": { trustTier: 5 },
+}
 
 const db = createClient(databaseSettings.DATABASE_URL)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
@@ -80,6 +96,7 @@ for (const section of sections) {
     text: section.text,
     cardsEnabled,
     graphragEnabled,
+    ...TRUST_TAGS[section.title],
   })
   if (res.isErr()) {
     failed += 1

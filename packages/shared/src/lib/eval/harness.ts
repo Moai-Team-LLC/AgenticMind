@@ -35,6 +35,12 @@ export type EvalAssertions = {
   maxGroundedness?: number
   /** The engine should abstain (decline) on this query. */
   expectAbstain?: boolean
+  /** The answer's derived status must equal one of these. */
+  expectStatus?: string[]
+  /** The answer must (true) / must not (false) surface contested sources. */
+  expectContested?: boolean
+  /** The answer must (true) / must not (false) rest only on stale sources. */
+  expectStaleSourcesOnly?: boolean
   /** Optional Level-2 binary judge question; requires a `judge` dep. */
   judge?: string
 }
@@ -56,6 +62,12 @@ export type EvalObservation = {
   groundedness?: number
   /** Whether the engine declined to answer. */
   abstained?: boolean
+  /** Derived trust verdict (supported | partial | unsupported | conflicted | needs_review). */
+  status?: string
+  /** Count of contested facts the answer surfaced (sources disagree). */
+  contestedCount?: number
+  /** Whether the answer rests only on non-active (stale) sources. */
+  staleSourcesOnly?: boolean
 }
 
 export type AskForEval = (query: string) => Promise<EvalObservation>
@@ -124,6 +136,24 @@ const faithfulnessFailures = (a: EvalAssertions, obs: EvalObservation): string[]
   return failures
 }
 
+/** Trust-signal Level-1 checks: derived status, contested, stale-sources-only. Pure. */
+const trustSignalFailures = (a: EvalAssertions, obs: EvalObservation): string[] => {
+  const failures: string[] = []
+  if (a.expectStatus !== undefined && !a.expectStatus.includes(obs.status ?? "")) {
+    failures.push(`status ${obs.status ?? "(none)"} not in [${a.expectStatus.join(", ")}]`)
+  }
+  if (a.expectContested !== undefined && (obs.contestedCount ?? 0) > 0 !== a.expectContested) {
+    failures.push(`expected contested=${a.expectContested}, got ${(obs.contestedCount ?? 0) > 0}`)
+  }
+  if (
+    a.expectStaleSourcesOnly !== undefined &&
+    (obs.staleSourcesOnly ?? false) !== a.expectStaleSourcesOnly
+  ) {
+    failures.push(`expected staleSourcesOnly=${a.expectStaleSourcesOnly}`)
+  }
+  return failures
+}
+
 /** Applies Level-1 assertions (+ optional judge) to one observation. Pure. */
 export const evaluateCase = async (
   c: EvalCase,
@@ -184,6 +214,7 @@ export const evaluateCase = async (
     }
 
     failures.push(...faithfulnessFailures(a, obs))
+    failures.push(...trustSignalFailures(a, obs))
 
     if (a.judge !== undefined) {
       if (judge === undefined) {
