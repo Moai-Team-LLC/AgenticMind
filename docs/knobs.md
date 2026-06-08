@@ -36,8 +36,10 @@ KNOWLEDGE_ANSWER_POLICY='{"minGroundedness":0.7,"reviewOnConflict":true,"reviewO
 Each material carries a **content lifecycle** (`active` → `deprecated` →
 `superseded` → `archived`) and a **trust tier** (integer; higher wins on conflict).
 Retrieval down-weights stale/low-trust sources after the recency boost, so a signed
-policy outranks a historical note. Defaults (`active`, tier `0`) change nothing;
-set them with `updateMaterialLifecycle()`.
+policy outranks a historical note. Defaults (`active`, tier `0`) change nothing. Set
+them **at ingest** via `kl_ingest`'s optional `lifecycle` / `trustTier`, or later
+with `updateMaterialLifecycle()`. An answer that ends up resting only on stale
+sources is flagged (`staleSourcesOnly`, status → `needs_review`).
 
 ## Retrieval & corpus
 

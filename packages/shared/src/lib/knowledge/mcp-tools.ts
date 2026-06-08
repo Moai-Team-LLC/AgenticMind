@@ -41,6 +41,7 @@ import { removeMaterial } from "@agenticmind/shared/lib/knowledge/ingestion"
 import { embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
 import { hasScope } from "@agenticmind/shared/lib/knowledge/mcp-scopes"
 import { createGraphContextProvider } from "@agenticmind/shared/lib/knowledge/qaplan"
+import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { createHash } from "node:crypto"
 import * as z from "zod"
 
@@ -533,6 +534,11 @@ export const klIngestInput = z.object({
   title: z.string().min(1).max(300),
   text: z.string().min(1).max(200_000),
   language: z.enum(SUPPORTED_LANGUAGES).optional(),
+  /** Content lifecycle (default active) — set superseded/deprecated/archived for
+   * older revisions so retrieval down-weights them. */
+  lifecycle: z.enum(LIFECYCLES).optional(),
+  /** Source trust tier (higher wins on conflict; default 0). */
+  trustTier: z.number().int().min(0).max(100).optional(),
 })
 
 /**
@@ -556,6 +562,8 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
     cardsEnabled: deps.cardsEnabled,
     graphragEnabled: deps.graph !== undefined,
     language: args.language,
+    lifecycle: args.lifecycle,
+    trustTier: args.trustTier,
   })
   if (res.isErr()) {
     throw new Error(`kl_ingest: ${res.error.message}`)
@@ -593,7 +601,7 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.7.0"
+export const MCP_CONTRACT_VERSION = "1.8.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
