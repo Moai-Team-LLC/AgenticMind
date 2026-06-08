@@ -593,7 +593,7 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.6.0"
+export const MCP_CONTRACT_VERSION = "1.7.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [

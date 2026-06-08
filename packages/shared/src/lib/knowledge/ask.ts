@@ -42,7 +42,10 @@ import {
   evaluatePolicy,
   POLICY_BLOCK_MESSAGE,
 } from "@agenticmind/shared/lib/knowledge/answer-policy"
-import { deriveAnswerStatus } from "@agenticmind/shared/lib/knowledge/answer-status"
+import {
+  deriveAnswerStatus,
+  restsOnlyOnStaleSources,
+} from "@agenticmind/shared/lib/knowledge/answer-status"
 import { blendHybrid, clamp01, defaultHybridWeights } from "@agenticmind/shared/lib/knowledge/blend"
 import {
   classifyComplexity,
@@ -291,6 +294,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         cached.value.citations,
         cached.value.citations.length,
       )
+      const cachedStaleOnly = restsOnlyOnStaleSources(cached.value.citations)
       const cachedAnswer: Answer = {
         answer: cached.value.answerText,
         citations: cached.value.citations,
@@ -305,7 +309,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         status: deriveAnswerStatus({
           groundedness: faith.groundedness,
           abstained: faith.abstained,
+          staleSourcesOnly: cachedStaleOnly,
         }),
+        staleSourcesOnly: cachedStaleOnly,
       }
       return applyAnswerPolicy(cachedAnswer, props.answerPolicy)
     }
@@ -464,12 +470,14 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // Contested-sources (flag-gated, best-effort): surface facts the retrieved
   // sources disagree on instead of silently trusting the recency-preferred one.
   const contestedFields = await contestedSourcesCheck(props, sources, model)
+  const staleSourcesOnly = restsOnlyOnStaleSources(citations)
   const status = deriveAnswerStatus({
     groundedness: faith.groundedness,
     semanticGroundedness: tierBFields.semanticGroundedness,
     contradictedClaims: tierBFields.contradictedClaims,
     contested: contestedFields.contested,
     abstained: faith.abstained,
+    staleSourcesOnly,
   })
 
   const answer: Answer = {
@@ -489,6 +497,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     ...tierBFields,
     ...contestedFields,
     status,
+    staleSourcesOnly,
   }
   return applyAnswerPolicy(answer, props.answerPolicy)
 }
