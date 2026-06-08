@@ -7,6 +7,7 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { MaterialSelect } from "@agenticmind/shared/database/schema"
 import type { MaterialSource, MaterialStatus } from "@agenticmind/shared/lib/knowledge/material"
+import type { Lifecycle } from "@agenticmind/shared/lib/knowledge/source-trust"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { materials } from "@agenticmind/shared/database/schema"
@@ -110,6 +111,33 @@ export const updateMaterialStatus = (props: {
         .set({
           status: props.status,
           errorMessage: props.errorMessage ?? null,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(materials.id, props.id))
+        .returning()
+      return updated ?? null
+    })(),
+    mapDatabaseError,
+  )
+
+/**
+ * Sets a material's content lifecycle (active | deprecated | superseded |
+ * archived) and/or trust tier — the trust metadata retrieval weighs. Either
+ * field is optional; an omitted field is left unchanged.
+ */
+export const updateMaterialLifecycle = (props: {
+  tx: Transaction
+  id: string
+  lifecycle?: Lifecycle
+  trustTier?: number
+}) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const [updated] = await props.tx
+        .update(materials)
+        .set({
+          ...(props.lifecycle !== undefined ? { lifecycle: props.lifecycle } : {}),
+          ...(props.trustTier !== undefined ? { trustTier: props.trustTier } : {}),
           updatedAt: sql`now()`,
         })
         .where(eq(materials.id, props.id))
