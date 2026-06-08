@@ -11,9 +11,11 @@ import type { CardHit } from "@agenticmind/shared/database/query/knowledge/cards
 import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/chunks"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type { HybridWeights } from "@agenticmind/shared/lib/knowledge/blend"
+import type { EntailmentClaim } from "@agenticmind/shared/lib/knowledge/faithfulness-entailment"
 import type { RecencyConfig } from "@agenticmind/shared/lib/knowledge/recency"
 import type {
   Answer,
+  Citation,
   GraphContextRow,
   CallerContext,
   Source,
@@ -36,9 +38,19 @@ import {
   classifyComplexity,
   modelForComplexity,
 } from "@agenticmind/shared/lib/knowledge/complexity"
-import { scoreFaithfulness } from "@agenticmind/shared/lib/knowledge/faithfulness"
+import { scoreFaithfulness, supportedClaims } from "@agenticmind/shared/lib/knowledge/faithfulness"
+import {
+  aggregateEntailment,
+  buildEntailmentUser,
+  ENTAILMENT_SYSTEM,
+  entailmentResponseSchema,
+} from "@agenticmind/shared/lib/knowledge/faithfulness-entailment"
 import { detectOutputLeak } from "@agenticmind/shared/lib/knowledge/guard"
-import { completeKnowledge, embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
+import {
+  completeKnowledge,
+  completeKnowledgeJson,
+  embedKnowledgeText,
+} from "@agenticmind/shared/lib/knowledge/llm"
 import {
   CARD_WEIGHT_BOOST,
   RETRIEVAL_MIN_CONFIDENCE,
@@ -91,6 +103,9 @@ export type AskProps = {
   rerankTopN?: number
   /** Optional Tier-2 graph-context provider (best-effort). */
   graphContext?: (question: string, queryEmbedding: number[]) => Promise<GraphContextRow[]>
+  /** Tier-B faithfulness: run the semantic-entailment judge (one extra LLM call).
+   * Default off — the structural Tier-A signals are always computed for free. */
+  faithfulnessTierB?: boolean
 }
 
 type MatMeta = { title: string; updatedAt: Date | null }
@@ -270,13 +285,22 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   }
   const bm25 = await searchChunksBm25({ tx: props.tx, query: question, variants, limit: pool })
   const bm25Hits = bm25.isOk() ? bm25.value : []
-  const fused = blendHybrid(vectorHits.value, bm25Hits, props.hybridWeights ?? defaultHybridWeights())
+  const fused = blendHybrid(
+    vectorHits.value,
+    bm25Hits,
+    props.hybridWeights ?? defaultHybridWeights(),
+  )
   const hits = fused.map((f) => {
     return { ...f.hit, score: f.fusedScore }
   })
 
   const matCache = new Map<string, MatMeta>()
-  let sources = await decorate(props.tx, hits, matCache, props.recencyConfig ?? defaultRecencyConfig())
+  let sources = await decorate(
+    props.tx,
+    hits,
+    matCache,
+    props.recencyConfig ?? defaultRecencyConfig(),
+  )
 
   // Tier-1: prepend knowledge cards ahead of raw chunks.
   if (props.cardsEnabled === true) {
@@ -393,6 +417,10 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // Tier-A faithfulness: structural groundedness + abstention, computed from the
   // already-parsed citations (no extra LLM call, no added latency).
   const faith = scoreFaithfulness(answerText, citations, sources.length)
+  // Tier-B (flag-gated, best-effort): semantic entailment of each cited claim
+  // against its own snippet. Returns {} when off / nothing to check / judge fails,
+  // so it spreads cleanly and never fails the answer.
+  const tierBFields = await tierBFaithfulness(props, answerText, citations, model)
 
   return {
     answer: answerText,
@@ -408,7 +436,50 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     groundedness: faith.groundedness,
     unsupportedClaims: faith.unsupportedClaims,
     abstained: faith.abstained,
+    ...tierBFields,
   }
+}
+
+/**
+ * Tier-B entailment judge: pairs each citation-bearing claim with its cited
+ * snippet text and asks the chat model, in one batched call, whether each claim
+ * is entailed by its own snippet. Best-effort — returns `{}` when the flag is
+ * off, there are no cited claims, or the judge call fails, so the answer path
+ * never breaks on it and the result spreads straight into the Answer.
+ */
+const tierBFaithfulness = async (
+  props: AskProps,
+  answerText: string,
+  citations: readonly Citation[],
+  model: LlmModel,
+): Promise<{ semanticGroundedness?: number; contradictedClaims?: string[] }> => {
+  if (props.faithfulnessTierB !== true) {
+    return {}
+  }
+  const snippetByNumber = new Map(citations.map((c) => [c.number, c.snippet]))
+  const claims: EntailmentClaim[] = supportedClaims(answerText, citations).map((c) => {
+    return {
+      claim: c.claim,
+      snippets: c.citedNumbers
+        .map((n) => snippetByNumber.get(n))
+        .filter((s): s is string => s !== undefined && s !== ""),
+    }
+  })
+  if (claims.length === 0) {
+    return {}
+  }
+  const res = await completeKnowledgeJson({
+    system: ENTAILMENT_SYSTEM,
+    user: buildEntailmentUser(claims),
+    schema: entailmentResponseSchema,
+    model,
+    purpose: "faithfulness entailment",
+  })
+  if (res.isErr()) {
+    console.warn(`ask: tier-b entailment failed: ${res.error.message}`)
+    return {}
+  }
+  return aggregateEntailment(claims, res.value.verdicts)
 }
 
 /** `runAsk` wrapped in an OpenInference CHAIN span (a no-op until an exporter is

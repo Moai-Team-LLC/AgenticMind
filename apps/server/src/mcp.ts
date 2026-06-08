@@ -92,6 +92,7 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     actorUuid: extra?.authInfo?.clientId ?? null,
     blobStore: getKnowledgeBlobStore(),
     retrievalParams: ACTIVE_RETRIEVAL_PARAMS,
+    faithfulnessTierB: flags.faithfulnessTierBEnabled,
   }
 }
 
