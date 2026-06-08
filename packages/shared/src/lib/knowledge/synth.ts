@@ -5,6 +5,7 @@
  * pipeline (ask) and the answer cache live in sibling files.
  */
 
+import type { PolicyDecision } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import type { AnswerStatus } from "@agenticmind/shared/lib/knowledge/answer-status"
 import type { ContestedFact } from "@agenticmind/shared/lib/knowledge/contested-sources"
 
@@ -105,6 +106,9 @@ export type Answer = {
   /** Single trust verdict derived from the faithfulness signals — the field an
    * agent gates on: supported | partial | unsupported | conflicted | needs_review. */
   status?: AnswerStatus
+  /** Answer-policy decision (allow | review | block) + reasons, when a policy is
+   * configured (KNOWLEDGE_ANSWER_POLICY). A blocked answer is replaced by a refusal. */
+  policy?: PolicyDecision
 }
 
 export const SYSTEM_PROMPT = `You are a knowledge-base assistant. Answer the user's

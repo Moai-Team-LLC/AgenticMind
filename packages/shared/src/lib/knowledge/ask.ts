@@ -10,6 +10,7 @@ import type { Transaction } from "@agenticmind/shared/database/client"
 import type { CardHit } from "@agenticmind/shared/database/query/knowledge/cards"
 import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/chunks"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
+import type { AnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import type { HybridWeights } from "@agenticmind/shared/lib/knowledge/blend"
 import type {
   ContestedFact,
@@ -37,6 +38,10 @@ import {
   fingerprintSources,
   hashQuestion,
 } from "@agenticmind/shared/lib/knowledge/answer-cache-keys"
+import {
+  evaluatePolicy,
+  POLICY_BLOCK_MESSAGE,
+} from "@agenticmind/shared/lib/knowledge/answer-policy"
 import { deriveAnswerStatus } from "@agenticmind/shared/lib/knowledge/answer-status"
 import { blendHybrid, clamp01, defaultHybridWeights } from "@agenticmind/shared/lib/knowledge/blend"
 import {
@@ -123,6 +128,9 @@ export type AskProps = {
   /** Eval-harvest: persist the raw question on the telemetry row so signalled real
    * queries can be replayed by the tuner. Default off (privacy: hash-only). */
   evalHarvest?: boolean
+  /** Answer policy (KNOWLEDGE_ANSWER_POLICY): enforce a groundedness floor / flag
+   * conflicted answers for review. Unset = no enforcement (today's behaviour). */
+  answerPolicy?: AnswerPolicy
 }
 
 type MatMeta = { title: string; updatedAt: Date | null }
@@ -273,7 +281,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         cached.value.citations,
         cached.value.citations.length,
       )
-      return {
+      const cachedAnswer: Answer = {
         answer: cached.value.answerText,
         citations: cached.value.citations,
         retrievalMs: Date.now() - t0,
@@ -289,6 +297,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
           abstained: faith.abstained,
         }),
       }
+      return applyAnswerPolicy(cachedAnswer, props.answerPolicy)
     }
     if (cached.isErr()) {
       console.warn(`ask: cache lookup failed: ${cached.error.message}`)
@@ -453,7 +462,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     abstained: faith.abstained,
   })
 
-  return {
+  const answer: Answer = {
     answer: answerText,
     citations,
     retrievalMs,
@@ -471,6 +480,35 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     ...contestedFields,
     status,
   }
+  return applyAnswerPolicy(answer, props.answerPolicy)
+}
+
+/**
+ * Applies the configured answer policy to a finished Answer. No policy → returned
+ * unchanged. "block" → the answer is replaced by a refusal (citations dropped,
+ * status downgraded to unsupported, abstained set); "review"/"allow" → text is
+ * unchanged and the decision is attached for the trace.
+ */
+const applyAnswerPolicy = (answer: Answer, policy: AnswerPolicy | undefined): Answer => {
+  if (policy === undefined) {
+    return answer
+  }
+  const decision = evaluatePolicy(policy, {
+    status: answer.status ?? "supported",
+    groundedness: answer.groundedness,
+    semanticGroundedness: answer.semanticGroundedness,
+  })
+  if (decision.action === "block") {
+    return {
+      ...answer,
+      answer: POLICY_BLOCK_MESSAGE,
+      citations: [],
+      abstained: true,
+      status: "unsupported",
+      policy: decision,
+    }
+  }
+  return { ...answer, policy: decision }
 }
 
 /**

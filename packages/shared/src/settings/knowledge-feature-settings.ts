@@ -38,6 +38,10 @@ export const knowledgeFeatureSettings = createEnv({
     // (hybridWeights / recencyConfig / topK / rerankTopN). Unset = engine defaults.
     // Produced by scripts/tune.ts. Malformed values fall back to defaults.
     RETRIEVAL_PARAMS: z.string().optional(),
+    // Answer policy — a JSON object (minGroundedness / minSemanticGroundedness /
+    // blockOnConflict / reviewOnConflict / reviewOnNeedsReview). Unset = no
+    // enforcement. Malformed values fall back to no policy.
+    KNOWLEDGE_ANSWER_POLICY: z.string().optional(),
   },
   runtimeEnv: {
     KNOWLEDGE_CARDS_ENABLED: process.env.KNOWLEDGE_CARDS_ENABLED,
@@ -50,6 +54,7 @@ export const knowledgeFeatureSettings = createEnv({
     GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
     RETRIEVAL_PARAMS: process.env.RETRIEVAL_PARAMS,
+    KNOWLEDGE_ANSWER_POLICY: process.env.KNOWLEDGE_ANSWER_POLICY,
   },
   isServer: typeof window === "undefined",
   skipValidation: process.env.SKIP_VALIDATION?.toLowerCase() === "true",

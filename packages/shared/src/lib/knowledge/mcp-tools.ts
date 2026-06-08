@@ -9,6 +9,7 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/chunks"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
+import type { AnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 import type { RetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
@@ -71,6 +72,8 @@ export type McpToolDeps = {
   /** Persist the raw question on telemetry so signalled queries feed the tuner.
    * Default off (privacy: hash-only). */
   evalHarvest?: boolean
+  /** Active answer policy (KNOWLEDGE_ANSWER_POLICY); unset = no enforcement. */
+  answerPolicy?: AnswerPolicy
 }
 
 const snippet = (s: string, max = 240): string => {
@@ -243,6 +246,7 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     faithfulnessTierB: deps.faithfulnessTierB,
     contestedSources: deps.contestedSources,
     evalHarvest: deps.evalHarvest,
+    answerPolicy: deps.answerPolicy,
     // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
     // Provider when a graph store is configured.
     graphContext:
