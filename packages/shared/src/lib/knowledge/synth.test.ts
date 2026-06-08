@@ -79,6 +79,19 @@ describe("parseCitations", () => {
   it("returns an empty array when there are no markers", () => {
     expect(parseCitations("no citations here", [chunkSource(1, "c1")])).toEqual([])
   })
+
+  it("carries source lifecycle + trustTier onto the citation when present", () => {
+    const src: Source = { ...chunkSource(1, "c1"), lifecycle: "deprecated", trustTier: 2 }
+    const [cit] = parseCitations("see [1]", [src])
+    expect(cit?.lifecycle).toBe("deprecated")
+    expect(cit?.trustTier).toBe(2)
+  })
+
+  it("omits lifecycle/trustTier when the source has none", () => {
+    const [cit] = parseCitations("see [1]", [chunkSource(1, "c1")])
+    expect(cit).not.toHaveProperty("lifecycle")
+    expect(cit).not.toHaveProperty("trustTier")
+  })
 })
 
 describe("classifyServedBy", () => {

@@ -55,6 +55,10 @@ export type Source = {
   spanStart?: number | null
   spanEnd?: number | null
   confidence?: number
+  /** Material content lifecycle (active | deprecated | superseded | archived). */
+  lifecycle?: string
+  /** Material trust tier (higher = more trusted; 0 = default). */
+  trustTier?: number
 }
 
 export type Citation = {
@@ -68,6 +72,11 @@ export type Citation = {
   spanStart?: number | null
   spanEnd?: number | null
   confidence?: number
+  /** Source content lifecycle (active | deprecated | superseded | archived) — so a
+   * caller can see it cited a stale source even when nothing fresher existed. */
+  lifecycle?: string
+  /** Source trust tier (higher = more trusted; 0 = unverified/default). */
+  trustTier?: number
 }
 
 export type GraphContextRow = {
@@ -259,6 +268,8 @@ export const parseCitations = (answerText: string, sources: Source[]): Citation[
       spanStart: src.spanStart,
       spanEnd: src.spanEnd,
       confidence: src.confidence,
+      ...(src.lifecycle !== undefined ? { lifecycle: src.lifecycle } : {}),
+      ...(src.trustTier !== undefined ? { trustTier: src.trustTier } : {}),
     })
   }
   out.sort((a, b) => a.number - b.number)

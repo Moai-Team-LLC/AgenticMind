@@ -178,6 +178,8 @@ const decorate = async (
       score: applyTrust(boost(h.score, meta.updatedAt, cfg), meta.lifecycle, meta.trustTier),
       updatedAt: meta.updatedAt,
       origin: SOURCE_ORIGIN_CHUNK,
+      lifecycle: meta.lifecycle,
+      trustTier: meta.trustTier,
     })
   }
   sources.sort((a, b) => b.score - a.score)
@@ -246,6 +248,8 @@ const fetchCardSources = async (
       spanStart: hit.spanStart,
       spanEnd: hit.spanEnd,
       confidence: hit.confidence,
+      lifecycle: meta.lifecycle,
+      trustTier: meta.trustTier,
     })
   }
   return out
@@ -533,7 +537,13 @@ const contestedSourcesCheck = async (
     return {}
   }
   const inputs: ContestedSourceInput[] = sources.map((s) => {
-    return { number: s.number, title: s.title, body: s.body, updatedAt: s.updatedAt }
+    return {
+      number: s.number,
+      title: s.title,
+      body: s.body,
+      updatedAt: s.updatedAt,
+      ...(s.lifecycle !== undefined ? { lifecycle: s.lifecycle } : {}),
+    }
   })
   const res = await completeKnowledgeJson({
     system: CONTESTED_SYSTEM,
