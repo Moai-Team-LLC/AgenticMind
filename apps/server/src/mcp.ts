@@ -253,7 +253,7 @@ const handler = createMcpHandler(
       server,
       "kl_ingest",
       "Ingest knowledge",
-      "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Later kl_ask_global / kl_search can cite it.",
+      "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Optional `lifecycle` (active | deprecated | superseded | archived) and `trustTier` tag the source's trust so retrieval prefers current, higher-trust material. Later kl_ask_global / kl_search can cite it.",
       klIngestInput,
       async (args, extra) => {
         try {

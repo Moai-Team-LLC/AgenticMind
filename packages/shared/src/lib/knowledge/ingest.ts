@@ -9,7 +9,9 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
+import type { Lifecycle } from "@agenticmind/shared/lib/knowledge/source-trust"
 
+import { updateMaterialLifecycle } from "@agenticmind/shared/database/query/knowledge/materials"
 import { isSupportedLanguage } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { extractGraph } from "@agenticmind/shared/lib/knowledge/graphrag-extractor"
 import { indexMaterial } from "@agenticmind/shared/lib/knowledge/indexer"
@@ -52,6 +54,10 @@ export const ingestText = (props: {
   cardsEnabled?: boolean
   graphragEnabled?: boolean
   language?: string
+  /** Content lifecycle to stamp on the material (default active). */
+  lifecycle?: Lifecycle
+  /** Source trust tier to stamp on the material (default 0). */
+  trustTier?: number
 }): ResultAsync<IngestResult, IngestError> => {
   const title = props.title.trim()
   const text = props.text
@@ -77,6 +83,19 @@ export const ingestText = (props: {
         throw ingestError(`upload: ${mat.error.message}`)
       }
       const material = mat.value
+
+      // Stamp trust metadata when supplied (default: active / tier 0 from the schema).
+      if (props.lifecycle !== undefined || props.trustTier !== undefined) {
+        const stamped = await updateMaterialLifecycle({
+          tx: props.tx,
+          id: material.id,
+          ...(props.lifecycle !== undefined ? { lifecycle: props.lifecycle } : {}),
+          ...(props.trustTier !== undefined ? { trustTier: props.trustTier } : {}),
+        })
+        if (stamped.isErr()) {
+          throw ingestError(`trust: ${stamped.error.message}`)
+        }
+      }
 
       const indexed = await indexMaterial({
         tx: props.tx,
