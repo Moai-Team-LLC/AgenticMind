@@ -22,9 +22,10 @@ export type KnowledgeFeatureFlags = {
   graphragEnabled: boolean
   faithfulnessTierBEnabled: boolean
   contestedSourcesEnabled: boolean
+  evalHarvestEnabled: boolean
 }
 
-/** Env-controlled tier flags (cards / answer-cache / graphrag / Tier-B / contested). */
+/** Env-controlled tier flags (cards / cache / graphrag / Tier-B / contested / harvest). */
 export const knowledgeFeatureFlags = (): KnowledgeFeatureFlags => {
   return {
     cardsEnabled: knowledgeFeatureSettings.KNOWLEDGE_CARDS_ENABLED === "true",
@@ -32,6 +33,7 @@ export const knowledgeFeatureFlags = (): KnowledgeFeatureFlags => {
     graphragEnabled: knowledgeFeatureSettings.KNOWLEDGE_GRAPHRAG_ENABLED === "true",
     faithfulnessTierBEnabled: knowledgeFeatureSettings.KNOWLEDGE_FAITHFULNESS_TIER_B === "true",
     contestedSourcesEnabled: knowledgeFeatureSettings.KNOWLEDGE_CONTESTED_SOURCES === "true",
+    evalHarvestEnabled: knowledgeFeatureSettings.KNOWLEDGE_EVAL_HARVEST === "true",
   }
 }
 

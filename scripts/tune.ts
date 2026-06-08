@@ -1,9 +1,14 @@
 /**
- * Corpus-adaptive retrieval tuner (Lever 3.3). Runs the bundled eval suite under
- * a grid of retrieval profiles (the knobs AskProps exposes — hybrid weights,
- * recency, topK, rerank pool) and keeps the profile that BEATS the active/default
+ * Corpus-adaptive retrieval tuner (Lever 3.3). Runs the eval suite under a grid
+ * of retrieval profiles (the knobs AskProps exposes — hybrid weights, recency,
+ * topK, rerank pool) and keeps the profile that BEATS the active/default
  * baseline's pass rate WITHOUT regressing any failure mode (`selectBestParams`).
  * Eval-driven by construction, so it never ships a quiet regression.
+ *
+ * Closed read-path loop: the eval set is the curated corpus PLUS signal-derived
+ * cases — real queries that earned net-positive agent feedback and were captured
+ * under the opt-in eval-harvest flag (KNOWLEDGE_EVAL_HARVEST). So the tuner
+ * adapts retrieval to THIS deployment's real traffic, not just a static set.
  *
  * Needs DATABASE_URL + CHAT_API_KEY + a seeded eval corpus (same as `bun run eval`).
  * No package.json entry is added here (that file is owned elsewhere); run directly:
@@ -22,19 +27,32 @@ import type {
 } from "@agenticmind/shared/lib/knowledge/retrieval-params"
 
 import { createClient } from "@agenticmind/shared/database/client"
+import { harvestSignalledQueries } from "@agenticmind/shared/database/query/knowledge/ask-telemetry"
 import { runEvalSuite } from "@agenticmind/shared/lib/eval/harness"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { guardInput } from "@agenticmind/shared/lib/knowledge/guard"
 import { selectBestParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
+import { signalCasesFromHarvest } from "@agenticmind/shared/lib/knowledge/signal-eval-cases"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
-const cases = JSON.parse(
+const curatedCases = JSON.parse(
   readFileSync(join(import.meta.dir, "..", "eval", "cases.json"), "utf8"),
 ) as EvalCase[]
 
 const db = createClient(databaseSettings.DATABASE_URL)
+
+// Close the read-path loop: fold in real, agent-validated queries (captured under
+// the opt-in eval-harvest flag) so the tuner optimises for THIS deployment's
+// traffic, not just the curated corpus. Best-effort — empty when nothing was
+// harvested, so the tuner still runs on the curated set alone.
+const harvested = await harvestSignalledQueries({ tx: db })
+const signalCases = harvested.isOk() ? signalCasesFromHarvest(harvested.value) : []
+const cases: EvalCase[] = [...curatedCases, ...signalCases]
+console.log(
+  `eval set: ${curatedCases.length} curated + ${signalCases.length} signal-derived = ${cases.length} cases`,
+)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
 const cacheEnabled = process.env.KNOWLEDGE_CACHE_ENABLED === "true"
 

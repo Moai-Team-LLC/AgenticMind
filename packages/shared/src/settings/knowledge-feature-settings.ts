@@ -27,6 +27,10 @@ export const knowledgeFeatureSettings = createEnv({
     // Contested-sources detection: surface facts the retrieved sources disagree on
     // (one extra LLM call per kl_ask_global). Off by default.
     KNOWLEDGE_CONTESTED_SOURCES: z.string().optional(),
+    // Eval-harvest: persist the raw question on each ask's telemetry row so
+    // signalled real queries can be replayed by the corpus-adaptive tuner. Off by
+    // default (privacy: only the question hash is stored unless this is set).
+    KNOWLEDGE_EVAL_HARVEST: z.string().optional(),
     S3_BUCKET: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
@@ -41,6 +45,7 @@ export const knowledgeFeatureSettings = createEnv({
     KNOWLEDGE_GRAPHRAG_ENABLED: process.env.KNOWLEDGE_GRAPHRAG_ENABLED,
     KNOWLEDGE_FAITHFULNESS_TIER_B: process.env.KNOWLEDGE_FAITHFULNESS_TIER_B,
     KNOWLEDGE_CONTESTED_SOURCES: process.env.KNOWLEDGE_CONTESTED_SOURCES,
+    KNOWLEDGE_EVAL_HARVEST: process.env.KNOWLEDGE_EVAL_HARVEST,
     S3_BUCKET: process.env.S3_BUCKET ?? process.env.SPACES_KNOWLEDGE_BUCKET,
     GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
