@@ -5,6 +5,7 @@
  * pipeline (ask) and the answer cache live in sibling files.
  */
 
+import type { AnswerStatus } from "@agenticmind/shared/lib/knowledge/answer-status"
 import type { ContestedFact } from "@agenticmind/shared/lib/knowledge/contested-sources"
 
 /** Chunks fed into the prompt as context. */
@@ -101,6 +102,9 @@ export type Answer = {
   /** Sources that directly disagree on a fact, each side tagged with its source +
    * date. Present only when the contested-sources check ran (flag-gated). */
   contested?: ContestedFact[]
+  /** Single trust verdict derived from the faithfulness signals — the field an
+   * agent gates on: supported | partial | unsupported | conflicted | needs_review. */
+  status?: AnswerStatus
 }
 
 export const SYSTEM_PROMPT = `You are a knowledge-base assistant. Answer the user's
