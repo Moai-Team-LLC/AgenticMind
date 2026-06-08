@@ -73,6 +73,7 @@ import {
 } from "@agenticmind/shared/lib/knowledge/ontology"
 import { boost, defaultRecencyConfig } from "@agenticmind/shared/lib/knowledge/recency"
 import { rerankPairs } from "@agenticmind/shared/lib/knowledge/rerank"
+import { applyTrust } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { queryVariants } from "@agenticmind/shared/lib/knowledge/stopwords"
 import {
   buildPromptWithGraphContext,
@@ -133,7 +134,7 @@ export type AskProps = {
   answerPolicy?: AnswerPolicy
 }
 
-type MatMeta = { title: string; updatedAt: Date | null }
+type MatMeta = { title: string; updatedAt: Date | null; lifecycle: string; trustTier: number }
 
 const resolveMeta = async (
   tx: Transaction,
@@ -147,13 +148,18 @@ const resolveMeta = async (
   const res = await getMaterial({ tx, id: materialId })
   const meta: MatMeta =
     res.isOk() && res.value !== null
-      ? { title: res.value.title, updatedAt: res.value.updatedAt }
-      : { title: "", updatedAt: null }
+      ? {
+          title: res.value.title,
+          updatedAt: res.value.updatedAt,
+          lifecycle: res.value.lifecycle,
+          trustTier: res.value.trustTier,
+        }
+      : { title: "", updatedAt: null, lifecycle: "active", trustTier: 0 }
   cache.set(materialId, meta)
   return meta
 }
 
-/** Decorate chunk hits with title + recency-boosted score, sorted + renumbered. */
+/** Decorate chunk hits with title + recency- and trust-weighted score, sorted + renumbered. */
 const decorate = async (
   tx: Transaction,
   hits: KnowledgeHit[],
@@ -169,7 +175,7 @@ const decorate = async (
       materialId: h.materialId,
       title: meta.title,
       body: h.body,
-      score: boost(h.score, meta.updatedAt, cfg),
+      score: applyTrust(boost(h.score, meta.updatedAt, cfg), meta.lifecycle, meta.trustTier),
       updatedAt: meta.updatedAt,
       origin: SOURCE_ORIGIN_CHUNK,
     })
@@ -234,7 +240,7 @@ const fetchCardSources = async (
       materialId: hit.materialId,
       title: meta.title,
       body: hit.body,
-      score,
+      score: applyTrust(score, meta.lifecycle, meta.trustTier),
       updatedAt: meta.updatedAt,
       origin: SOURCE_ORIGIN_CARD,
       spanStart: hit.spanStart,

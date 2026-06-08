@@ -43,6 +43,13 @@
       "when": 1780897344559,
       "tag": "0005_eval_harvest",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780906272285,
+      "tag": "0006_source_lifecycle",
+      "breakpoints": true
     }
   ]
 }
