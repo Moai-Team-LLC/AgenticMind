@@ -110,6 +110,25 @@ call: **no source, no claim — and a receipt for every answer.**
 | Relational verification | ✗                       | graph module                       |
 | Runs on                 | varies                  | **Postgres + pgvector** (flagship) |
 
+## ✅ Use it when / 🚫 reach for something else when
+
+**Use AgenticMind when:**
+
+- Your agent must answer **from trusted sources**, and every claim needs a citation.
+- You need a **replayable why-trace** and a single `status` (supported / partial /
+  unsupported / conflicted / needs_review) you can **gate** an agent on.
+- Disagreeing or stale sources must be **surfaced**, not silently resolved.
+- You want **governed** self-improvement — not silent autonomous memory mutation.
+- You need **self-hosting** (Postgres-only) and **MCP-native** access (Claude Code,
+  Cursor, LangGraph, OpenAI/Claude Agent SDK, custom agents).
+
+**Reach for something else when:**
+
+- You only need simple personalised **chat memory** (use a memory SDK).
+- You want a **hosted API / no-code UI today** — AgenticMind is self-hosted infra.
+- You need **SSO / SOC2** out of the box (see the security model for what exists).
+- You're optimising for the **fastest prototype**, not accountable production.
+
 ## 🛠 Agent surface (MCP)
 
 A **headless** service (`apps/server`) exposes the engine as MCP tools over
@@ -118,7 +137,7 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | Tool                 | Scope              | Purpose                                                             |
 | -------------------- | ------------------ | ------------------------------------------------------------------- |
 | `kl_search`          | `knowledge:read`   | semantic / keyword passage search                                   |
-| `kl_ask_global`      | `knowledge:read`   | synthesised answer + citations (optional `intent`/`facts`)          |
+| `kl_ask_global`      | `knowledge:read`   | synthesised answer + citations + a gate-able `status` (optional `intent`/`facts`) |
 | `kl_get_material`    | `knowledge:read`   | fetch a material by id                                              |
 | `kl_graph_neighbors` | `knowledge:read`   | related materials via the knowledge graph                           |
 | `kl_ingest`          | `knowledge:write`  | add text (chunked, embedded, distilled into cards, graph-extracted) |
@@ -126,6 +145,12 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `kl_signal`          | `knowledge:signal` | emit a programmatic compounding signal on a prior answer            |
 | `mem_recall`         | `memory:read`      | recall beliefs (private ∪ shared); semantic or `asOf` time-travel   |
 | `mem_write`          | `memory:write`     | record a belief into private memory (bitemporal, revision-aware)    |
+| `mem_forget`         | `memory:write`     | retract one of your own beliefs (soft, bitemporal)                  |
+
+See **[docs/knobs.md](docs/knobs.md)** for the optional answer-quality knobs
+(Tier-B faithfulness, contested-sources, answer policy, source trust) and the
+**[security model](docs/security-model.md)** (fail-closed auth, tenant RLS,
+lethal-trifecta analysis, supply chain) for the security posture.
 
 There is **no frontend** — the only consumers are agents over MCP. The tool logic is
 framework-agnostic in `packages/shared/src/lib/knowledge/mcp-tools.ts`; the host is a

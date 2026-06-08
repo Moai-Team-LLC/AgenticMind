@@ -74,6 +74,7 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Integrations: integrations.md
+  - Configuration knobs: knobs.md
   - Deep dives:
       - Overview: blog/README.md
       - The why-trace: blog/why-trace.md
