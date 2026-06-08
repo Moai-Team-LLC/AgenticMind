@@ -62,6 +62,9 @@ export type McpToolDeps = {
   blobStore?: KnowledgeBlobStore
   /** Active corpus-adaptive retrieval profile (Lever 3.2); unset = engine defaults. */
   retrievalParams?: RetrievalParams
+  /** Run the Tier-B semantic-entailment faithfulness judge on kl_ask_global
+   * (one extra LLM call). Default off; Tier-A signals are always computed. */
+  faithfulnessTierB?: boolean
 }
 
 const snippet = (s: string, max = 240): string => {
@@ -231,6 +234,7 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     recencyConfig: deps.retrievalParams?.recencyConfig,
     topK: deps.retrievalParams?.topK,
     rerankTopN: deps.retrievalParams?.rerankTopN,
+    faithfulnessTierB: deps.faithfulnessTierB,
     // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
     // Provider when a graph store is configured.
     graphContext:

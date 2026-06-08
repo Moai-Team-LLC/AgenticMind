@@ -91,6 +91,11 @@ export type Answer = {
   unsupportedClaims?: string[]
   /** The answer declined: no sources retrieved, or it cited nothing and hedged. */
   abstained?: boolean
+  /** Tier-B: fraction of cited claims whose own snippet semantically supports them
+   * (0..1). Present only when the entailment check ran (flag-gated). */
+  semanticGroundedness?: number
+  /** Tier-B: cited claims whose own snippet does not support them (capped). */
+  contradictedClaims?: string[]
 }
 
 export const SYSTEM_PROMPT = `You are a knowledge-base assistant. Answer the user's

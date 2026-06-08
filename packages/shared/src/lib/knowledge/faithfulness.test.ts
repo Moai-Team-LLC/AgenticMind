@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { scoreFaithfulness } from "./faithfulness"
+import { scoreFaithfulness, supportedClaims } from "./faithfulness"
 
 const cite = (...nums: number[]): { number: number }[] =>
   nums.map((number) => {
@@ -82,5 +82,21 @@ describe("scoreFaithfulness", () => {
     )
     expect(r.groundedness).toBe(1)
     expect(r.abstained).toBe(false)
+  })
+})
+
+describe("supportedClaims", () => {
+  it("returns only claim-sentences with a resolving citation, deduped", () => {
+    const out = supportedClaims(
+      "Sales rose 12% [1]. The market is uncertain. Costs fell [2][2].",
+      cite(1, 2),
+    )
+    expect(out).toHaveLength(2)
+    expect(out[0]).toEqual({ claim: "Sales rose 12% [1].", citedNumbers: [1] })
+    expect(out[1]).toEqual({ claim: "Costs fell [2][2].", citedNumbers: [2] })
+  })
+
+  it("ignores claims whose citation does not resolve", () => {
+    expect(supportedClaims("Profit doubled [9].", cite(1))).toEqual([])
   })
 })

@@ -20,14 +20,16 @@ export type KnowledgeFeatureFlags = {
   cardsEnabled: boolean
   cacheEnabled: boolean
   graphragEnabled: boolean
+  faithfulnessTierBEnabled: boolean
 }
 
-/** Env-controlled tier flags (cards / answer-cache / graphrag). */
+/** Env-controlled tier flags (cards / answer-cache / graphrag / Tier-B faithfulness). */
 export const knowledgeFeatureFlags = (): KnowledgeFeatureFlags => {
   return {
     cardsEnabled: knowledgeFeatureSettings.KNOWLEDGE_CARDS_ENABLED === "true",
     cacheEnabled: knowledgeFeatureSettings.KNOWLEDGE_CACHE_ENABLED === "true",
     graphragEnabled: knowledgeFeatureSettings.KNOWLEDGE_GRAPHRAG_ENABLED === "true",
+    faithfulnessTierBEnabled: knowledgeFeatureSettings.KNOWLEDGE_FAITHFULNESS_TIER_B === "true",
   }
 }
 

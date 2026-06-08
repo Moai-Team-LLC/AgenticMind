@@ -100,6 +100,31 @@ const citationNumbersIn = (sentence: string): number[] => {
 const round3 = (v: number): number => Math.round(v * 1000) / 1000
 
 /**
+ * The claim-sentences that DO carry a resolving citation, paired with the
+ * citation numbers that resolve — the input surface for Tier-B entailment
+ * (faithfulness-entailment.ts). Pure; reuses the same sentence/claim parsing as
+ * `scoreFaithfulness`, so Tier-A and Tier-B agree on what counts as a claim.
+ */
+export const supportedClaims = (
+  answerText: string,
+  citations: readonly { number: number }[],
+): { claim: string; citedNumbers: number[] }[] => {
+  const citedNumbers = new Set(citations.map((c) => c.number))
+  const out: { claim: string; citedNumbers: number[] }[] = []
+  for (const sentence of splitSentences(answerText)) {
+    if (wordCount(sentence) < MIN_CLAIM_WORDS) {
+      continue
+    }
+    const resolving = [...new Set(citationNumbersIn(sentence).filter((n) => citedNumbers.has(n)))]
+    if (resolving.length === 0) {
+      continue
+    }
+    out.push({ claim: normWs(stripLeadingMarker(sentence)), citedNumbers: resolving })
+  }
+  return out
+}
+
+/**
  * Scores an answer against its resolved citations. `sourceCount` is the number
  * of retrieved sources the synthesiser saw (0 ⇒ the engine was forced to decline).
  * `citations` need only carry their resolved `number`.
