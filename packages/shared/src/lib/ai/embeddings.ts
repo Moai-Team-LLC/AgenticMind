@@ -83,6 +83,7 @@ const createOpenAiProvider = (
   modelId: string,
   baseUrl: string,
   apiKey: string | undefined,
+  sendDimensions: boolean,
 ): EmbeddingsProvider => {
   const url = `${baseUrl.replace(/\/+$/u, "")}/embeddings`
   const callOnce = async (input: string | string[]): Promise<number[][]> => {
@@ -92,7 +93,14 @@ const createOpenAiProvider = (
         "Content-Type": "application/json",
         ...(apiKey !== undefined && apiKey !== "" ? { Authorization: `Bearer ${apiKey}` } : {}),
       },
-      body: JSON.stringify({ model: modelId, input }),
+      // `dimensions` lets OpenAI's text-embedding-3-* models emit the schema's
+      // 1024 dims; off by default since not every OpenAI-compatible server
+      // (Ollama, some vLLM builds) accepts the field.
+      body: JSON.stringify({
+        model: modelId,
+        input,
+        ...(sendDimensions ? { dimensions: EMBEDDING_DIMENSIONS } : {}),
+      }),
     })
     if (!response.ok) {
       throw new Error(`embeddings ${response.status}: ${await response.text()}`)
@@ -142,7 +150,12 @@ export const embeddingsProvider = (): EmbeddingsProvider => {
     if (aiSettings.EMBED_BASE_URL === undefined) {
       throw new Error("EMBED_PROVIDER=openai requires EMBED_BASE_URL")
     }
-    cached = createOpenAiProvider(modelId, aiSettings.EMBED_BASE_URL, aiSettings.EMBED_API_KEY)
+    cached = createOpenAiProvider(
+      modelId,
+      aiSettings.EMBED_BASE_URL,
+      aiSettings.EMBED_API_KEY,
+      aiSettings.EMBED_SEND_DIMENSIONS === "true",
+    )
   } else {
     cached = createLocalProvider(modelId, aiSettings.EMBED_POOLING ?? DEFAULT_EMBED_POOLING)
   }

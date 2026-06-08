@@ -21,6 +21,10 @@ export const aiSettings = createEnv({
     EMBED_POOLING: z.enum(["cls", "mean"]).default("cls"),
     EMBED_BASE_URL: z.url().optional(),
     EMBED_API_KEY: z.string().optional(),
+    // Send `dimensions` to the OpenAI-compatible /embeddings endpoint so models
+    // like text-embedding-3-small/large emit the schema's dimension. Off by
+    // default — some compatible servers (Ollama, some vLLM) reject the field.
+    EMBED_SEND_DIMENSIONS: z.string().optional(),
     // For the `local` provider behind a blocked Hugging Face CDN
     // (cdn-lfs.huggingface.co / cas-bridge.xethub.hf.co): point downloads at a
     // mirror (e.g. https://hf-mirror.com), and/or persist the model in a cache
@@ -57,6 +61,7 @@ export const aiSettings = createEnv({
     EMBED_POOLING: process.env.EMBED_POOLING,
     EMBED_BASE_URL: process.env.EMBED_BASE_URL,
     EMBED_API_KEY: process.env.EMBED_API_KEY,
+    EMBED_SEND_DIMENSIONS: process.env.EMBED_SEND_DIMENSIONS,
     EMBED_HF_ENDPOINT: process.env.EMBED_HF_ENDPOINT,
     EMBED_CACHE_DIR: process.env.EMBED_CACHE_DIR,
     CHAT_BASE_URL: process.env.CHAT_BASE_URL,
