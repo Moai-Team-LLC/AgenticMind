@@ -119,6 +119,9 @@ export type AskProps = {
   /** Contested-sources detection: run a judge pass that surfaces facts where the
    * retrieved sources disagree (one extra LLM call). Default off. */
   contestedSources?: boolean
+  /** Eval-harvest: persist the raw question on the telemetry row so signalled real
+   * queries can be replayed by the tuner. Default off (privacy: hash-only). */
+  evalHarvest?: boolean
 }
 
 type MatMeta = { title: string; updatedAt: Date | null }
@@ -569,6 +572,7 @@ export const ask = (props: AskProps): ResultAsync<Answer, AskError> =>
       event: {
         memberId: props.memberId ?? null,
         questionHash: hashQuestion(props.question),
+        questionText: props.evalHarvest === true ? props.question : null,
         servedBy: answer.servedBy,
         retrievalMs: answer.retrievalMs,
         generationMs: answer.generationMs,

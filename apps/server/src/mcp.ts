@@ -94,6 +94,7 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     retrievalParams: ACTIVE_RETRIEVAL_PARAMS,
     faithfulnessTierB: flags.faithfulnessTierBEnabled,
     contestedSources: flags.contestedSourcesEnabled,
+    evalHarvest: flags.evalHarvestEnabled,
   }
 }
 

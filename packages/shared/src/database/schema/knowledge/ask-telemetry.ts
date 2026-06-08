@@ -26,6 +26,10 @@ const askTelemetry = pgTable(
       .default(sql`gen_random_uuid()`),
     memberId: text("member_id"),
     questionHash: text("question_hash").notNull(),
+    // The raw question text — NULL by default (privacy). Populated only when the
+    // opt-in eval-harvest flag (KNOWLEDGE_EVAL_HARVEST) is set, so signalled real
+    // queries can be replayed by the corpus-adaptive tuner (scripts/tune.ts).
+    questionText: text("question_text"),
     servedBy: text("served_by").notNull(),
     retrievalMs: integer("retrieval_ms").notNull(),
     generationMs: integer("generation_ms").notNull(),

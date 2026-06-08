@@ -68,6 +68,9 @@ export type McpToolDeps = {
   /** Run the contested-sources judge on kl_ask_global (one extra LLM call).
    * Default off. Surfaces facts the retrieved sources disagree on. */
   contestedSources?: boolean
+  /** Persist the raw question on telemetry so signalled queries feed the tuner.
+   * Default off (privacy: hash-only). */
+  evalHarvest?: boolean
 }
 
 const snippet = (s: string, max = 240): string => {
@@ -239,6 +242,7 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     rerankTopN: deps.retrievalParams?.rerankTopN,
     faithfulnessTierB: deps.faithfulnessTierB,
     contestedSources: deps.contestedSources,
+    evalHarvest: deps.evalHarvest,
     // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
     // Provider when a graph store is configured.
     graphContext:

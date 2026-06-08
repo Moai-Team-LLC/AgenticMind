@@ -36,6 +36,13 @@
       "when": 1780750880833,
       "tag": "0004_tenant_app_role",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780897344559,
+      "tag": "0005_eval_harvest",
+      "breakpoints": true
     }
   ]
 }
