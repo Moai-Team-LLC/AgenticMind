@@ -197,3 +197,75 @@ describe("evaluateCase citation precision/recall gates", () => {
     expect(r.recall).toBeUndefined()
   })
 })
+
+describe("evaluateCase trust-signal assertions", () => {
+  const base: EvalCase = {
+    id: "t1",
+    failureMode: "conflicting_sources",
+    query: "q",
+    assertions: {},
+  }
+
+  it("expectStatus passes when the status matches one of the allowed", async () => {
+    const r = await evaluateCase(
+      { ...base, assertions: { expectStatus: ["conflicted", "needs_review"] } },
+      obs({ status: "conflicted" }),
+    )
+    expect(r.passed).toBe(true)
+  })
+
+  it("expectStatus fails on a mismatch", async () => {
+    const r = await evaluateCase(
+      { ...base, assertions: { expectStatus: ["conflicted"] } },
+      obs({ status: "supported" }),
+    )
+    expect(r.passed).toBe(false)
+    expect(r.failures.some((f) => f.includes("status"))).toBe(true)
+  })
+
+  it("expectContested checks presence of contested facts", async () => {
+    expect(
+      (
+        await evaluateCase(
+          { ...base, assertions: { expectContested: true } },
+          obs({ contestedCount: 2 }),
+        )
+      ).passed,
+    ).toBe(true)
+    expect(
+      (
+        await evaluateCase(
+          { ...base, assertions: { expectContested: true } },
+          obs({ contestedCount: 0 }),
+        )
+      ).passed,
+    ).toBe(false)
+    expect(
+      (
+        await evaluateCase(
+          { ...base, assertions: { expectContested: false } },
+          obs({ contestedCount: 0 }),
+        )
+      ).passed,
+    ).toBe(true)
+  })
+
+  it("expectStaleSourcesOnly checks the stale flag", async () => {
+    expect(
+      (
+        await evaluateCase(
+          { ...base, assertions: { expectStaleSourcesOnly: true } },
+          obs({ staleSourcesOnly: true }),
+        )
+      ).passed,
+    ).toBe(true)
+    expect(
+      (
+        await evaluateCase(
+          { ...base, assertions: { expectStaleSourcesOnly: true } },
+          obs({ staleSourcesOnly: false }),
+        )
+      ).passed,
+    ).toBe(false)
+  })
+})

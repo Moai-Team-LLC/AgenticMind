@@ -16,9 +16,17 @@ import { databaseSettings } from "@agenticmind/shared/settings/database-settings
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
-const cases = JSON.parse(
+const allCases = JSON.parse(
   readFileSync(join(import.meta.dir, "..", "eval", "cases.json"), "utf8"),
 ) as EvalCase[]
+// EVAL_ONLY=mode1,mode2 restricts the run to those failure modes (dev iteration).
+const only = process.env.EVAL_ONLY?.split(",")
+  .map((s) => s.trim())
+  .filter((s) => s.length > 0)
+const cases =
+  only !== undefined && only.length > 0
+    ? allCases.filter((c) => only.includes(c.failureMode))
+    : allCases
 
 const db = createClient(databaseSettings.DATABASE_URL)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
@@ -29,7 +37,14 @@ const askForEval: AskForEval = async (query) => {
   if (!guard.ok) {
     return { blocked: true, answer: "", citations: [] }
   }
-  const res = await ask({ tx: db, question: query, cardsEnabled, cacheEnabled })
+  // contestedSources on so the conflict/trust buckets get a populated `contested`.
+  const res = await ask({
+    tx: db,
+    question: query,
+    cardsEnabled,
+    cacheEnabled,
+    contestedSources: true,
+  })
   if (res.isErr()) {
     return { blocked: false, answer: "", citations: [] }
   }
@@ -38,6 +53,9 @@ const askForEval: AskForEval = async (query) => {
     answer: res.value.answer,
     groundedness: res.value.groundedness,
     abstained: res.value.abstained,
+    status: res.value.status,
+    contestedCount: res.value.contested?.length ?? 0,
+    staleSourcesOnly: res.value.staleSourcesOnly,
     citations: res.value.citations.map((c) => {
       return { title: c.title, materialId: c.materialId }
     }),
