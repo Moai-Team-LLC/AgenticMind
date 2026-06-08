@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { AskForEval, EvalCase, EvalObservation } from "./harness"
 
-import { evaluateCase, isRegression, runEvalSuite } from "./harness"
+import { citationMetrics, evaluateCase, isRegression, runEvalSuite } from "./harness"
 
 const obs = (o: Partial<EvalObservation>): EvalObservation => {
   return {
@@ -131,5 +131,69 @@ describe("isRegression", () => {
   it("trips only below baseline minus tolerance", () => {
     expect(isRegression({ passRate: 0.9 } as never, 0.95, 0.02)).toBe(true)
     expect(isRegression({ passRate: 0.94 } as never, 0.95, 0.02)).toBe(false)
+  })
+})
+
+describe("citationMetrics", () => {
+  it("computes precision + recall by case-insensitive substring", () => {
+    // cited: 2 hits of 3 → precision 2/3; relevant: 2 of 2 matched → recall 1
+    const m = citationMetrics(
+      ["Ireland Tax Guide", "Estonia Tax", "Unrelated Memo"],
+      ["ireland tax", "estonia tax"],
+    )
+    expect(m.precision).toBe(0.667)
+    expect(m.recall).toBe(1)
+  })
+
+  it("recall < 1 when a relevant material is missed", () => {
+    const m = citationMetrics(["Ireland Tax Guide"], ["ireland tax", "estonia tax"])
+    expect(m.precision).toBe(1)
+    expect(m.recall).toBe(0.5)
+  })
+
+  it("no citations → precision 1 (no false positives), recall 0", () => {
+    expect(citationMetrics([], ["ireland tax"])).toEqual({ precision: 1, recall: 0 })
+  })
+
+  it("no gold → recall 1 (vacuous)", () => {
+    expect(citationMetrics(["x"], [])).toEqual({ precision: 0, recall: 1 })
+  })
+})
+
+describe("evaluateCase citation precision/recall gates", () => {
+  const base: EvalCase = {
+    id: "p1",
+    failureMode: "citation_grounding",
+    query: "q",
+    assertions: {},
+  }
+
+  it("attaches precision/recall when relevantMaterials is declared", async () => {
+    const r = await evaluateCase(
+      { ...base, assertions: { relevantMaterials: ["ireland tax"] } },
+      obs({ answer: "a [1]", citations: [{ title: "Ireland Tax Guide", materialId: "m1" }] }),
+    )
+    expect(r.precision).toBe(1)
+    expect(r.recall).toBe(1)
+    expect(r.passed).toBe(true)
+  })
+
+  it("fails when precision/recall fall below the gate", async () => {
+    const r = await evaluateCase(
+      {
+        ...base,
+        assertions: { relevantMaterials: ["estonia tax"], minCitationRecall: 1 },
+      },
+      obs({ answer: "a [1]", citations: [{ title: "Ireland Tax Guide", materialId: "m1" }] }),
+    )
+    expect(r.recall).toBe(0)
+    expect(r.passed).toBe(false)
+    expect(r.failures.some((f) => f.includes("citation recall"))).toBe(true)
+  })
+
+  it("omits metrics when no gold is declared", async () => {
+    const r = await evaluateCase(base, obs({ answer: "a [1]", citations: [] }))
+    expect(r.precision).toBeUndefined()
+    expect(r.recall).toBeUndefined()
   })
 })

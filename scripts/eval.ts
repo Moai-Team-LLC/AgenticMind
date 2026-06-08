@@ -54,6 +54,11 @@ console.log(
 for (const [mode, b] of Object.entries(report.byFailureMode)) {
   console.log(`  ${mode}: ${b.passed}/${b.total} (${(b.passRate * 100).toFixed(0)}%)`)
 }
+if (report.citationPrecision !== undefined) {
+  console.log(
+    `  citation precision ${(report.citationPrecision * 100).toFixed(0)}% · recall ${((report.citationRecall ?? 0) * 100).toFixed(0)}%`,
+  )
+}
 for (const r of report.results.filter((x) => !x.passed)) {
   console.log(`  ✗ ${r.id} [${r.failureMode}]: ${r.failures.join("; ")}`)
 }

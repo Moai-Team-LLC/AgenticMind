@@ -17,6 +17,13 @@ export type EvalAssertions = {
   maxCitations?: number
   /** Material titles (case-insensitive substring) that MUST appear among citations. */
   mustCiteMaterial?: string[]
+  /** Gold set of relevant material titles (case-insensitive substring) — the basis
+   * for citation precision/recall on this case. */
+  relevantMaterials?: string[]
+  /** Min citation precision (cited∩relevant / cited) the answer must reach (0..1). */
+  minCitationPrecision?: number
+  /** Min citation recall (cited∩relevant / relevant) the answer must reach (0..1). */
+  minCitationRecall?: number
   /** Phrases the answer MUST contain (case-insensitive). */
   mustMention?: string[]
   /** Phrases the answer MUST NOT contain (e.g. leaked system prompt, fabrications). */
@@ -54,7 +61,15 @@ export type EvalObservation = {
 export type AskForEval = (query: string) => Promise<EvalObservation>
 export type JudgeForEval = (question: string, observation: EvalObservation) => Promise<boolean>
 
-export type CaseResult = { id: string; failureMode: string; passed: boolean; failures: string[] }
+export type CaseResult = {
+  id: string
+  failureMode: string
+  passed: boolean
+  failures: string[]
+  /** Citation precision/recall, present only when the case declared relevantMaterials. */
+  precision?: number
+  recall?: number
+}
 
 export type EvalReport = {
   total: number
@@ -62,10 +77,33 @@ export type EvalReport = {
   passRate: number
   byFailureMode: Record<string, { total: number; passed: number; passRate: number }>
   results: CaseResult[]
+  /** Mean citation precision/recall over the cases that declared relevantMaterials
+   * (undefined when no case did). */
+  citationPrecision?: number
+  citationRecall?: number
 }
 
 const includesCi = (haystack: string, needle: string): boolean =>
   haystack.toLowerCase().includes(needle.toLowerCase())
+
+/**
+ * Citation precision/recall against a gold set, by case-insensitive substring
+ * (consistent with mustCiteMaterial). A cited title counts as a hit if it matches
+ * any relevant title. precision = hits / cited (1 when nothing was cited — no
+ * false positives); recall = matched-relevant / relevant (1 when no gold given).
+ */
+export const citationMetrics = (
+  citedTitles: readonly string[],
+  relevantTitles: readonly string[],
+): { precision: number; recall: number } => {
+  const round3 = (v: number): number => Math.round(v * 1000) / 1000
+  const citedHits = citedTitles.filter((c) => relevantTitles.some((r) => includesCi(c, r)))
+  const relevantHit = relevantTitles.filter((r) => citedTitles.some((c) => includesCi(c, r)))
+  const precision = citedTitles.length === 0 ? 1 : round3(citedHits.length / citedTitles.length)
+  const recall =
+    relevantTitles.length === 0 ? 1 : round3(relevantHit.length / relevantTitles.length)
+  return { precision, recall }
+}
 
 /** Tier-A faithfulness Level-1 checks: groundedness floor/ceiling + abstention. Pure. */
 const faithfulnessFailures = (a: EvalAssertions, obs: EvalObservation): string[] => {
@@ -94,6 +132,7 @@ export const evaluateCase = async (
 ): Promise<CaseResult> => {
   const a = c.assertions
   const failures: string[] = []
+  let metrics: { precision: number; recall: number } | undefined
 
   if (a.expectBlocked === true && !obs.blocked) {
     failures.push("expected the input to be blocked")
@@ -131,6 +170,19 @@ export const evaluateCase = async (
       failures.push(`answer shorter than ${a.minAnswerChars} chars`)
     }
 
+    if (a.relevantMaterials !== undefined) {
+      metrics = citationMetrics(
+        obs.citations.map((cit) => cit.title),
+        a.relevantMaterials,
+      )
+      if (a.minCitationPrecision !== undefined && metrics.precision < a.minCitationPrecision) {
+        failures.push(`citation precision ${metrics.precision} < ${a.minCitationPrecision}`)
+      }
+      if (a.minCitationRecall !== undefined && metrics.recall < a.minCitationRecall) {
+        failures.push(`citation recall ${metrics.recall} < ${a.minCitationRecall}`)
+      }
+    }
+
     failures.push(...faithfulnessFailures(a, obs))
 
     if (a.judge !== undefined) {
@@ -142,7 +194,13 @@ export const evaluateCase = async (
     }
   }
 
-  return { id: c.id, failureMode: c.failureMode, passed: failures.length === 0, failures }
+  return {
+    id: c.id,
+    failureMode: c.failureMode,
+    passed: failures.length === 0,
+    failures,
+    ...(metrics !== undefined ? { precision: metrics.precision, recall: metrics.recall } : {}),
+  }
 }
 
 /** Runs the suite and aggregates pass rate overall + per failure mode. */
@@ -181,12 +239,21 @@ export const runEvalSuite = async (
   }
 
   const passed = results.filter((r) => r.passed).length
+  const scored = results.filter((r) => r.precision !== undefined)
+  const mean = (xs: number[]): number =>
+    xs.length === 0 ? 0 : Math.round((xs.reduce((s, x) => s + x, 0) / xs.length) * 1000) / 1000
   return {
     total: results.length,
     passed,
     passRate: results.length === 0 ? 1 : passed / results.length,
     byFailureMode,
     results,
+    ...(scored.length > 0
+      ? {
+          citationPrecision: mean(scored.map((r) => r.precision ?? 0)),
+          citationRecall: mean(scored.map((r) => r.recall ?? 0)),
+        }
+      : {}),
   }
 }
 
