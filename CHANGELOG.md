@@ -4,6 +4,56 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] — 2026-06-10
+
+The **Knowledge Unit + safety** release: a written contract for what may become
+stored knowledge, the admission machinery to enforce it, and an expanded,
+eval-first safety net — every new risk measured against a live run before
+anything was claimed. Still drop-in (DB + `OPENAI_KEY`); new behaviour is
+off/neutral by default, except PII redaction, which is on because leaking PII is
+a defect.
+
+### Added
+
+- **The Knowledge Unit contract.** A new `docs/knowledge-unit.md` defines what
+  counts as stored knowledge — `Claim + Evidence + Scope + Validity + Reuse +
+  Lifecycle`, the doctrine "conversation = evidence", the 10-point acceptance
+  contract — and draws the line: the generic substrate stays domain-neutral;
+  domain typologies, audience permissions, and reuse modes belong to the product
+  layer above.
+- **Card admission lifecycle.** Knowledge cards gain a `status`
+  (`candidate | reviewed | approved | rejected | deprecated | archived`, default
+  `approved`); retrieval excludes rejected/deprecated/archived so demoted
+  knowledge never surfaces (migration `0007`).
+- **Card provenance.** Cards record evidence `authority`
+  (self_declared … external_source) and a confidence `method` + `reason`
+  (migration `0008`).
+- **Acceptance evaluator.** A flag-gated second-stage LLM gate at ingest
+  (`KNOWLEDGE_ACCEPTANCE_EVALUATOR`, default off): per extracted card,
+  accept → stored, reject → dropped, merge/human_review → held as `candidate`.
+- **Eval-first safety net.** New failure-mode buckets, each **measured against a
+  live Postgres + LLM run**: `pii_leak`, `opinion_vs_fact` (via a new Level-2
+  binary judge wired into the runner), and `answer_cache_false_hit` (a primer +
+  near-query cache guard). Citation precision/recall and the trust buckets from
+  the previous cycle are exercised too.
+
+### Security
+
+- **Answer-side PII redaction — on by default.** The answer text **and** citation
+  snippets are scrubbed of email/phone/card/SSN/IPv4 before they leave the engine
+  and before caching. A `pii_leak` eval measured a real leak (PII was protected
+  on input but echoed on output); this closes it. Opt out with
+  `KNOWLEDGE_PII_REDACTION=false` only where raw contact info is intended.
+
+### Measured (not claimed)
+
+- On the benchmark, `opinion_vs_fact` and `answer_cache_false_hit` came back
+  green: the engine attributes opinions rather than asserting them as fact, and
+  the answer cache does not serve a near-but-different question's answer at the
+  current threshold. These are eval results, not absolute guarantees.
+
+[0.10.0]: https://github.com/Moai-Team-LLC/AgenticMind/releases/tag/v0.10.0
+
 ## [0.9.0] — 2026-06-08
 
 The **auditable-contract** release: the engine's faithfulness signals become a
