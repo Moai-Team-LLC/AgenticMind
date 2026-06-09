@@ -147,10 +147,11 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `mem_write`          | `memory:write`     | record a belief into private memory (bitemporal, revision-aware)    |
 | `mem_forget`         | `memory:write`     | retract one of your own beliefs (soft, bitemporal)                  |
 
-See **[docs/knobs.md](docs/knobs.md)** for the optional answer-quality knobs
-(Tier-B faithfulness, contested-sources, answer policy, source trust) and the
-**[security model](docs/security-model.md)** (fail-closed auth, tenant RLS,
-lethal-trifecta analysis, supply chain) for the security posture.
+See **[What counts as knowledge](docs/knowledge-unit.md)** for the Knowledge Unit
+contract (what may become stored knowledge), **[docs/knobs.md](docs/knobs.md)** for
+the optional answer-quality knobs (Tier-B faithfulness, contested-sources, answer
+policy, source trust), and the **[security model](docs/security-model.md)**
+(fail-closed auth, tenant RLS, lethal-trifecta analysis, supply chain).
 
 There is **no frontend** — the only consumers are agents over MCP. The tool logic is
 framework-agnostic in `packages/shared/src/lib/knowledge/mcp-tools.ts`; the host is a
