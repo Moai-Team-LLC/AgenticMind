@@ -31,6 +31,8 @@ const knowledgeCards = pgTable(
       .notNull()
       .references(() => materials.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
+    /** KU lifecycle (admission side). Born `approved`; the evaluator/admin can demote. */
+    status: text("status").notNull().default("approved"),
     subjectType: text("subject_type").notNull(),
     subjectValue: text("subject_value").notNull(),
     predicate: text("predicate"),
@@ -65,6 +67,10 @@ const knowledgeCards = pgTable(
     check(
       "knowledge_cards_kind_check",
       sql`${table.kind} IN ('fact', 'qa', 'definition', 'metric', 'procedure', 'resolution')`,
+    ),
+    check(
+      "knowledge_cards_status_check",
+      sql`${table.status} IN ('candidate', 'reviewed', 'approved', 'rejected', 'deprecated', 'archived')`,
     ),
     check(
       "knowledge_cards_confidence_check",

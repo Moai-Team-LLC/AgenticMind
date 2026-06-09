@@ -50,6 +50,13 @@
       "when": 1780906272285,
       "tag": "0006_source_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1781006123168,
+      "tag": "0007_card_status",
+      "breakpoints": true
     }
   ]
 }
