@@ -101,6 +101,7 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     evalHarvest: flags.evalHarvestEnabled,
     answerPolicy: ACTIVE_ANSWER_POLICY,
     acceptanceEvaluator: flags.acceptanceEvaluatorEnabled,
+    piiRedaction: flags.piiRedactionEnabled,
   }
 }
 

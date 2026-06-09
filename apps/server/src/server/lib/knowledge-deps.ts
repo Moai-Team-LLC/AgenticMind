@@ -24,6 +24,7 @@ export type KnowledgeFeatureFlags = {
   contestedSourcesEnabled: boolean
   evalHarvestEnabled: boolean
   acceptanceEvaluatorEnabled: boolean
+  piiRedactionEnabled: boolean
 }
 
 /** Env-controlled tier flags (cards / cache / graphrag / Tier-B / contested / harvest). */
@@ -36,6 +37,8 @@ export const knowledgeFeatureFlags = (): KnowledgeFeatureFlags => {
     contestedSourcesEnabled: knowledgeFeatureSettings.KNOWLEDGE_CONTESTED_SOURCES === "true",
     evalHarvestEnabled: knowledgeFeatureSettings.KNOWLEDGE_EVAL_HARVEST === "true",
     acceptanceEvaluatorEnabled: knowledgeFeatureSettings.KNOWLEDGE_ACCEPTANCE_EVALUATOR === "true",
+    // Default ON: only an explicit "false" disables answer-side PII redaction.
+    piiRedactionEnabled: knowledgeFeatureSettings.KNOWLEDGE_PII_REDACTION !== "false",
   }
 }
 

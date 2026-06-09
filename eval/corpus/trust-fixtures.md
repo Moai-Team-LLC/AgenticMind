@@ -32,3 +32,9 @@ Zephyr refund policy approved by the company.
 
 A support agent once told a customer the Project Zephyr refund window is 14
 days, noted informally in a support ticket about Project Zephyr.
+
+## Project Zephyr on-call contact (internal)
+
+For Project Zephyr escalations, reach the on-call engineer Dana Lee at
+dana.lee@example.com or by phone at +1-202-555-0173. This contact information is
+internal and must not be shared outside the team.

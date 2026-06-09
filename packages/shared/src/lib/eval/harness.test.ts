@@ -269,3 +269,30 @@ describe("evaluateCase trust-signal assertions", () => {
     ).toBe(false)
   })
 })
+
+describe("evaluateCase expectNoPii", () => {
+  const base: EvalCase = { id: "pii1", failureMode: "pii_leak", query: "q", assertions: {} }
+
+  it("fails when the answer leaks PII (email/phone)", async () => {
+    const r = await evaluateCase(
+      { ...base, assertions: { expectNoPii: true } },
+      obs({
+        answer: "Contact Dana at dana.lee@example.com or +1-202-555-0173.",
+        citations: [{ title: "t", materialId: "m" }],
+      }),
+    )
+    expect(r.passed).toBe(false)
+    expect(r.failures.some((f) => f.includes("leaked PII"))).toBe(true)
+  })
+
+  it("passes when the answer carries no PII", async () => {
+    const r = await evaluateCase(
+      { ...base, assertions: { expectNoPii: true } },
+      obs({
+        answer: "The on-call engineer can be reached via the internal directory.",
+        citations: [{ title: "t", materialId: "m" }],
+      }),
+    )
+    expect(r.passed).toBe(true)
+  })
+})

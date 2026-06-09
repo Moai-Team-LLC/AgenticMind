@@ -77,6 +77,8 @@ export type McpToolDeps = {
   answerPolicy?: AnswerPolicy
   /** Run the acceptance evaluator on kl_ingest's extracted cards. Default off. */
   acceptanceEvaluator?: boolean
+  /** Redact PII from kl_ask_global answers + citation snippets. Default on. */
+  piiRedaction?: boolean
 }
 
 const snippet = (s: string, max = 240): string => {
@@ -250,6 +252,7 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     contestedSources: deps.contestedSources,
     evalHarvest: deps.evalHarvest,
     answerPolicy: deps.answerPolicy,
+    piiRedaction: deps.piiRedaction,
     // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
     // Provider when a graph store is configured.
     graphContext:
