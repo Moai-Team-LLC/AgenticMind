@@ -1,0 +1,2 @@
+ALTER TABLE "knowledge_cards" ADD COLUMN "status" text DEFAULT 'approved' NOT NULL;--> statement-breakpoint
+ALTER TABLE "knowledge_cards" ADD CONSTRAINT "knowledge_cards_status_check" CHECK ("knowledge_cards"."status" IN ('candidate', 'reviewed', 'approved', 'rejected', 'deprecated', 'archived'));
