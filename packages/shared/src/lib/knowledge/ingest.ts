@@ -52,6 +52,8 @@ export const ingestText = (props: {
   text: string
   contentType?: string
   cardsEnabled?: boolean
+  /** Run the acceptance evaluator on extracted cards before storage. Default off. */
+  acceptanceEvaluator?: boolean
   graphragEnabled?: boolean
   language?: string
   /** Content lifecycle to stamp on the material (default active). */
@@ -102,6 +104,7 @@ export const ingestText = (props: {
         material: { id: material.id, title: material.title, ftsConfig: material.ftsConfig },
         body: text,
         cardsEnabled: props.cardsEnabled,
+        acceptanceEvaluator: props.acceptanceEvaluator,
       })
       if (indexed.isErr()) {
         throw ingestError(`index: ${indexed.error.message}`)

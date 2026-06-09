@@ -100,6 +100,7 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     contestedSources: flags.contestedSourcesEnabled,
     evalHarvest: flags.evalHarvestEnabled,
     answerPolicy: ACTIVE_ANSWER_POLICY,
+    acceptanceEvaluator: flags.acceptanceEvaluatorEnabled,
   }
 }
 

@@ -23,6 +23,7 @@ export type KnowledgeFeatureFlags = {
   faithfulnessTierBEnabled: boolean
   contestedSourcesEnabled: boolean
   evalHarvestEnabled: boolean
+  acceptanceEvaluatorEnabled: boolean
 }
 
 /** Env-controlled tier flags (cards / cache / graphrag / Tier-B / contested / harvest). */
@@ -34,6 +35,7 @@ export const knowledgeFeatureFlags = (): KnowledgeFeatureFlags => {
     faithfulnessTierBEnabled: knowledgeFeatureSettings.KNOWLEDGE_FAITHFULNESS_TIER_B === "true",
     contestedSourcesEnabled: knowledgeFeatureSettings.KNOWLEDGE_CONTESTED_SOURCES === "true",
     evalHarvestEnabled: knowledgeFeatureSettings.KNOWLEDGE_EVAL_HARVEST === "true",
+    acceptanceEvaluatorEnabled: knowledgeFeatureSettings.KNOWLEDGE_ACCEPTANCE_EVALUATOR === "true",
   }
 }
 

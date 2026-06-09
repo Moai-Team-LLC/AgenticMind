@@ -31,6 +31,9 @@ export const knowledgeFeatureSettings = createEnv({
     // signalled real queries can be replayed by the corpus-adaptive tuner. Off by
     // default (privacy: only the question hash is stored unless this is set).
     KNOWLEDGE_EVAL_HARVEST: z.string().optional(),
+    // Acceptance evaluator: a second-stage LLM gate over extracted cards at ingest
+    // (accept/reject/merge/human_review). One extra LLM call; off by default.
+    KNOWLEDGE_ACCEPTANCE_EVALUATOR: z.string().optional(),
     S3_BUCKET: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
@@ -50,6 +53,7 @@ export const knowledgeFeatureSettings = createEnv({
     KNOWLEDGE_FAITHFULNESS_TIER_B: process.env.KNOWLEDGE_FAITHFULNESS_TIER_B,
     KNOWLEDGE_CONTESTED_SOURCES: process.env.KNOWLEDGE_CONTESTED_SOURCES,
     KNOWLEDGE_EVAL_HARVEST: process.env.KNOWLEDGE_EVAL_HARVEST,
+    KNOWLEDGE_ACCEPTANCE_EVALUATOR: process.env.KNOWLEDGE_ACCEPTANCE_EVALUATOR,
     S3_BUCKET: process.env.S3_BUCKET ?? process.env.SPACES_KNOWLEDGE_BUCKET,
     GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,

@@ -75,6 +75,8 @@ export type McpToolDeps = {
   evalHarvest?: boolean
   /** Active answer policy (KNOWLEDGE_ANSWER_POLICY); unset = no enforcement. */
   answerPolicy?: AnswerPolicy
+  /** Run the acceptance evaluator on kl_ingest's extracted cards. Default off. */
+  acceptanceEvaluator?: boolean
 }
 
 const snippet = (s: string, max = 240): string => {
@@ -560,6 +562,7 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
     title: args.title,
     text: args.text,
     cardsEnabled: deps.cardsEnabled,
+    acceptanceEvaluator: deps.acceptanceEvaluator,
     graphragEnabled: deps.graph !== undefined,
     language: args.language,
     lifecycle: args.lifecycle,

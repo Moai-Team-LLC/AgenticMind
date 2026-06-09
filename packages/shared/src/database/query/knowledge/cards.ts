@@ -6,7 +6,12 @@
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
-import type { CardKind } from "@agenticmind/shared/lib/knowledge/card"
+import type {
+  CardAuthority,
+  CardConfidenceMethod,
+  CardKind,
+  CardStatus,
+} from "@agenticmind/shared/lib/knowledge/card"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import {
@@ -56,6 +61,14 @@ export type CardInput = {
   spanStart?: number | null
   spanEnd?: number | null
   confidence: number
+  /** KU admission status (default approved at the DB). Set by the acceptance evaluator. */
+  status?: CardStatus
+  /** Evidence authority tier (default system_inferred at the DB). */
+  authority?: CardAuthority
+  /** How the card was produced (default llm_extracted at the DB). */
+  confidenceMethod?: CardConfidenceMethod
+  /** Optional confidence justification. */
+  confidenceReason?: string | null
   validFrom?: Date | null
   validTo?: Date | null
   embedding?: number[] | null
@@ -123,6 +136,10 @@ export const upsertCards = (props: {
               spanStart: c.spanStart ?? null,
               spanEnd: c.spanEnd ?? null,
               confidence: c.confidence,
+              ...(c.status !== undefined ? { status: c.status } : {}),
+              ...(c.authority !== undefined ? { authority: c.authority } : {}),
+              ...(c.confidenceMethod !== undefined ? { confidenceMethod: c.confidenceMethod } : {}),
+              confidenceReason: emptyToNull(c.confidenceReason),
               validFrom: c.validFrom ?? null,
               validTo: c.validTo ?? null,
               embedding:
