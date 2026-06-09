@@ -296,3 +296,27 @@ describe("evaluateCase expectNoPii", () => {
     expect(r.passed).toBe(true)
   })
 })
+
+describe("evaluateCase expectNotCached", () => {
+  const base: EvalCase = {
+    id: "c1",
+    failureMode: "answer_cache_false_hit",
+    query: "q",
+    assertions: {},
+  }
+  it("fails when a no-cache case was served from cache", async () => {
+    const r = await evaluateCase(
+      { ...base, assertions: { expectNotCached: true } },
+      obs({ answer: "a [1]", servedBy: "cache", citations: [{ title: "t", materialId: "m" }] }),
+    )
+    expect(r.passed).toBe(false)
+    expect(r.failures.some((f) => f.includes("cache"))).toBe(true)
+  })
+  it("passes when synthesised fresh", async () => {
+    const r = await evaluateCase(
+      { ...base, assertions: { expectNotCached: true } },
+      obs({ answer: "a [1]", servedBy: "synth", citations: [{ title: "t", materialId: "m" }] }),
+    )
+    expect(r.passed).toBe(true)
+  })
+})
