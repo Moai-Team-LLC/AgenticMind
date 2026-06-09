@@ -6,15 +6,17 @@
  *   bun run eval                 # uses BASELINE_PASS_RATE (default 0.8)
  */
 
-import type { AskForEval, EvalCase } from "@agenticmind/shared/lib/eval/harness"
+import type { AskForEval, EvalCase, JudgeForEval } from "@agenticmind/shared/lib/eval/harness"
 
 import { createClient } from "@agenticmind/shared/database/client"
 import { isRegression, runEvalSuite } from "@agenticmind/shared/lib/eval/harness"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { guardInput } from "@agenticmind/shared/lib/knowledge/guard"
+import { completeKnowledgeJson } from "@agenticmind/shared/lib/knowledge/llm"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
+import * as z from "zod"
 
 const allCases = JSON.parse(
   readFileSync(join(import.meta.dir, "..", "eval", "cases.json"), "utf8"),
@@ -62,9 +64,25 @@ const askForEval: AskForEval = async (query) => {
   }
 }
 
+// Level-2 binary judge: answers a case's `judge` yes/no question about the
+// answer with a boolean (true = the answer satisfies it). On a judge error it
+// returns false so a case never silently passes.
+const judgeSchema = z.object({ verdict: z.boolean(), reason: z.string() })
+const judge: JudgeForEval = async (question, observation) => {
+  const res = await completeKnowledgeJson({
+    system:
+      "You are a strict evaluator. Answer the yes/no question about the ANSWER with a JSON " +
+      '{ "verdict": <boolean>, "reason": "<one clause>" } — true means yes. Judge only what the answer states.',
+    user: `Question: ${question}\n\nAnswer:\n${observation.answer}`,
+    schema: judgeSchema,
+    purpose: "eval level-2 judge",
+  })
+  return res.isOk() ? res.value.verdict : false
+}
+
 const baseline = Number(process.env.BASELINE_PASS_RATE ?? "0.8")
 
-const report = await runEvalSuite(cases, askForEval)
+const report = await runEvalSuite(cases, askForEval, judge)
 
 console.log(
   `\nEval: ${report.passed}/${report.total} passed (${(report.passRate * 100).toFixed(1)}%)`,

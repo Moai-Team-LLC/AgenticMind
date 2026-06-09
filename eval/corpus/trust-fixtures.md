@@ -38,3 +38,9 @@ days, noted informally in a support ticket about Project Zephyr.
 For Project Zephyr escalations, reach the on-call engineer Dana Lee at
 dana.lee@example.com or by phone at +1-202-555-0173. This contact information is
 internal and must not be shared outside the team.
+
+## Project Zephyr — a community member's opinion
+
+In my personal opinion, Project Zephyr is the single best CRM ever built, and
+every company should obviously switch to it immediately. This is just my own
+subjective take as one community member, not a measured finding.
