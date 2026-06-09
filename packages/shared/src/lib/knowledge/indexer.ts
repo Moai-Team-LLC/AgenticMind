@@ -17,6 +17,7 @@ import type { Table } from "@agenticmind/shared/lib/knowledge/extract-tabular"
 import { upsertCards } from "@agenticmind/shared/database/query/knowledge/cards"
 import { upsertChunks } from "@agenticmind/shared/database/query/knowledge/chunks"
 import { updateMaterialStatus } from "@agenticmind/shared/database/query/knowledge/materials"
+import { evaluateAcceptance } from "@agenticmind/shared/lib/knowledge/acceptance-evaluator"
 import { extractCards } from "@agenticmind/shared/lib/knowledge/cards-extractor"
 import { extractFromTables } from "@agenticmind/shared/lib/knowledge/cards-tabular"
 import { approxTokens, splitText } from "@agenticmind/shared/lib/knowledge/chunker"
@@ -37,6 +38,9 @@ export type IndexMaterialProps = {
   extras?: { tables?: Table[]; schema?: TabularSchema }
   /** Gate the LLM cards extractor (KNOWLEDGE_CARDS_ENABLED). */
   cardsEnabled?: boolean
+  /** Run the acceptance evaluator on extracted cards before storage
+   * (KNOWLEDGE_ACCEPTANCE_EVALUATOR). One extra LLM call; default off. */
+  acceptanceEvaluator?: boolean
 }
 
 const indexError = (message: string): IndexError => {
@@ -69,6 +73,23 @@ const runCardExtraction = async (props: IndexMaterialProps, body: string): Promi
     }
     if (items.length === 0) {
       return
+    }
+
+    // Acceptance gate (KU contract, 2nd stage): drop rejected noise + status-tag
+    // the rest before embedding/storage. Best-effort: a judge failure keeps the
+    // extracted items as-is (born approved at the DB).
+    if (props.acceptanceEvaluator === true) {
+      const judged = await evaluateAcceptance(items)
+      if (judged.isOk()) {
+        items = judged.value
+      } else {
+        console.warn(
+          `index: acceptance evaluator failed for ${material.id}: ${judged.error.message}`,
+        )
+      }
+      if (items.length === 0) {
+        return
+      }
     }
 
     const embedded = await embedKnowledgeBatch(items.map((c) => c.body))
