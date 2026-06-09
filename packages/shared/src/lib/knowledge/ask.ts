@@ -64,7 +64,7 @@ import {
   ENTAILMENT_SYSTEM,
   entailmentResponseSchema,
 } from "@agenticmind/shared/lib/knowledge/faithfulness-entailment"
-import { detectOutputLeak } from "@agenticmind/shared/lib/knowledge/guard"
+import { detectOutputLeak, redactPii } from "@agenticmind/shared/lib/knowledge/guard"
 import {
   completeKnowledge,
   completeKnowledgeJson,
@@ -135,6 +135,9 @@ export type AskProps = {
   /** Answer policy (KNOWLEDGE_ANSWER_POLICY): enforce a groundedness floor / flag
    * conflicted answers for review. Unset = no enforcement (today's behaviour). */
   answerPolicy?: AnswerPolicy
+  /** Redact PII from the answer + citation snippets. Default on (only `false`
+   * disables) — leaking PII is a defect, not a feature. */
+  piiRedaction?: boolean
 }
 
 type MatMeta = { title: string; updatedAt: Date | null; lifecycle: string; trustTier: number }
@@ -256,6 +259,26 @@ const fetchCardSources = async (
     })
   }
   return out
+}
+
+/** Scrubs PII (email/phone/card/SSN/IPv4) from the answer text + each citation
+ * snippet — unless redaction is explicitly disabled. Pure; reuses the shared
+ * `redactPii` detector. Default on (only `enabled === false` skips it). */
+const maybeRedactAnswerPii = (
+  enabled: boolean | undefined,
+  answerText: string,
+  citations: Citation[],
+): { answerText: string; citations: Citation[] } => {
+  if (enabled === false) {
+    return { answerText, citations }
+  }
+  return {
+    answerText: redactPii(answerText).redacted,
+    citations: citations.map((c) => {
+      const r = redactPii(c.snippet)
+      return r.found.length > 0 ? { ...c, snippet: r.redacted } : c
+    }),
+  }
 }
 
 const runAsk = async (props: AskProps): Promise<Answer> => {
@@ -427,7 +450,14 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     console.warn(`ask: output leak blocked (${leak.reason})`)
     answerText = "I couldn't produce a safe answer for that."
   }
-  const citations = leak.leaked ? [] : parseCitations(answerText, sources)
+  let citations = leak.leaked ? [] : parseCitations(answerText, sources)
+  // Output PII redaction (default on): the answer + citation snippets must never
+  // leak raw PII (email/phone/card/SSN/IPv4) even when a source contains it.
+  // Applied before caching, so cached answers are clean too. Opt out per
+  // deployment (KNOWLEDGE_PII_REDACTION=false) when raw contact info is intended.
+  const redacted = maybeRedactAnswerPii(props.piiRedaction, answerText, citations)
+  answerText = redacted.answerText
+  citations = redacted.citations
   mark("output_filter", ts)
 
   // Tier-1: best-effort cache store.
