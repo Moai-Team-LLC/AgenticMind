@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  CARD_AUTHORITIES,
+  CARD_CONFIDENCE_METHODS,
   CARD_KINDS,
   CARD_STATUSES,
+  isCardAuthority,
+  isCardConfidenceMethod,
   isCardKind,
   isCardStatus,
   NON_RETRIEVABLE_CARD_STATUSES,
@@ -41,5 +45,18 @@ describe("card statuses", () => {
     expect([...NON_RETRIEVABLE_CARD_STATUSES]).toEqual(["rejected", "deprecated", "archived"])
     expect(NON_RETRIEVABLE_CARD_STATUSES.includes("approved")).toBe(false)
     expect(NON_RETRIEVABLE_CARD_STATUSES.includes("candidate")).toBe(false)
+  })
+})
+
+describe("card provenance vocab", () => {
+  it("authority tiers + guard", () => {
+    expect(CARD_AUTHORITIES).toContain("admin_curated")
+    expect(isCardAuthority("system_inferred")).toBe(true)
+    expect(isCardAuthority("hearsay")).toBe(false)
+  })
+  it("confidence methods + guard", () => {
+    expect(CARD_CONFIDENCE_METHODS).toContain("llm_extracted")
+    expect(isCardConfidenceMethod("rule_based")).toBe(true)
+    expect(isCardConfidenceMethod("vibes")).toBe(false)
   })
 })

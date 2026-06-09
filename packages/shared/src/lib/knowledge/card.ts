@@ -34,6 +34,32 @@ export const NON_RETRIEVABLE_CARD_STATUSES: readonly CardStatus[] = [
 export const isCardStatus = (value: string): value is CardStatus =>
   (CARD_STATUSES as readonly string[]).includes(value)
 
+/** Evidence authority tier — how trustworthy the source of a claim is. */
+export const CARD_AUTHORITIES = [
+  "self_declared",
+  "peer_reported",
+  "admin_curated",
+  "system_inferred",
+  "external_source",
+] as const
+export type CardAuthority = (typeof CARD_AUTHORITIES)[number]
+
+export const isCardAuthority = (value: string): value is CardAuthority =>
+  (CARD_AUTHORITIES as readonly string[]).includes(value)
+
+/** How a card's confidence/claim was produced (extraction provenance). */
+export const CARD_CONFIDENCE_METHODS = [
+  "llm_extracted",
+  "rule_based",
+  "human_curated",
+  "imported",
+  "inferred",
+] as const
+export type CardConfidenceMethod = (typeof CARD_CONFIDENCE_METHODS)[number]
+
+export const isCardConfidenceMethod = (value: string): value is CardConfidenceMethod =>
+  (CARD_CONFIDENCE_METHODS as readonly string[]).includes(value)
+
 /** Prompt+schema version stamped on every extracted card (stale-replay key). */
 export const CURRENT_EXTRACTOR_VERSION = "v1"
 /** Max material text sent to the extractor. */

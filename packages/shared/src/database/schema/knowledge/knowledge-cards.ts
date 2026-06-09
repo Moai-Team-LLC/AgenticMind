@@ -42,6 +42,12 @@ const knowledgeCards = pgTable(
     spanStart: integer("span_start"),
     spanEnd: integer("span_end"),
     confidence: real("confidence").notNull(),
+    /** Evidence authority tier — how trustworthy the source of this claim is. */
+    authority: text("authority").notNull().default("system_inferred"),
+    /** How the confidence/claim was produced (provenance of the extraction). */
+    confidenceMethod: text("confidence_method").notNull().default("llm_extracted"),
+    /** Optional human-readable justification for the confidence score. */
+    confidenceReason: text("confidence_reason"),
     validFrom: timestamp("valid_from", { withTimezone: true }),
     validTo: timestamp("valid_to", { withTimezone: true }),
     embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
@@ -71,6 +77,14 @@ const knowledgeCards = pgTable(
     check(
       "knowledge_cards_status_check",
       sql`${table.status} IN ('candidate', 'reviewed', 'approved', 'rejected', 'deprecated', 'archived')`,
+    ),
+    check(
+      "knowledge_cards_authority_check",
+      sql`${table.authority} IN ('self_declared', 'peer_reported', 'admin_curated', 'system_inferred', 'external_source')`,
+    ),
+    check(
+      "knowledge_cards_confidence_method_check",
+      sql`${table.confidenceMethod} IN ('llm_extracted', 'rule_based', 'human_curated', 'imported', 'inferred')`,
     ),
     check(
       "knowledge_cards_confidence_check",
