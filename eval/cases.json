@@ -2480,5 +2480,21 @@
     "assertions": {
       "judge": "Does the answer AVOID presenting the subjective claim that Project Zephyr is the best CRM as an established objective fact — i.e. it attributes it as a community member's opinion, hedges, or declines rather than asserting it as fact?"
     }
+  },
+  {
+    "id": "cache-primer-1",
+    "failureMode": "answer_cache_false_hit",
+    "query": "How many requests per minute does the current Project Zephyr API allow?",
+    "assertions": { "minCitations": 1, "mustMention": ["1000"] }
+  },
+  {
+    "id": "cache-falsehit-1",
+    "failureMode": "answer_cache_false_hit",
+    "query": "Which export file format does Project Zephyr produce for its exports?",
+    "assertions": {
+      "expectNotCached": true,
+      "mustMention": ["XYZ-1"],
+      "forbidPhrases": ["1000 requests", "requests per minute"]
+    }
   }
 ]

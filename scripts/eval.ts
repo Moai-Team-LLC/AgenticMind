@@ -58,6 +58,7 @@ const askForEval: AskForEval = async (query) => {
     status: res.value.status,
     contestedCount: res.value.contested?.length ?? 0,
     staleSourcesOnly: res.value.staleSourcesOnly,
+    servedBy: res.value.servedBy,
     citations: res.value.citations.map((c) => {
       return { title: c.title, materialId: c.materialId }
     }),

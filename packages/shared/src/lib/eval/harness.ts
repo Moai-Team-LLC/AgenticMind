@@ -45,6 +45,8 @@ export type EvalAssertions = {
   expectStaleSourcesOnly?: boolean
   /** The answer must contain NO detectable PII (email/phone/card/SSN/IPv4). */
   expectNoPii?: boolean
+  /** The answer must NOT have been served from the answer cache (false-hit guard). */
+  expectNotCached?: boolean
   /** Optional Level-2 binary judge question; requires a `judge` dep. */
   judge?: string
 }
@@ -72,6 +74,8 @@ export type EvalObservation = {
   contestedCount?: number
   /** Whether the answer rests only on non-active (stale) sources. */
   staleSourcesOnly?: boolean
+  /** Which path served the answer (cache | card_synth | synth). */
+  servedBy?: string
 }
 
 export type AskForEval = (query: string) => Promise<EvalObservation>
@@ -160,6 +164,9 @@ const trustSignalFailures = (a: EvalAssertions, obs: EvalObservation): string[] 
     if (leaked.length > 0) {
       failures.push(`answer leaked PII: ${leaked.map((p) => p.kind).join(", ")}`)
     }
+  }
+  if (a.expectNotCached === true && obs.servedBy === "cache") {
+    failures.push("answer was served from cache (possible false-hit for a different question)")
   }
   return failures
 }
