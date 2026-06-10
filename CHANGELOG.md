@@ -22,6 +22,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Docs
 
+- **Definition of a *bad answer*.** `OPERATIONS.md §6` now opens by defining the
+  category the runbook debugs (the dual of "what counts as knowledge"): AgenticMind
+  promises *faithful + honestly-labeled + safe*, not *true*. A bad answer is a
+  breach of that promise, judged on correctness × calibration — Tier 1 (the label
+  lied: hallucination-as-grounded, confident-wrong, unsafe, stale-as-fresh),
+  Tier 2 (quality, contract intact), Tier 3 (NOT bad — a wrong answer honestly
+  marked `unsupported` kept the promise). Debug Tier 1 first.
 - **Debugging runbook — "where do I fix it?"** `OPERATIONS.md` gains a
   symptom→signal→stage→knob table answering the operability worry of a dozen
   toggleable components: every stage stamps an attributable signal on the answer

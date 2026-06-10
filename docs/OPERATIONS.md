@@ -287,12 +287,40 @@ platform):
 
 ## 6. Debugging a bad answer — where to fix
 
-The engine has roughly a dozen toggleable components (cards, cache, contested,
-Tier-B, rerank, GraphRAG, acceptance, demotion, answer-policy, PII). The natural
-worry: *when an answer is wrong in production, which one do I touch?* The point of
-the why-trace is that you don't guess across all of them — **every stage stamps an
-attributable signal on the answer**, so a single bad answer localises to one stage,
-and one stage maps to one knob.
+### First: what counts as a *bad* answer
+
+Before debugging one, define it — otherwise the symptoms below are an arbitrary
+list. AgenticMind does **not** promise the answer is *true*: it can only know its
+corpus, not the world. It promises three narrower things:
+
+- **faithful** — every claim traces to a resolving citation;
+- **honestly labeled** — `status` reflects the real groundedness / conflict /
+  staleness of the answer;
+- **safe** — no PII, no obeyed injection, no retrieval of retracted
+  (`rejected` / `deprecated` / `archived`) knowledge.
+
+So a **bad answer is a breach of *that* promise, not merely "the text was wrong."**
+Judge it on two axes — **correctness** (is the claim true/grounded?) and
+**calibration** (does the self-reported `status` match reality?):
+
+- **Tier 1 — genuinely bad (contract violated).** A hallucination presented as
+  grounded (`status = supported` while claims are uncited); a confidently-wrong
+  answer (`supported` but false/ungrounded); an unsafe answer (PII, injection,
+  retracted knowledge surfaced); a stale-as-fresh answer (rests on `deprecated`
+  sources without the `staleSourcesOnly` / `needs_review` flag).
+- **Tier 2 — quality issue, contract intact.** Faithfully cites a wrong or
+  low-trust source (the synthesis did its job; the *corpus* is at fault);
+  over- or under-abstention; a disagreement flattened to one side without
+  `contested`.
+- **Tier 3 — NOT bad by contract, even if "wrong."** A wrong answer that honestly
+  labels itself `unsupported` / `needs_review` / `conflicted`, or an honest
+  abstention on an out-of-corpus query. The promise was kept — the caller was
+  warned and can gate on `status`.
+
+The crisp line: **a wrong answer that says `unsupported` kept the promise; a wrong
+answer that says `supported` broke it.** Debugging targets Tier 1 first (the label
+lied), then Tier 2 (the corpus or a knob is off). Tier 3 is working as designed —
+the fix there is in the *caller* (gate on `status`) or the corpus, not the engine.
 
 ### The procedure: start from two fields
 
