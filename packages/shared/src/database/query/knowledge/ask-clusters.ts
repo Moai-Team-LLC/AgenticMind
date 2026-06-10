@@ -9,14 +9,14 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
-import { askClusterMembers, askClusters } from "@agenticmind/shared/database/schema"
+import { askClusterMembers, askClusters, knowledgeCards } from "@agenticmind/shared/database/schema"
 import {
   MIN_CLUSTER_SIZE,
   MIN_CLUSTER_SIZE_FAST_TRACK,
   PROMOTION_SCORE_THRESHOLD,
 } from "@agenticmind/shared/lib/knowledge/clustering"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
-import { desc, eq, sql } from "drizzle-orm"
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 export type ClusterRow = {
@@ -180,6 +180,46 @@ export const listClustersByState = (props: { tx: Transaction; state: string; lim
 /** Clusters in state=ready, for the promoter's LLM-judge pass. */
 export const listReadyClusters = (props: { tx: Transaction; limit?: number }) =>
   listClustersByState({ tx: props.tx, state: "ready", limit: props.limit })
+
+/**
+ * Promoted clusters whose aggregate score has fallen to/below a (negative)
+ * floor — the demotion candidate set for the anti-entrenchment sweep. Joins the
+ * promoted card to expose its current status so the pure `shouldDemote` gate can
+ * make the final call (and skip cards already non-retrievable). Lowest score
+ * first (worst offenders), so a bounded sweep handles them in priority order.
+ */
+export const listDemotablePromotedClusters = (props: {
+  tx: Transaction
+  scoreThreshold: number
+  minFeedback: number
+  limit?: number
+}) => {
+  const limit =
+    props.limit !== undefined && props.limit > 0 && props.limit <= 200 ? props.limit : 50
+  return ResultAsync.fromPromise(
+    props.tx
+      .select({
+        clusterId: askClusters.id,
+        cardId: askClusters.promotedCardId,
+        state: askClusters.state,
+        aggregateScore: askClusters.aggregateScore,
+        feedbackCount: askClusters.feedbackCount,
+        cardStatus: knowledgeCards.status,
+      })
+      .from(askClusters)
+      .innerJoin(knowledgeCards, eq(knowledgeCards.id, askClusters.promotedCardId))
+      .where(
+        and(
+          eq(askClusters.state, "promoted"),
+          gte(askClusters.feedbackCount, props.minFeedback),
+          lte(askClusters.aggregateScore, props.scoreThreshold),
+        ),
+      )
+      .orderBy(asc(askClusters.aggregateScore))
+      .limit(limit),
+    mapDatabaseError,
+  )
+}
 
 /** Flips state→promoted and records the resulting card id. */
 export const markClusterPromoted = (props: {

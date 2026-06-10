@@ -164,6 +164,32 @@ export const deleteCardsByMaterial = (props: { tx: Transaction; materialId: stri
     mapDatabaseError,
   )
 
+/**
+ * Demotes a single card to a non-retrievable status (default `deprecated`),
+ * recording why on confidence_reason. Used by the anti-entrenchment sweep:
+ * the card is kept (audit trail intact) but stops surfacing. Returns the number
+ * of rows changed (0 if the card was already at that status — idempotent).
+ */
+export const demoteCard = (props: {
+  tx: Transaction
+  cardId: string
+  reason: string
+  status?: CardStatus
+}) =>
+  ResultAsync.fromPromise(
+    props.tx
+      .update(knowledgeCards)
+      .set({ status: props.status ?? "deprecated", confidenceReason: props.reason })
+      .where(
+        and(
+          eq(knowledgeCards.id, props.cardId),
+          notInArray(knowledgeCards.status, [...NON_RETRIEVABLE_CARD_STATUSES]),
+        ),
+      )
+      .returning({ id: knowledgeCards.id }),
+    mapDatabaseError,
+  ).map((rows) => rows.length)
+
 export const countCardsByMaterial = (props: { tx: Transaction; materialId: string }) =>
   ResultAsync.fromPromise(
     props.tx
