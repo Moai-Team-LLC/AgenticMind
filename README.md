@@ -148,9 +148,10 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `mem_forget`         | `memory:write`     | retract one of your own beliefs (soft, bitemporal)                  |
 
 See **[What counts as knowledge](docs/knowledge-unit.md)** for the Knowledge Unit
-contract (what may become stored knowledge), **[docs/knobs.md](docs/knobs.md)** for
-the optional answer-quality knobs (Tier-B faithfulness, contested-sources, answer
-policy, source trust), and the **[security model](docs/security-model.md)**
+contract (what may become stored knowledge), **[Evals & limits](docs/evals.md)**
+for what we measure and **what we don't claim**, **[docs/knobs.md](docs/knobs.md)**
+for the optional answer-quality knobs (Tier-B faithfulness, contested-sources,
+answer policy, source trust), and the **[security model](docs/security-model.md)**
 (fail-closed auth, tenant RLS, lethal-trifecta analysis, supply chain).
 
 There is **no frontend** — the only consumers are agents over MCP. The tool logic is
