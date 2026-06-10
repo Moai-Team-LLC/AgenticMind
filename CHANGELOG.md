@@ -21,6 +21,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the promote→demote lifecycle measured green; and an ablation table showing
   contested-sources and Tier-B faithfulness each contribute +1.6 pts while cards
   and cache are correctness-neutral (latency/efficiency) on the fixture corpus.
+- **Abstention posture documented.** `docs/evals.md` explains that out-of-corpus
+  queries are surfaced as `unsupported` / `groundedness = 0` (gate-able) by
+  default, and hard `abstained` decline is opt-in (no sources, refusal phrasing,
+  or a `KNOWLEDGE_ANSWER_POLICY` `minGroundedness`) — a deliberate, unit-tested
+  *surface-not-decide* boundary, not an overconfidence defect.
 
 ## [0.11.0] — 2026-06-10
 
