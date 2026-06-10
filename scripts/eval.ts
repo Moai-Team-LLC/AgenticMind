@@ -11,7 +11,9 @@ import type { AskForEval, EvalCase, JudgeForEval } from "@agenticmind/shared/lib
 import { createClient } from "@agenticmind/shared/database/client"
 import { isRegression, runEvalSuite } from "@agenticmind/shared/lib/eval/harness"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
+import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
 import { guardInput } from "@agenticmind/shared/lib/knowledge/guard"
+import { createGraphContextProvider } from "@agenticmind/shared/lib/knowledge/qaplan"
 import { completeKnowledgeJson } from "@agenticmind/shared/lib/knowledge/llm"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 import { readFileSync } from "node:fs"
@@ -33,6 +35,10 @@ const cases =
 const db = createClient(databaseSettings.DATABASE_URL)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
 const cacheEnabled = process.env.KNOWLEDGE_CACHE_ENABLED === "true"
+const graphragEnabled = process.env.KNOWLEDGE_GRAPHRAG_ENABLED === "true"
+const graphContext = graphragEnabled
+  ? createGraphContextProvider({ repo: createPostgresGraphStore(db) })
+  : undefined
 
 const askForEval: AskForEval = async (query) => {
   const guard = guardInput(query)
@@ -46,6 +52,7 @@ const askForEval: AskForEval = async (query) => {
     cardsEnabled,
     cacheEnabled,
     contestedSources: true,
+    graphContext,
   })
   if (res.isErr()) {
     return { blocked: false, answer: "", citations: [] }

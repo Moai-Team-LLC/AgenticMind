@@ -101,11 +101,36 @@ off vs the all-on baseline of 90.5%):
 | contested-sources | 88.9% | **+1.6 pts** |
 | Tier-B faithfulness | 88.9% | **+1.6 pts** |
 
-Read it honestly: the two LLM-judge safety features (contested-sources, Tier-B)
-measurably improve correctness on this corpus and earn their extra call; cards and
-cache are **latency/efficiency** features, correctness-neutral here (their value is
-speed and cost, which this pass-rate metric doesn't capture). A different corpus
-will shift these numbers — re-run the ablation on yours before cutting anything.
+Two more components were measured separately by flipping their env flag across
+two runs on a retrieval-focused subset (cache disabled so a warm cache can't mask
+the difference), plus the ingest-time acceptance evaluator by re-seeding:
+
+| Component | On | Off | Contribution |
+| --- | --- | --- | --- |
+| reranker (`RERANK_ENABLED`, Cohere) | 88.9% | 88.9% | +0.0 pts |
+| GraphRAG (`KNOWLEDGE_GRAPHRAG_ENABLED`) | 92.6% | 92.6% | +0.0 pts |
+| acceptance evaluator (`KNOWLEDGE_ACCEPTANCE_EVALUATOR`) | — | — | held **29%** of cards as `candidate` |
+
+Read it honestly: only the two LLM-judge **correctness** features (contested-sources,
+Tier-B) move the pass rate on this corpus, and they earn their extra call. The
+**+0.0** components are not dead weight — they are scale/efficiency features this
+small fixture can't exercise:
+
+- **cards / cache** — value is latency and cost on repeated/large workloads, which a
+  pass-rate metric doesn't capture.
+- **reranker** — re-orders the retrieval pool; it only matters when the right chunk
+  is buried below `topK` in the fused order, i.e. on a **large, noisy** corpus. On 48
+  chunks the fused vector+BM25 order already surfaces the right chunk in the top 8.
+- **GraphRAG** — adds cross-document/multi-hop context; this fixture's questions are
+  answerable from a single chunk, so there is nothing for the graph to add.
+- **acceptance evaluator** — a **governance/provenance** control, not a retrieval
+  lever: it held 29% of extracted cards as `candidate` (flagged for review) instead
+  of auto-approving everything. `candidate` cards are still retrievable, so the
+  pass rate is unchanged; the value is admission auditability.
+
+The lesson: **don't cut a +0.0 component from this table** — measure it on a corpus
+that exercises it first. The numbers here only license cutting something that stays
+~0 on a representative production corpus.
 
 These are eval results on a fixture corpus, not absolute guarantees. Your corpus
 will surface its own failure modes — add them as buckets.
@@ -130,7 +155,16 @@ will surface its own failure modes — add them as buckets.
 # seed a corpus, then:
 bun run eval                                  # full suite + gate
 EVAL_ONLY=pii_leak,opinion_vs_fact bun run eval
-dotenvx run -f .env.local -- bun scripts/ablate.ts   # component contributions
+dotenvx run -f .env.local -- bun scripts/ablate.ts   # AskProps component contributions
+
+# env-level components — flip the flag across two runs and compare the pass rate
+# (disable the cache so a warm cache can't mask the difference):
+RERANK_ENABLED=true  KNOWLEDGE_CACHE_ENABLED=false bun run eval   # reranker (needs RERANK_API_KEY)
+RERANK_ENABLED=false KNOWLEDGE_CACHE_ENABLED=false bun run eval
+KNOWLEDGE_GRAPHRAG_ENABLED=true  bun run eval   # GraphRAG (eval wires graphContext when set)
+KNOWLEDGE_GRAPHRAG_ENABLED=false bun run eval
+# acceptance evaluator: re-seed with the flag on/off and compare card admission
+KNOWLEDGE_ACCEPTANCE_EVALUATOR=true bun scripts/seed-eval-corpus.ts
 
 # anti-entrenchment demotion (DATABASE_URL only — no LLM; self-cleaning):
 dotenvx run -f .env.local -- bun scripts/entrenchment-eval.ts
