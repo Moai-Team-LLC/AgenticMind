@@ -18,7 +18,10 @@ with the failures published*.
   go wrong; the set grows from real failures.
 - **Ablations.** `scripts/ablate.ts` toggles each component (cards / cache /
   contested / Tier-B) off and reports its contribution to pass rate, so every
-  degree of freedom is justified by data rather than assumed.
+  degree of freedom is justified by data rather than assumed. Ablation answers
+  *which knob matters across the corpus*; for *this one answer went wrong, where do
+  I fix it?* see the symptom→signal→stage→knob runbook in
+  [OPERATIONS.md §6](OPERATIONS.md).
 
 ## What the suite checks
 
