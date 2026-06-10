@@ -35,6 +35,24 @@ export const PROMOTION_SCORE_THRESHOLD = 0.7
  */
 export const CLUSTER_MATCH_THRESHOLD = 0.85
 
+/**
+ * Aggregate-score floor below which a *promoted* cluster's resolution card is
+ * demoted (anti-entrenchment). A card is born from a `supported` judge verdict,
+ * but feedback keeps flowing into its cluster after promotion; if the community
+ * later turns against the answer the score goes negative (sum(strength) is
+ * negative). −0.7 mirrors the promotion threshold's magnitude: "majority
+ * negative AND some strong signals" — a symmetric, deliberately conservative
+ * bar so a couple of stray downvotes can't retract a good card.
+ */
+export const DEMOTION_SCORE_THRESHOLD = -0.7
+
+/**
+ * Minimum feedback events on a promoted cluster before demotion is even
+ * considered. Without a floor, one or two late negatives could retract a card
+ * promoted on strong earlier consensus. Matches the standard membership floor.
+ */
+export const DEMOTION_MIN_FEEDBACK = 5
+
 /** Whether an ask with the given centroid cosine should join the nearest cluster. */
 export const shouldJoinCluster = (similarity: number): boolean =>
   similarity >= CLUSTER_MATCH_THRESHOLD

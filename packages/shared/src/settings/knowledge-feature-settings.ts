@@ -37,6 +37,11 @@ export const knowledgeFeatureSettings = createEnv({
     // Answer-side PII redaction. ON by default (only "false" disables) — the
     // answer + citation snippets are scrubbed of email/phone/card/SSN/IPv4.
     KNOWLEDGE_PII_REDACTION: z.string().optional(),
+    // Anti-entrenchment demotion sweep (worker): demote a promoted resolution
+    // card whose cluster later accrued net-negative feedback to `deprecated`.
+    // Off by default — it only acts on the self-improving promoter's output, so
+    // a deployment that never promotes has nothing to demote.
+    KNOWLEDGE_DEMOTION_ENABLED: z.string().optional(),
     S3_BUCKET: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
     GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
@@ -58,6 +63,7 @@ export const knowledgeFeatureSettings = createEnv({
     KNOWLEDGE_EVAL_HARVEST: process.env.KNOWLEDGE_EVAL_HARVEST,
     KNOWLEDGE_ACCEPTANCE_EVALUATOR: process.env.KNOWLEDGE_ACCEPTANCE_EVALUATOR,
     KNOWLEDGE_PII_REDACTION: process.env.KNOWLEDGE_PII_REDACTION,
+    KNOWLEDGE_DEMOTION_ENABLED: process.env.KNOWLEDGE_DEMOTION_ENABLED,
     S3_BUCKET: process.env.S3_BUCKET ?? process.env.SPACES_KNOWLEDGE_BUCKET,
     GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
     GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,

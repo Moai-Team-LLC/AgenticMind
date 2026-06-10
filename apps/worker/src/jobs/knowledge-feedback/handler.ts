@@ -1,9 +1,11 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 
 import { sweepConsolidateBeliefs } from "@agenticmind/shared/lib/knowledge/belief-consolidator"
+import { sweepDemoteCards } from "@agenticmind/shared/lib/knowledge/demoter"
 import { sweepFeedbackClusters } from "@agenticmind/shared/lib/knowledge/feedback-builder"
 import { sweepPromoteClusters } from "@agenticmind/shared/lib/knowledge/feedback-promoter"
 import { SpanKind, withSpan } from "@agenticmind/shared/lib/observability/trace"
+import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 
 // Re-scan window: each run reconsiders the last 7 days of asks. The builder only
 // Touches un-clustered rows and AddMember is idempotent, so re-scanning is cheap
@@ -51,6 +53,23 @@ export const runKnowledgeFeedbackSweep = async (db: Transaction): Promise<void> 
         console.error(`[KNOWLEDGE_FEEDBACK] promoter failed:`, e)
       },
     )
+
+    // Anti-entrenchment brake: demote promoted cards their cluster later turned
+    // against. Off by default — only meaningful once the promoter has run.
+    if (knowledgeFeatureSettings.KNOWLEDGE_DEMOTION_ENABLED === "true") {
+      const demoted = await sweepDemoteCards({ tx: db })
+      demoted.match(
+        (r) => {
+          span.setAttribute("feedback.demoted", r.demoted)
+          console.log(
+            `[KNOWLEDGE_FEEDBACK] demoter: scanned=${r.scanned} demoted=${r.demoted} skipped=${r.skipped}`,
+          )
+        },
+        (e) => {
+          console.error(`[KNOWLEDGE_FEEDBACK] demoter failed:`, e)
+        },
+      )
+    }
 
     // Memory consolidation: corroborated private beliefs → shared/collective memory.
     const consolidated = await sweepConsolidateBeliefs({ tx: db })

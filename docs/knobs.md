@@ -52,6 +52,13 @@ sources is flagged (`staleSourcesOnly`, status → `needs_review`).
 | `KNOWLEDGE_CACHE_ENABLED` | off | Answer cache for repeated questions. |
 | `KNOWLEDGE_GRAPHRAG_ENABLED` | off | Knowledge-graph context + `kl_graph_neighbors`. |
 
+## Compounding loop (worker)
+
+| Env var | Default | What it does |
+| --- | --- | --- |
+| `KNOWLEDGE_ACCEPTANCE_EVALUATOR` | off | A second-stage LLM gate over extracted cards at ingest (accept / reject / merge / human_review). One extra LLM call. |
+| `KNOWLEDGE_DEMOTION_ENABLED` | off | **Anti-entrenchment brake.** The worker sweep demotes a *promoted* resolution card to `deprecated` once its cluster's aggregate feedback score falls to/below a negative floor over enough signals — so a once-popular answer the community later rejects stops surfacing. The card is kept (audit trail intact), not deleted. Off by default; only meaningful once the promoter has run. |
+
 ## Multi-tenant
 
 | Env var | Default | What it does |

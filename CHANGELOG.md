@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Anti-entrenchment demotion sweep.** Closes the feedback-loop's open end. The
+  compounding loop promotes a popular, judge-grounded answer into a `resolution`
+  card; this is its brake. The worker sweep (`KNOWLEDGE_DEMOTION_ENABLED`, default
+  off) demotes a promoted card to `deprecated` once its cluster's aggregate
+  feedback score falls to/below a negative floor (`DEMOTION_SCORE_THRESHOLD`,
+  −0.7) over at least `DEMOTION_MIN_FEEDBACK` (5) signals — so a once-popular
+  answer the community later rejects stops surfacing. The card is kept (audit
+  trail intact), not deleted. The decision rule (`shouldDemote`) is pure and
+  unit-tested; the sweep is the thin DB executor. Documented honestly in
+  `docs/evals.md` (a live end-to-end entrenchment eval is still the remaining
+  safety work).
+
 ## [0.10.0] — 2026-06-10
 
 The **Knowledge Unit + safety** release: a written contract for what may become

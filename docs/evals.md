@@ -58,13 +58,17 @@ will surface its own failure modes — add them as buckets.
 
 ## Known gaps
 
-- **Feedback-loop entrenchment is not yet covered by an eval.** A popular-but-wrong
-  answer could, in principle, be promoted. Today this is mitigated by design — the
-  promoter is **judge-gated** (it requires `aggregate_score ≥ threshold` **and** an
-  LLM groundedness check, not popularity alone) and the answer-time faithfulness
-  gate catches ungrounded claims — but there is **no demotion of a promoted card on
-  later negative signals**. A dedicated entrenchment eval + a demotion sweep are
-  the next safety work.
+- **Feedback-loop entrenchment** is mitigated on both ends, but not yet covered by a
+  live eval. *Promotion* is **judge-gated** (it requires `aggregate_score ≥ threshold`
+  **and** an LLM groundedness check, not popularity alone) and the answer-time
+  faithfulness gate catches ungrounded claims. *Demotion* now closes the loop: the
+  worker's **anti-entrenchment sweep** (`KNOWLEDGE_DEMOTION_ENABLED`, off by default)
+  demotes a promoted card to `deprecated` once its cluster's aggregate feedback score
+  falls to/below a negative floor over enough signals — so a once-popular answer the
+  community later rejects stops surfacing (the card is kept for audit, not deleted).
+  The decision rule (`shouldDemote`) is unit-tested; what remains is a **live
+  end-to-end entrenchment eval** that promotes, reverses sentiment, and asserts the
+  card was retracted.
 - **Tier-B faithfulness is structural-plus-one-judge**, not a full per-claim NLI
   ensemble.
 - **PII redaction is regex-based** (email/phone/card/SSN/IPv4) and can over- or
