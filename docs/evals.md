@@ -52,6 +52,10 @@ From the safety cycle, on a live run:
   than asserting them as fact.
 - **`answer_cache_false_hit` → green** — a near-but-different query is synthesised
   fresh; the cache does not serve a wrong cached answer at the current threshold.
+- **entrenchment demotion → green** — `scripts/entrenchment-eval.ts` on a live
+  Postgres: a promoted card (`approved`) whose cluster was driven net-negative
+  (aggregate score −2.45 over 6 signals) was demoted to `deprecated` by the sweep
+  and stopped being retrievable. Deterministic and self-cleaning.
 
 These are eval results on a fixture corpus, not absolute guarantees. Your corpus
 will surface its own failure modes — add them as buckets.

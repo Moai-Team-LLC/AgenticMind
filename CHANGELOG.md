@@ -4,7 +4,12 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.0] — 2026-06-10
+
+The **anti-entrenchment** release: the compounding loop gains a brake. Promotion
+was always judge-gated on the way in; now a promoted answer the community later
+turns against is retracted on the way out — measured end-to-end on a live run.
+Still drop-in (DB + `OPENAI_KEY`); the new sweep is off by default.
 
 ### Added
 
@@ -20,7 +25,7 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Runnable entrenchment eval.** `scripts/entrenchment-eval.ts` proves the
   demotion half end-to-end against a live Postgres — it seeds a promoted card,
   drives its cluster net-negative, runs the sweep, and asserts the card was
-  retracted. Deterministic (no LLM), self-cleaning (rolls back its seed rows),
+  retracted. Deterministic (no LLM), self-cleaning (deletes its seed rows),
   needs only `DATABASE_URL`. The full-pipeline variant (promoter LLM judge in +
   brake out) remains the next step; documented in `docs/evals.md`.
 
