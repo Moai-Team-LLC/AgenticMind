@@ -56,26 +56,47 @@ From the safety cycle, on a live run:
   Postgres: a promoted card (`approved`) whose cluster was driven net-negative
   (aggregate score −2.45 over 6 signals) was demoted to `deprecated` by the sweep
   and stopped being retrievable. Deterministic and self-cleaning.
+- **full-pipeline entrenchment → green** — `scripts/entrenchment-eval-full.ts`
+  exercises *both* ends with a real LLM judge: a grounded answer was promoted
+  through the judge gate to an `approved` card, then — after the cluster turned
+  net-negative (score −1.00 over 9 signals) — retracted to `deprecated`. The whole
+  promote→demote lifecycle, proven live.
+- **full-suite baseline → 224/234 (95.7%)** on a live OpenAI run, gate passed;
+  citation precision/recall 100%; every safety bucket green (`pii_leak`,
+  `opinion_vs_fact`, `answer_cache_false_hit`, `indirect_injection`,
+  `conflicting_sources`, `stale_version`, `source_hierarchy`). The 10 misses were
+  exact-phrase assertions the synthesis paraphrased, plus two abstention cases.
+
+### Ablation (what earns its complexity)
+
+`scripts/ablate.ts` over a 63-case representative subset (each component toggled
+off vs the all-on baseline of 90.5%):
+
+| Component off | Pass rate | Contribution |
+| --- | --- | --- |
+| knowledge cards | 90.5% | +0.0 pts |
+| answer cache | 90.5% | +0.0 pts |
+| contested-sources | 88.9% | **+1.6 pts** |
+| Tier-B faithfulness | 88.9% | **+1.6 pts** |
+
+Read it honestly: the two LLM-judge safety features (contested-sources, Tier-B)
+measurably improve correctness on this corpus and earn their extra call; cards and
+cache are **latency/efficiency** features, correctness-neutral here (their value is
+speed and cost, which this pass-rate metric doesn't capture). A different corpus
+will shift these numbers — re-run the ablation on yours before cutting anything.
 
 These are eval results on a fixture corpus, not absolute guarantees. Your corpus
 will surface its own failure modes — add them as buckets.
 
 ## Known gaps
 
-- **Feedback-loop entrenchment** is mitigated on both ends. *Promotion* is
-  **judge-gated** (it requires `aggregate_score ≥ threshold` **and** an LLM
-  groundedness check, not popularity alone) and the answer-time faithfulness gate
-  catches ungrounded claims. *Demotion* closes the loop: the worker's
-  **anti-entrenchment sweep** (`KNOWLEDGE_DEMOTION_ENABLED`, off by default) demotes a
-  promoted card to `deprecated` once its cluster's aggregate feedback score falls
-  to/below a negative floor over enough signals — so a once-popular answer the
-  community later rejects stops surfacing (the card is kept for audit, not deleted).
-  The decision rule (`shouldDemote`) is unit-tested, and the demotion half runs
-  **end-to-end** against a live Postgres via `scripts/entrenchment-eval.ts` (seeds a
-  promoted card, drives its cluster net-negative, asserts the card was retracted —
-  deterministic, no LLM, self-cleaning). What remains is the **full-pipeline**
-  variant that exercises the promoter's LLM judge on the way in as well as the brake
-  on the way out.
+- **Feedback-loop entrenchment** is now closed on both ends and proven live (see
+  *Measured* above): promotion is judge-gated in, demotion (`KNOWLEDGE_DEMOTION_ENABLED`,
+  off by default) retracts a net-negative card out, and both the demotion-only and
+  full promote→demote lifecycles pass against a live Postgres. The residual caveat
+  is honest: these are **on-demand evals on fixtures**, not a standing production
+  monitor, and demotion is **one-directional** — a demoted card is not
+  auto-re-promoted if sentiment later recovers (an admin re-opens it via SQL).
 - **Tier-B faithfulness is structural-plus-one-judge**, not a full per-claim NLI
   ensemble.
 - **PII redaction is regex-based** (email/phone/card/SSN/IPv4) and can over- or
@@ -91,4 +112,7 @@ dotenvx run -f .env.local -- bun scripts/ablate.ts   # component contributions
 
 # anti-entrenchment demotion (DATABASE_URL only — no LLM; self-cleaning):
 dotenvx run -f .env.local -- bun scripts/entrenchment-eval.ts
+
+# full promote→demote lifecycle with a real LLM judge (needs CHAT + EMBED):
+dotenvx run -f .env.local -- bun scripts/entrenchment-eval-full.ts
 ```
