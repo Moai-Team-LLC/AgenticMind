@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres
 to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Full-pipeline entrenchment eval.** `scripts/entrenchment-eval-full.ts` proves
+  the whole compounding lifecycle against a live Postgres + a real LLM judge: a
+  grounded answer is promoted through the judge gate to an `approved` card, then
+  retracted to `deprecated` once its cluster turns net-negative. Complements the
+  no-LLM `entrenchment-eval.ts` (brake only). Self-cleaning.
+
+### Docs
+
+- **`docs/evals.md` records the live numbers.** Full-suite baseline 224/234
+  (95.7%, gate passed, citation precision/recall 100%, every safety bucket green);
+  the promote→demote lifecycle measured green; and an ablation table showing
+  contested-sources and Tier-B faithfulness each contribute +1.6 pts while cards
+  and cache are correctness-neutral (latency/efficiency) on the fixture corpus.
+
 ## [0.11.0] — 2026-06-10
 
 The **anti-entrenchment** release: the compounding loop gains a brake. Promotion
