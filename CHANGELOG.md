@@ -16,9 +16,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   −0.7) over at least `DEMOTION_MIN_FEEDBACK` (5) signals — so a once-popular
   answer the community later rejects stops surfacing. The card is kept (audit
   trail intact), not deleted. The decision rule (`shouldDemote`) is pure and
-  unit-tested; the sweep is the thin DB executor. Documented honestly in
-  `docs/evals.md` (a live end-to-end entrenchment eval is still the remaining
-  safety work).
+  unit-tested; the sweep is the thin DB executor.
+- **Runnable entrenchment eval.** `scripts/entrenchment-eval.ts` proves the
+  demotion half end-to-end against a live Postgres — it seeds a promoted card,
+  drives its cluster net-negative, runs the sweep, and asserts the card was
+  retracted. Deterministic (no LLM), self-cleaning (rolls back its seed rows),
+  needs only `DATABASE_URL`. The full-pipeline variant (promoter LLM judge in +
+  brake out) remains the next step; documented in `docs/evals.md`.
 
 ## [0.10.0] — 2026-06-10
 

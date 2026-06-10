@@ -58,17 +58,20 @@ will surface its own failure modes — add them as buckets.
 
 ## Known gaps
 
-- **Feedback-loop entrenchment** is mitigated on both ends, but not yet covered by a
-  live eval. *Promotion* is **judge-gated** (it requires `aggregate_score ≥ threshold`
-  **and** an LLM groundedness check, not popularity alone) and the answer-time
-  faithfulness gate catches ungrounded claims. *Demotion* now closes the loop: the
-  worker's **anti-entrenchment sweep** (`KNOWLEDGE_DEMOTION_ENABLED`, off by default)
-  demotes a promoted card to `deprecated` once its cluster's aggregate feedback score
-  falls to/below a negative floor over enough signals — so a once-popular answer the
+- **Feedback-loop entrenchment** is mitigated on both ends. *Promotion* is
+  **judge-gated** (it requires `aggregate_score ≥ threshold` **and** an LLM
+  groundedness check, not popularity alone) and the answer-time faithfulness gate
+  catches ungrounded claims. *Demotion* closes the loop: the worker's
+  **anti-entrenchment sweep** (`KNOWLEDGE_DEMOTION_ENABLED`, off by default) demotes a
+  promoted card to `deprecated` once its cluster's aggregate feedback score falls
+  to/below a negative floor over enough signals — so a once-popular answer the
   community later rejects stops surfacing (the card is kept for audit, not deleted).
-  The decision rule (`shouldDemote`) is unit-tested; what remains is a **live
-  end-to-end entrenchment eval** that promotes, reverses sentiment, and asserts the
-  card was retracted.
+  The decision rule (`shouldDemote`) is unit-tested, and the demotion half runs
+  **end-to-end** against a live Postgres via `scripts/entrenchment-eval.ts` (seeds a
+  promoted card, drives its cluster net-negative, asserts the card was retracted —
+  deterministic, no LLM, self-cleaning). What remains is the **full-pipeline**
+  variant that exercises the promoter's LLM judge on the way in as well as the brake
+  on the way out.
 - **Tier-B faithfulness is structural-plus-one-judge**, not a full per-claim NLI
   ensemble.
 - **PII redaction is regex-based** (email/phone/card/SSN/IPv4) and can over- or
@@ -81,4 +84,7 @@ will surface its own failure modes — add them as buckets.
 bun run eval                                  # full suite + gate
 EVAL_ONLY=pii_leak,opinion_vs_fact bun run eval
 dotenvx run -f .env.local -- bun scripts/ablate.ts   # component contributions
+
+# anti-entrenchment demotion (DATABASE_URL only — no LLM; self-cleaning):
+dotenvx run -f .env.local -- bun scripts/entrenchment-eval.ts
 ```
