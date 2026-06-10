@@ -81,6 +81,7 @@ const TRUST_TAGS: Record<
 const db = createClient(databaseSettings.DATABASE_URL)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
 const graphragEnabled = process.env.KNOWLEDGE_GRAPHRAG_ENABLED === "true"
+const acceptanceEvaluator = process.env.KNOWLEDGE_ACCEPTANCE_EVALUATOR === "true"
 const graph = graphragEnabled ? createPostgresGraphStore(db) : undefined
 
 console.log(`[SEED] ingesting ${sections.length} sections from the eval corpus`)
@@ -96,6 +97,7 @@ for (const section of sections) {
     text: section.text,
     cardsEnabled,
     graphragEnabled,
+    acceptanceEvaluator,
     ...TRUST_TAGS[section.title],
   })
   if (res.isErr()) {

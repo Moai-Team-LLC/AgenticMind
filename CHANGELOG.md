@@ -14,6 +14,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   retracted to `deprecated` once its cluster turns net-negative. Complements the
   no-LLM `entrenchment-eval.ts` (brake only). Self-cleaning.
 
+- **Eval harness measures the env-level components.** `scripts/eval.ts` now wires
+  the GraphRAG `graphContext` provider when `KNOWLEDGE_GRAPHRAG_ENABLED` is set, and
+  `scripts/seed-eval-corpus.ts` honours `KNOWLEDGE_ACCEPTANCE_EVALUATOR` at ingest —
+  so reranker, GraphRAG, and the acceptance evaluator can be ablated, not just the
+  AskProps components.
+
 ### Docs
 
 - **`docs/evals.md` records the live numbers.** Full-suite baseline 224/234
@@ -21,6 +27,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the promote→demote lifecycle measured green; and an ablation table showing
   contested-sources and Tier-B faithfulness each contribute +1.6 pts while cards
   and cache are correctness-neutral (latency/efficiency) on the fixture corpus.
+  Reranker and GraphRAG also measured **+0.0** (scale features the small fixture
+  can't exercise — not dead weight), and the acceptance evaluator held **29%** of
+  cards as `candidate` (a governance control, retrieval-neutral). Verdict: only the
+  two LLM-judge correctness features move the pass rate here; nothing is cut without
+  a corpus that exercises it.
 - **Abstention posture documented.** `docs/evals.md` explains that out-of-corpus
   queries are surfaced as `unsupported` / `groundedness = 0` (gate-able) by
   default, and hard `abstained` decline is opt-in (no sources, refusal phrasing,
