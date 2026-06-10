@@ -284,3 +284,57 @@ platform):
   healthy sweep.
 - `sweep lock held elsewhere — skipping` from extra worker replicas is **expected**
   and benign.
+
+## 6. Debugging a bad answer — where to fix
+
+The engine has roughly a dozen toggleable components (cards, cache, contested,
+Tier-B, rerank, GraphRAG, acceptance, demotion, answer-policy, PII). The natural
+worry: *when an answer is wrong in production, which one do I touch?* The point of
+the why-trace is that you don't guess across all of them — **every stage stamps an
+attributable signal on the answer**, so a single bad answer localises to one stage,
+and one stage maps to one knob.
+
+### The procedure: start from two fields
+
+Every `kl_ask_global` answer carries `status` and `servedBy`. Read those first —
+they cut the search space before you look at anything else:
+
+- **`servedBy`** = `cache` → the answer came from the cache, *not* fresh retrieval.
+  Look at the cache first (below). `card_synth` → a knowledge card drove it.
+  `synth` → fresh retrieval + synthesis.
+- **`status`** = `supported` / `partial` / `unsupported` / `conflicted` /
+  `needs_review` → tells you *how* the engine already judged its own answer. A wrong
+  answer that is already `unsupported`/`needs_review` is a **gating** problem (the
+  signal fired, nobody acted on it); a wrong answer marked `supported` is a
+  **retrieval or source** problem (the signal didn't fire when it should have).
+
+### Symptom → signal → stage → knob
+
+| Symptom | Read this on the answer | Stage at fault | Fix / knob |
+| --- | --- | --- | --- |
+| Confident but **wrong fact** | `groundedness` high, citations resolve | retrieval pulled a wrong/low-trust source | check the cited source's `lifecycle`/`trustTier`; deprecate or re-rank it; tune `RETRIEVAL_PARAMS` |
+| **Hallucination** (no support) | `citations = 0`, `groundedness = 0`, `status = unsupported`, `abstained = false` | synth over-answered out-of-corpus | set `KNOWLEDGE_ANSWER_POLICY` `minGroundedness` → forces a refusal (see *Abstention posture* in evals) |
+| **Cited but not actually supported** | `unsupportedClaims` / `contradictedClaims` non-empty | answer-time faithfulness | turn on `KNOWLEDGE_FAITHFULNESS_TIER_B`; gate on `status` |
+| **Stale** answer | `staleSourcesOnly = true`, `status = needs_review`, citation `lifecycle = deprecated` | source lifecycle | mark the current source `active` / the old one `deprecated`; the signal already flags it |
+| **One-sided** on a disputed fact | `contested = []` when sources disagree | contested-sources judge off | turn on `KNOWLEDGE_CONTESTED_SOURCES` |
+| **Wrong cached** answer | `servedBy = cache` | answer cache (near-but-different hit) | set `KNOWLEDGE_CACHE_ENABLED=false` to isolate; if it disappears, the cache key/threshold is the cause |
+| **Right chunk missing** from citations | `servedBy = synth`, `rerankUsed`, citation set | retrieval ordering | turn on `RERANK_ENABLED`; tune `RETRIEVAL_PARAMS` (hybrid weights / topK); verify embeddings |
+| **PII** in the answer | scan the answer text | output filter | `KNOWLEDGE_PII_REDACTION` is on by default — confirm it is not set to `false` |
+| **Bad promoted card** keeps resurfacing | the card's `status`, its cluster `aggregate_score` | compounding loop | `KNOWLEDGE_DEMOTION_ENABLED` (retracts net-negative cards); check the acceptance evaluator gate |
+| **Slow** answer | `phases[]` (per-stage ms), `rerankLatencyMs` | the slowest phase | disable or tune that one stage; everything is timed individually |
+
+### Reproduce one answer end-to-end
+
+The signals above are on the live answer and in the OTLP spans (§5). To replay a
+single question and read every stage's signal in one place, re-run it against the
+same corpus with tracing on:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
+  dotenvx run -f .env.local -- bun scripts/eval.ts   # or one EVAL_ONLY bucket
+```
+
+Each answer's `status`, `servedBy`, `groundedness`, `phases`, `contested`,
+`rerankUsed`, and `graphContextRows` then appear on the span — the same fields the
+table keys off. The dozen degrees of freedom collapse to: **read `status` +
+`servedBy` → follow the one signal → turn the one knob.**

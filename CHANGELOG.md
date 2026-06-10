@@ -22,6 +22,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Docs
 
+- **Debugging runbook — "where do I fix it?"** `OPERATIONS.md` gains a
+  symptom→signal→stage→knob table answering the operability worry of a dozen
+  toggleable components: every stage stamps an attributable signal on the answer
+  (`status`, `servedBy`, `groundedness`, `contested`, `staleSourcesOnly`,
+  `rerankUsed`, `phases[]`, citation trust/lifecycle), so a single bad answer
+  localises to one stage and one knob. Start from `status` + `servedBy`.
 - **`docs/evals.md` records the live numbers.** Full-suite baseline 224/234
   (95.7%, gate passed, citation precision/recall 100%, every safety bucket green);
   the promote→demote lifecycle measured green; and an ablation table showing
