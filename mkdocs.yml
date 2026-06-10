@@ -75,6 +75,7 @@ nav:
   - Home: index.md
   - Integrations: integrations.md
   - What counts as knowledge: knowledge-unit.md
+  - Evals & limits: evals.md
   - Configuration knobs: knobs.md
   - Deep dives:
       - Overview: blog/README.md
