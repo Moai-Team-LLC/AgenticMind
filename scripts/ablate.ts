@@ -13,7 +13,7 @@
  *   dotenvx run -f .env.local -- bun scripts/ablate.ts
  *
  * This toggles the AskProps-level components. Env-level ones
- * (RERANK_ENABLED, KNOWLEDGE_GRAPHRAG_ENABLED) are ablated by running this twice
+ * (RERANK_ENABLED) is ablated by running this twice
  * with the env flag flipped and comparing the two baselines.
  */
 
