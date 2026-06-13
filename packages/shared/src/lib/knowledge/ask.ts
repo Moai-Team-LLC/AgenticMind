@@ -60,6 +60,7 @@ import {
   scoreFaithfulness,
   supportedClaims,
   ungroundedFigures,
+  ungroundedQuotes,
   weaklyAttributedClaims,
 } from "@agenticmind/shared/lib/knowledge/faithfulness"
 import {
@@ -327,6 +328,10 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         cached.value.answerText,
         cached.value.citations,
       )
+      const cachedUngroundedQuotes = ungroundedQuotes(
+        cached.value.answerText,
+        cached.value.citations.map((c) => c.snippet ?? ""),
+      )
       const cachedAnswer: Answer = {
         answer: cached.value.answerText,
         citations: cached.value.citations,
@@ -344,10 +349,12 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
           staleSourcesOnly: cachedStaleOnly,
           ungroundedFigures: cachedUngroundedFigs,
           weaklyAttributedClaims: cachedWeakAttribution,
+          ungroundedQuotes: cachedUngroundedQuotes,
         }),
         staleSourcesOnly: cachedStaleOnly,
         ungroundedFigures: cachedUngroundedFigs,
         weaklyAttributedClaims: cachedWeakAttribution,
+        ungroundedQuotes: cachedUngroundedQuotes,
       }
       return applyAnswerPolicy(cachedAnswer, props.answerPolicy)
     }
@@ -482,6 +489,11 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // Deterministic citation-attribution check (Tier-A): a substantial cited claim
   // whose snippet shares no salient word — a mis-attributed citation.
   const weakAttribution = weaklyAttributedClaims(answerText, citations)
+  // Deterministic quote check (Tier-A): a quoted phrase absent verbatim from sources.
+  const ungroundedQuotesList = ungroundedQuotes(
+    answerText,
+    citations.map((c) => c.snippet ?? ""),
+  )
   const status = deriveAnswerStatus({
     groundedness: faith.groundedness,
     semanticGroundedness: tierBFields.semanticGroundedness,
@@ -491,6 +503,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     staleSourcesOnly,
     ungroundedFigures: ungroundedFigs,
     weaklyAttributedClaims: weakAttribution,
+    ungroundedQuotes: ungroundedQuotesList,
   })
 
   // Tier-1 cache store — gated on quality. Done AFTER faithfulness/status so a
@@ -545,6 +558,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     staleSourcesOnly,
     ungroundedFigures: ungroundedFigs,
     weaklyAttributedClaims: weakAttribution,
+    ungroundedQuotes: ungroundedQuotesList,
   }
   return applyAnswerPolicy(answer, props.answerPolicy)
 }

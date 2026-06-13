@@ -165,6 +165,48 @@ export const ungroundedFigures = (
   return out
 }
 
+/** Double-quoted spans (straight or curly), capturing the inner text. */
+const QUOTE_RE = /[“"]([^“”"]{1,200})[”"]/gu
+const QUOTE_MIN_WORDS = 3
+const normQuote = (s: string): string =>
+  s
+    .toLowerCase()
+    .replaceAll(/\s+/g, " ")
+    .replaceAll(/^[\p{P}\s]+|[\p{P}\s]+$/gu, "")
+    .trim()
+
+/**
+ * Deterministic anti-hallucination check (Tier-A, no LLM): every substantial
+ * double-quoted phrase the answer presents as a direct quotation must appear,
+ * verbatim, in a cited snippet. A fabricated quotation ("the policy states '…'")
+ * is a distinct, high-trust-looking hallucination class that the numeric and
+ * attribution checks miss. Whitespace/case/edge-punctuation normalised; only
+ * quotes of ≥3 words are judged (skip single quoted terms/identifiers).
+ */
+export const ungroundedQuotes = (
+  answerText: string,
+  citedSnippets: readonly string[],
+): string[] => {
+  const haystack = normQuote(citedSnippets.join("  "))
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const match of answerText.matchAll(QUOTE_RE)) {
+    const inner = match[1] ?? ""
+    if (wordCount(inner) < QUOTE_MIN_WORDS) {
+      continue
+    }
+    const norm = normQuote(inner)
+    if (norm === "" || seen.has(norm)) {
+      continue
+    }
+    seen.add(norm)
+    if (!haystack.includes(norm)) {
+      out.push(inner.trim())
+    }
+  }
+  return out
+}
+
 /** Common words excluded when checking claim↔citation content overlap. */
 const ATTRIB_STOPWORDS = new Set<string>([
   "this",

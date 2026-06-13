@@ -26,6 +26,11 @@ describe("classifyAnswer — symptom → stage → knob", () => {
     expect(f?.severity).toBe("high")
   })
 
+  it("flags a fabricated quotation (ungroundedQuotes)", () => {
+    const d = classifyAnswer({ citationsCount: 2, groundedness: 0.9, ungroundedQuotes: 1 })
+    expect(d.find((x) => x.stage.includes("quotation"))?.severity).toBe("high")
+  })
+
   it("flags a mis-attributed citation (weaklyAttributedClaims)", () => {
     const d = classifyAnswer({ citationsCount: 2, groundedness: 0.9, weaklyAttributedClaims: 1 })
     const f = d.find((x) => x.stage.includes("attribution"))

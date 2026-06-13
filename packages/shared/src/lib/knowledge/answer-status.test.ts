@@ -27,6 +27,12 @@ describe("deriveAnswerStatus", () => {
     )
   })
 
+  it("needs_review: a fabricated quotation escalates", () => {
+    expect(deriveAnswerStatus({ groundedness: 1, ungroundedQuotes: ["a b c"] })).toBe(
+      "needs_review",
+    )
+  })
+
   it("unsupported: almost nothing grounded", () => {
     expect(deriveAnswerStatus({ groundedness: 0.2 })).toBe("unsupported")
   })

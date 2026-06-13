@@ -41,6 +41,9 @@ export type AnswerStatusSignals = {
   /** Cited claims whose own snippet shares no salient content word — a likely
    * mis-attributed (decorative/wrong) citation. Escalates to needs_review. */
   weaklyAttributedClaims?: readonly string[]
+  /** Quoted phrases presented as direct quotations but absent verbatim from every
+   * cited snippet (deterministic Tier-A quote check) — escalates to needs_review. */
+  ungroundedQuotes?: readonly string[]
 }
 
 /** Lifecycle states that are NOT current — a citation in one of these is stale. */
@@ -80,7 +83,8 @@ export const deriveAnswerStatus = (signals: AnswerStatusSignals): AnswerStatus =
     (signals.contradictedClaims?.length ?? 0) > 0 ||
     signals.staleSourcesOnly === true ||
     (signals.ungroundedFigures?.length ?? 0) > 0 ||
-    (signals.weaklyAttributedClaims?.length ?? 0) > 0
+    (signals.weaklyAttributedClaims?.length ?? 0) > 0 ||
+    (signals.ungroundedQuotes?.length ?? 0) > 0
   ) {
     return "needs_review"
   }

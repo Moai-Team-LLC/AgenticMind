@@ -116,6 +116,9 @@ export type Answer = {
   /** Cited claims whose own snippet shares no salient content word — a likely
    * mis-attributed citation (deterministic Tier-A attribution check; escalates status). */
   weaklyAttributedClaims?: string[]
+  /** Quoted phrases presented as direct quotations but absent verbatim from every
+   * cited snippet (deterministic Tier-A quote check — fabricated quotes; escalates status). */
+  ungroundedQuotes?: string[]
   /** Answer-policy decision (allow | review | block) + reasons, when a policy is
    * configured (KNOWLEDGE_ANSWER_POLICY). A blocked answer is replaced by a refusal. */
   policy?: PolicyDecision
