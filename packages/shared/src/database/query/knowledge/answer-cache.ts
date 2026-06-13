@@ -130,7 +130,10 @@ export const lookupAnswer = (props: {
         ORDER BY rank_priority ASC
         LIMIT 1
       `)
-      const rows = result as unknown as CacheRow[]
+      // `tx.execute` resolves to a node-postgres QueryResult ({ rows }), not a bare
+      // array — reading `result[0]` always yielded undefined, so every lookup
+      // returned null and the cache never hit even with a matching row present.
+      const rows = (result as unknown as { rows: CacheRow[] }).rows
       const row = rows[0]
       if (row === undefined) {
         return null
@@ -144,12 +147,22 @@ export const lookupAnswer = (props: {
   )
 }
 
+/**
+ * Postgres array literal for binding into a `uuid[]` column (`{a,b}`, `{}` empty).
+ * Drizzle renders an interpolated JS array as a parenthesised value list `($n)`,
+ * which Postgres rejects against a uuid[] column ("malformed array literal") — so
+ * binding `${ids}` directly made every cache write fail. Cast the result
+ * `::uuid[]`. Ids are uuids (hex + hyphens), safe inside the brace literal.
+ */
+export const pgUuidArrayLiteral = (ids: readonly string[]): string => `{${ids.join(",")}}`
+
 /** Persists a fresh answer. ON CONFLICT on the active question_hash → no-op. */
 export const storeAnswer = (props: { tx: Transaction; entry: StoreAnswerInput }) => {
   const e = props.entry
   const literal = toVectorLiteral(e.questionEmbedding)
   const ttl = e.ttlSeconds !== undefined && e.ttlSeconds > 0 ? e.ttlSeconds : DEFAULT_TTL_SECONDS
   const citationsJson = JSON.stringify(e.citations)
+  const idsLiteral = pgUuidArrayLiteral(e.sourceMaterialIds)
   return ResultAsync.fromPromise(
     props.tx.execute(sql`
       INSERT INTO answer_cache (
@@ -157,7 +170,7 @@ export const storeAnswer = (props: { tx: Transaction; entry: StoreAnswerInput })
         citations_json, source_material_ids, source_fingerprint, answer_model, ttl_seconds
       ) VALUES (
         ${e.questionHash}, ${e.questionText}, ${literal}::vector, ${e.answerText},
-        ${citationsJson}::jsonb, ${e.sourceMaterialIds}, ${e.sourceFingerprint}, ${e.answerModel}, ${ttl}
+        ${citationsJson}::jsonb, ${idsLiteral}::uuid[], ${e.sourceFingerprint}, ${e.answerModel}, ${ttl}
       )
       ON CONFLICT (question_hash) WHERE invalidated_at IS NULL DO NOTHING
     `),
