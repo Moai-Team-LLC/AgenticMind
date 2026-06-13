@@ -8,6 +8,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`blockOnNeedsReview` answer-policy switch (anti-hallucination defense G).** A
+  single `KNOWLEDGE_ANSWER_POLICY` field that **hard-refuses** any answer the engine
+  flagged `needs_review` — the one switch over *all* deterministic hallucination
+  signals (fabricated figure/quote, mis-attributed citation, cited-but-unentailed
+  claim, stale-only sources). Turns the detection that A–F produce into prevention:
+  the answer is replaced by a refusal and `policy: { action: "block", reasons }` is
+  attached to the trace. Off by default (review-only behaviour unchanged). A
+  zero-hallucination strict-posture example is documented in `docs/knobs.md`.
 - **Quoted-text verbatim check (anti-hallucination defense F).** A deterministic,
   no-LLM Tier-A check (`ungroundedQuotes`): every substantial double-quoted phrase
   (≥3 words) the answer presents as a direct quotation must appear verbatim

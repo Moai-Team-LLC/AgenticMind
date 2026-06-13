@@ -23,6 +23,11 @@ export const answerPolicySchema = z
     minSemanticGroundedness: z.number().min(0).max(1).optional(),
     /** Block (refuse to serve a winner) when the sources conflict. */
     blockOnConflict: z.boolean().optional(),
+    /** Block (refuse) any answer the engine flagged `needs_review` — the single
+     * switch over ALL deterministic hallucination signals (fabricated figure,
+     * mis-attributed citation, fabricated quote, cited-but-unentailed claim,
+     * stale-only sources). Turns detection (A–F) into hard prevention. */
+    blockOnNeedsReview: z.boolean().optional(),
     /** Flag conflicted answers for human review (served, but marked). */
     reviewOnConflict: z.boolean().optional(),
     /** Flag needs_review answers (a cited claim not entailed by its snippet). */
@@ -84,6 +89,9 @@ export const evaluatePolicy = (policy: AnswerPolicy, input: PolicyInput): Policy
   }
   if (policy.blockOnConflict === true && input.status === "conflicted") {
     reasons.push("sources conflict (blockOnConflict)")
+  }
+  if (policy.blockOnNeedsReview === true && input.status === "needs_review") {
+    reasons.push("answer flagged needs_review by a deterministic check (blockOnNeedsReview)")
   }
   if (reasons.length > 0) {
     return { action: "block", reasons }

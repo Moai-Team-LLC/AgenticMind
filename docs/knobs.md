@@ -13,7 +13,7 @@ All knobs are environment variables read once at boot.
 | --- | --- | --- |
 | `KNOWLEDGE_FAITHFULNESS_TIER_B` | off | Runs a semantic **entailment** judge over each cited claim (one extra LLM call per `kl_ask_global`). Adds `semanticGroundedness` + `contradictedClaims` to the answer. Tier-A structural groundedness is always computed for free. |
 | `KNOWLEDGE_CONTESTED_SOURCES` | off | Runs a judge that surfaces facts where the retrieved sources **disagree** (one extra LLM call). Adds `contested` (each side tagged with source + date) instead of silently picking a winner. |
-| `KNOWLEDGE_ANSWER_POLICY` | unset | A JSON policy that **enforces** the signals: `minGroundedness`, `minSemanticGroundedness`, `blockOnConflict`, `reviewOnConflict`, `reviewOnNeedsReview`. A blocked answer is replaced by a refusal; the decision (`policy: { action, reasons }`) is attached to the trace. |
+| `KNOWLEDGE_ANSWER_POLICY` | unset | A JSON policy that **enforces** the signals: `minGroundedness`, `minSemanticGroundedness`, `blockOnConflict`, `blockOnNeedsReview`, `reviewOnConflict`, `reviewOnNeedsReview`. `blockOnNeedsReview` is the single hard switch over **all** deterministic hallucination flags (fabricated figure/quote, mis-attributed citation, cited-but-unentailed claim, stale-only sources) — it turns detection into refusal. A blocked answer is replaced by a refusal; the decision (`policy: { action, reasons }`) is attached to the trace. |
 | `KNOWLEDGE_PII_REDACTION` | **on** | Scrubs PII (email/phone/card/SSN/IPv4) from the answer **and** citation snippets before they leave the engine (and before caching). On by default — leaking PII is a defect. Set to `false` only when raw contact info is intended (e.g. an internal directory). |
 
 Every `kl_ask_global` answer carries a single **`status`** an agent can gate on,
@@ -34,6 +34,13 @@ Example policy (refuse weakly-grounded answers, flag conflicts for a human):
 
 ```bash
 KNOWLEDGE_ANSWER_POLICY='{"minGroundedness":0.7,"reviewOnConflict":true,"reviewOnNeedsReview":true}'
+```
+
+Strict, zero-hallucination posture (hard-refuse on **any** deterministic flag —
+fabricated figure/quote, mis-attributed citation, unentailed claim, stale-only):
+
+```bash
+KNOWLEDGE_ANSWER_POLICY='{"minGroundedness":0.8,"blockOnConflict":true,"blockOnNeedsReview":true}'
 ```
 
 ## Source trust
