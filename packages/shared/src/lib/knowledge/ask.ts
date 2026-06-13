@@ -685,6 +685,7 @@ export const ask = (props: AskProps): ResultAsync<Answer, AskError> =>
         questionHash: hashQuestion(props.question),
         questionText: props.evalHarvest === true ? props.question : null,
         servedBy: answer.servedBy,
+        status: answer.status ?? null,
         retrievalMs: answer.retrievalMs,
         generationMs: answer.generationMs,
         model: answer.model,

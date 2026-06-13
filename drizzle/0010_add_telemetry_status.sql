@@ -1,0 +1,1 @@
+ALTER TABLE "ask_telemetry" ADD COLUMN "status" text;

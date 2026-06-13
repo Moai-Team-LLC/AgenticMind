@@ -34,6 +34,10 @@ const askTelemetry = pgTable(
     retrievalMs: integer("retrieval_ms").notNull(),
     generationMs: integer("generation_ms").notNull(),
     model: text("model").notNull(),
+    // Self-reported trust verdict (supported|partial|unsupported|conflicted|
+    // needs_review), persisted so a fleet health/drift monitor can track the rate
+    // of low-quality answers over time. Nullable for rows written before this.
+    status: text("status"),
     citationCount: integer("citation_count").notNull(),
     answerChars: integer("answer_chars").notNull(),
     rerankUsed: boolean("rerank_used").notNull().default(false),
