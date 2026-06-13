@@ -6,6 +6,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-06-13
+
+The **anti-hallucination** release. The synthesis LLM is the one component that
+can fabricate; this release rings it with a seven-layer deterministic defense
+(A–G) — every shield is no-LLM and structural, so the safety gate never rests on
+a fallible judge. A–F *detect* fabrication (numeric, quote, citation-attribution,
+card-source, cache, drift) and escalate to `needs_review`; **G** turns that
+detection into prevention with a single `blockOnNeedsReview` refusal switch. The
+non-functional GraphRAG path — proven to return 0 graph neighbours on every query
+— is removed (**BREAKING**). Each layer also gains a standardised way to prove it
+fires and to localise failures. Still drop-in (DB + `OPENAI_KEY`); every new guard
+is off or neutral by default.
+
 ### Added
 
 - **`blockOnNeedsReview` answer-policy switch (anti-hallucination defense G).** A
@@ -52,34 +65,6 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it without relying on another (fallible) LLM judge. Conservative (commas
   normalised; lone single digits ignored) to avoid false flags. Wired into the
   diagnose classifier too.
-
-### Changed
-
-- **Cache only stores `supported` answers (anti-hallucination defense A).** The
-  cache write moved to *after* faithfulness/status are computed and is now gated on
-  `status === "supported"` — previously any cited answer was cached *before*
-  groundedness was even known, so a weakly-grounded/conflicted/hallucinated answer
-  could be cached and then served back confidently + consistently to many agents
-  (the cache amplifies whatever it holds). Deterministic; no extra cost.
-
-### Fixed
-
-- **Answer cache never stored or hit (two bugs).** With `KNOWLEDGE_CACHE_ENABLED`
-  on, the cache silently did nothing:
-  1. `storeAnswer` interpolated the material-id JS array as drizzle's `($n)`
-     value-list against the `uuid[]` column → Postgres `malformed array literal` →
-     **every write failed**. Now bound as a `{a,b}::uuid[]` brace literal
-     (`pgUuidArrayLiteral`, unit-tested).
-  2. `lookupAnswer` read `tx.execute(...)` as a bare array, but it resolves to a
-     `{ rows }` QueryResult → the row was always `undefined` → **every lookup
-     missed** even with a matching row.
-  Verified end-to-end (`scripts/cache-bench.ts`): cache went from 0% → **75% hit
-  rate** (−75% LLM calls on a repeated-query workload) and answer consistency from
-  3.5 distinct/question to **1.00** (byte-identical hits). The cache is off by
-  default, so deployments running the default were unaffected.
-
-### Added
-
 - **Layer verification & diagnostics framework.** A standardised way to test each
   layer and localise failures, so it isn't re-invented per incident (see
   `docs/verification.md`):
@@ -99,12 +84,48 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   grounded answer is promoted through the judge gate to an `approved` card, then
   retracted to `deprecated` once its cluster turns net-negative. Complements the
   no-LLM `entrenchment-eval.ts` (brake only). Self-cleaning.
+- **Eval harness measures the env-level components.** `scripts/seed-eval-corpus.ts`
+  honours `KNOWLEDGE_ACCEPTANCE_EVALUATOR` at ingest, so the reranker and the
+  acceptance evaluator can be ablated by flipping their flag across two runs — not
+  just the AskProps components.
 
-- **Eval harness measures the env-level components.** `scripts/eval.ts` now wires
-  the GraphRAG `graphContext` provider when `KNOWLEDGE_GRAPHRAG_ENABLED` is set, and
-  `scripts/seed-eval-corpus.ts` honours `KNOWLEDGE_ACCEPTANCE_EVALUATOR` at ingest —
-  so reranker, GraphRAG, and the acceptance evaluator can be ablated, not just the
-  AskProps components.
+### Changed
+
+- **Cache only stores `supported` answers (anti-hallucination defense A).** The
+  cache write moved to *after* faithfulness/status are computed and is now gated on
+  `status === "supported"` — previously any cited answer was cached *before*
+  groundedness was even known, so a weakly-grounded/conflicted/hallucinated answer
+  could be cached and then served back confidently + consistently to many agents
+  (the cache amplifies whatever it holds). Deterministic; no extra cost.
+
+### Removed
+
+- **BREAKING: GraphRAG removed.** The graph-augmented retrieval path is gone —
+  the `kl_graph_neighbors` query, the `KNOWLEDGE_GRAPHRAG_ENABLED` / `…_QAPLAN`
+  flags, and the `graphContext` provider. Targeted verification showed it
+  **non-functional**: it returned **0 graph neighbours** on every query, so it
+  added cost, config surface, and failure surface while contributing nothing to
+  retrieval (it was never the source of an answer). Reranking, by contrast, was
+  *kept* — measured neutral on the small fixture but a genuine large-corpus
+  feature, not dead weight. Removing GraphRAG shrinks the trust surface that the
+  rest of this release is hardening. Deployments that set
+  `KNOWLEDGE_GRAPHRAG_ENABLED` should drop the flag; no data migration is needed.
+
+### Fixed
+
+- **Answer cache never stored or hit (two bugs).** With `KNOWLEDGE_CACHE_ENABLED`
+  on, the cache silently did nothing:
+  1. `storeAnswer` interpolated the material-id JS array as drizzle's `($n)`
+     value-list against the `uuid[]` column → Postgres `malformed array literal` →
+     **every write failed**. Now bound as a `{a,b}::uuid[]` brace literal
+     (`pgUuidArrayLiteral`, unit-tested).
+  2. `lookupAnswer` read `tx.execute(...)` as a bare array, but it resolves to a
+     `{ rows }` QueryResult → the row was always `undefined` → **every lookup
+     missed** even with a matching row.
+  Verified end-to-end (`scripts/cache-bench.ts`): cache went from 0% → **75% hit
+  rate** (−75% LLM calls on a repeated-query workload) and answer consistency from
+  3.5 distinct/question to **1.00** (byte-identical hits). The cache is off by
+  default, so deployments running the default were unaffected.
 
 ### Docs
 
@@ -126,9 +147,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   the promote→demote lifecycle measured green; and an ablation table showing
   contested-sources and Tier-B faithfulness each contribute +1.6 pts while cards
   and cache are correctness-neutral (latency/efficiency) on the fixture corpus.
-  Reranker and GraphRAG also measured **+0.0** (scale features the small fixture
-  can't exercise — not dead weight), and the acceptance evaluator held **29%** of
-  cards as `candidate` (a governance control, retrieval-neutral). Verdict: only the
+  The reranker also measured **+0.0** on the fixture (a scale feature the small
+  corpus can't exercise — kept, not cut), and the acceptance evaluator held **29%**
+  of cards as `candidate` (a governance control, retrieval-neutral). Verdict: only the
   two LLM-judge correctness features move the pass rate here; nothing is cut without
   a corpus that exercises it.
 - **Abstention posture documented.** `docs/evals.md` explains that out-of-corpus
