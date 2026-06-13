@@ -4,11 +4,38 @@ import {
   scoreFaithfulness,
   supportedClaims,
   ungroundedFigures,
+  ungroundedQuotes,
   weaklyAttributedClaims,
 } from "./faithfulness"
 
+describe("ungroundedQuotes (quote verbatim, Tier-A, no LLM)", () => {
+  it("flags a quoted phrase absent from every snippet", () => {
+    const out = ungroundedQuotes('The policy says "all refunds are final".', [
+      "The refund window is 30 days from purchase.",
+    ])
+    expect(out).toHaveLength(1)
+  })
+
+  it("passes a quote present verbatim (whitespace/case-normalised)", () => {
+    const out = ungroundedQuotes('It states "all refunds are final" clearly.', [
+      "Section 4: All Refunds Are Final, no exceptions.",
+    ])
+    expect(out).toEqual([])
+  })
+
+  it("ignores short quoted terms (under the word floor)", () => {
+    expect(ungroundedQuotes('the so-called "widget" feature', ["nothing here"])).toEqual([])
+  })
+
+  it("returns nothing when there are no quotes", () => {
+    expect(ungroundedQuotes("A plain answer with no quotations.", ["src"])).toEqual([])
+  })
+})
+
 describe("weaklyAttributedClaims (citation attribution, Tier-A, no LLM)", () => {
-  const c = (number: number, snippet: string) => {return { number, snippet }}
+  const c = (number: number, snippet: string) => {
+    return { number, snippet }
+  }
 
   it("flags a substantial cited claim whose snippet shares no salient word", () => {
     const out = weaklyAttributedClaims(

@@ -8,6 +8,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Quoted-text verbatim check (anti-hallucination defense F).** A deterministic,
+  no-LLM Tier-A check (`ungroundedQuotes`): every substantial double-quoted phrase
+  (≥3 words) the answer presents as a direct quotation must appear verbatim
+  (whitespace/case-normalised) in a cited snippet, else the answer escalates to
+  `needs_review`. A fabricated quotation is a distinct, high-trust-looking
+  hallucination class that the numeric (B) and attribution (E) checks miss. Surfaced
+  on the answer + wired into diagnose.
 - **Citation-attribution check (anti-hallucination defense E).** A deterministic,
   no-LLM Tier-A check (`weaklyAttributedClaims`): a substantial cited claim (≥5
   salient content words) whose own snippet shares *zero* salient words is almost

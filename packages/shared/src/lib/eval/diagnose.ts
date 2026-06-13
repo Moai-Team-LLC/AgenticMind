@@ -27,6 +27,8 @@ export type AnswerSignals = {
   ungroundedFigures?: number
   /** Count of cited claims whose snippet shares no salient word (mis-attribution). */
   weaklyAttributedClaims?: number
+  /** Count of quoted phrases absent verbatim from every cited snippet. */
+  ungroundedQuotes?: number
   staleSourcesOnly?: boolean
   rerankUsed?: boolean
   /** per-stage timings (ms) from the trace */
@@ -88,6 +90,17 @@ export const classifyAnswer = (signals: AnswerSignals): Diagnosis[] => {
       cause:
         "the answer states a figure that appears in no cited snippet — a fabricated/garbled number",
       knob: "gate on status=needs_review; the deterministic numeric check already flagged it",
+      severity: "high",
+    })
+  }
+
+  // Fabricated quotation: a quoted phrase absent verbatim from any cited snippet.
+  if ((signals.ungroundedQuotes ?? 0) > 0) {
+    out.push({
+      stage: "synthesis (quotation)",
+      cause:
+        "the answer presents a direct quotation that appears in no cited snippet — a fabricated quote",
+      knob: "gate on status=needs_review; the deterministic quote check already flagged it",
       severity: "high",
     })
   }

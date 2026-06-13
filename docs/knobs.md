@@ -24,10 +24,11 @@ derived from the signals above (free, always present):
 > Severity precedence: an honest decline → `unsupported`; conflicting sources →
 > `conflicted`; a cited-but-unentailed claim, an answer resting only on stale
 > (non-active) sources (`staleSourcesOnly`), an answer asserting a numeric figure
-> absent from every cited snippet (`ungroundedFigures`), **or a cited claim that
-> shares no salient word with its snippet** (`weaklyAttributedClaims`, a likely
-> mis-attributed citation) — the last two deterministic no-LLM checks → `needs_review`;
-> otherwise the grounded/partial/unsupported gradient.
+> absent from every cited snippet (`ungroundedFigures`), a cited claim that shares
+> no salient word with its snippet (`weaklyAttributedClaims`), **or a direct
+> quotation absent verbatim from every snippet** (`ungroundedQuotes`) — those
+> deterministic no-LLM checks → `needs_review`; otherwise the
+> grounded/partial/unsupported gradient.
 
 Example policy (refuse weakly-grounded answers, flag conflicts for a human):
 
