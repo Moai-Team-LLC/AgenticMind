@@ -6,8 +6,27 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Answer cache never stored or hit (two bugs).** With `KNOWLEDGE_CACHE_ENABLED`
+  on, the cache silently did nothing:
+  1. `storeAnswer` interpolated the material-id JS array as drizzle's `($n)`
+     value-list against the `uuid[]` column → Postgres `malformed array literal` →
+     **every write failed**. Now bound as a `{a,b}::uuid[]` brace literal
+     (`pgUuidArrayLiteral`, unit-tested).
+  2. `lookupAnswer` read `tx.execute(...)` as a bare array, but it resolves to a
+     `{ rows }` QueryResult → the row was always `undefined` → **every lookup
+     missed** even with a matching row.
+  Verified end-to-end (`scripts/cache-bench.ts`): cache went from 0% → **75% hit
+  rate** (−75% LLM calls on a repeated-query workload) and answer consistency from
+  3.5 distinct/question to **1.00** (byte-identical hits). The cache is off by
+  default, so deployments running the default were unaffected.
+
 ### Added
 
+- **`scripts/cache-bench.ts`** — integration benchmark for the cache's actual
+  purpose (consistency / hit-rate / latency / near-dup) — the test that would have
+  caught the bugs above; the pass-rate ablation was blind to it.
 - **Full-pipeline entrenchment eval.** `scripts/entrenchment-eval-full.ts` proves
   the whole compounding lifecycle against a live Postgres + a real LLM judge: a
   grounded answer is promoted through the judge gate to an `approved` card, then
