@@ -21,6 +21,12 @@ describe("deriveAnswerStatus", () => {
     expect(deriveAnswerStatus({ groundedness: 1, ungroundedFigures: ["47"] })).toBe("needs_review")
   })
 
+  it("needs_review: a mis-attributed cited claim escalates", () => {
+    expect(deriveAnswerStatus({ groundedness: 1, weaklyAttributedClaims: ["x"] })).toBe(
+      "needs_review",
+    )
+  })
+
   it("unsupported: almost nothing grounded", () => {
     expect(deriveAnswerStatus({ groundedness: 0.2 })).toBe("unsupported")
   })

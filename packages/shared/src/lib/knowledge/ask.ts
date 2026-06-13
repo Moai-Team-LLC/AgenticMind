@@ -60,6 +60,7 @@ import {
   scoreFaithfulness,
   supportedClaims,
   ungroundedFigures,
+  weaklyAttributedClaims,
 } from "@agenticmind/shared/lib/knowledge/faithfulness"
 import {
   aggregateEntailment,
@@ -322,6 +323,10 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         cached.value.answerText,
         cached.value.citations.map((c) => c.snippet ?? ""),
       )
+      const cachedWeakAttribution = weaklyAttributedClaims(
+        cached.value.answerText,
+        cached.value.citations,
+      )
       const cachedAnswer: Answer = {
         answer: cached.value.answerText,
         citations: cached.value.citations,
@@ -338,9 +343,11 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
           abstained: faith.abstained,
           staleSourcesOnly: cachedStaleOnly,
           ungroundedFigures: cachedUngroundedFigs,
+          weaklyAttributedClaims: cachedWeakAttribution,
         }),
         staleSourcesOnly: cachedStaleOnly,
         ungroundedFigures: cachedUngroundedFigs,
+        weaklyAttributedClaims: cachedWeakAttribution,
       }
       return applyAnswerPolicy(cachedAnswer, props.answerPolicy)
     }
@@ -472,6 +479,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     answerText,
     citations.map((c) => c.snippet ?? ""),
   )
+  // Deterministic citation-attribution check (Tier-A): a substantial cited claim
+  // whose snippet shares no salient word — a mis-attributed citation.
+  const weakAttribution = weaklyAttributedClaims(answerText, citations)
   const status = deriveAnswerStatus({
     groundedness: faith.groundedness,
     semanticGroundedness: tierBFields.semanticGroundedness,
@@ -480,6 +490,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     abstained: faith.abstained,
     staleSourcesOnly,
     ungroundedFigures: ungroundedFigs,
+    weaklyAttributedClaims: weakAttribution,
   })
 
   // Tier-1 cache store — gated on quality. Done AFTER faithfulness/status so a
@@ -533,6 +544,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     status,
     staleSourcesOnly,
     ungroundedFigures: ungroundedFigs,
+    weaklyAttributedClaims: weakAttribution,
   }
   return applyAnswerPolicy(answer, props.answerPolicy)
 }

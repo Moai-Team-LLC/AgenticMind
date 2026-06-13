@@ -26,6 +26,12 @@ describe("classifyAnswer — symptom → stage → knob", () => {
     expect(f?.severity).toBe("high")
   })
 
+  it("flags a mis-attributed citation (weaklyAttributedClaims)", () => {
+    const d = classifyAnswer({ citationsCount: 2, groundedness: 0.9, weaklyAttributedClaims: 1 })
+    const f = d.find((x) => x.stage.includes("attribution"))
+    expect(f?.severity).toBe("high")
+  })
+
   it("flags cited-but-unentailed via contradictedClaims", () => {
     const d = classifyAnswer({ citationsCount: 2, groundedness: 0.9, contradictedClaims: 1 })
     const f = d.find((x) => x.stage.includes("Tier-B"))

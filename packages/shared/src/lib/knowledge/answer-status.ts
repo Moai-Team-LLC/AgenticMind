@@ -38,6 +38,9 @@ export type AnswerStatusSignals = {
   /** Substantial numeric figures asserted in the answer but absent from every
    * cited snippet (deterministic Tier-A numeric check) — escalates to needs_review. */
   ungroundedFigures?: readonly string[]
+  /** Cited claims whose own snippet shares no salient content word — a likely
+   * mis-attributed (decorative/wrong) citation. Escalates to needs_review. */
+  weaklyAttributedClaims?: readonly string[]
 }
 
 /** Lifecycle states that are NOT current — a citation in one of these is stale. */
@@ -76,7 +79,8 @@ export const deriveAnswerStatus = (signals: AnswerStatusSignals): AnswerStatus =
   if (
     (signals.contradictedClaims?.length ?? 0) > 0 ||
     signals.staleSourcesOnly === true ||
-    (signals.ungroundedFigures?.length ?? 0) > 0
+    (signals.ungroundedFigures?.length ?? 0) > 0 ||
+    (signals.weaklyAttributedClaims?.length ?? 0) > 0
   ) {
     return "needs_review"
   }

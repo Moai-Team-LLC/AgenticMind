@@ -8,6 +8,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Citation-attribution check (anti-hallucination defense E).** A deterministic,
+  no-LLM Tier-A check (`weaklyAttributedClaims`): a substantial cited claim (≥5
+  salient content words) whose own snippet shares *zero* salient words is almost
+  certainly mis-attributed — the citation marker points at an unrelated passage.
+  Tier-A only checked the marker resolves; B checks numbers; this catches a
+  fabricated *non-numeric* claim wearing a decorative/wrong citation. Escalates to
+  `needs_review`, surfaced on the answer, wired into diagnose. Conservative
+  (only a total miss on a substantial claim flags) so paraphrase doesn't false-fire.
 - **Fleet health / drift monitor (anti-hallucination detection D).** `ask_telemetry`
   now persists each answer's `status` (migration 0010); `summarizeAskHealth` (pure,
   unit-tested) turns a window's per-status counts into rates + threshold concerns,

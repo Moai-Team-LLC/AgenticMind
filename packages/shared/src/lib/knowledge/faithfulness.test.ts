@@ -1,6 +1,43 @@
 import { describe, expect, it } from "vitest"
 
-import { scoreFaithfulness, supportedClaims, ungroundedFigures } from "./faithfulness"
+import {
+  scoreFaithfulness,
+  supportedClaims,
+  ungroundedFigures,
+  weaklyAttributedClaims,
+} from "./faithfulness"
+
+describe("weaklyAttributedClaims (citation attribution, Tier-A, no LLM)", () => {
+  const c = (number: number, snippet: string) => {return { number, snippet }}
+
+  it("flags a substantial cited claim whose snippet shares no salient word", () => {
+    const out = weaklyAttributedClaims(
+      "The Helios programme migrated its billing platform to a new vendor last quarter [1].",
+      [c(1, "Neutron stars form from the gravitational collapse of a massive star's core.")],
+    )
+    expect(out).toHaveLength(1)
+  })
+
+  it("passes when the claim and its snippet share salient words", () => {
+    const out = weaklyAttributedClaims(
+      "The Helios programme migrated its billing platform to a new vendor [1].",
+      [c(1, "Helios migrated billing to a new vendor in Q3, the programme lead confirmed.")],
+    )
+    expect(out).toEqual([])
+  })
+
+  it("ignores short claims (too little to judge attribution)", () => {
+    expect(weaklyAttributedClaims("It improved [1].", [c(1, "unrelated text here")])).toEqual([])
+  })
+
+  it("ignores claims with no resolving citation (Tier-A handles those)", () => {
+    expect(
+      weaklyAttributedClaims("A long uncited claim about many specific things here.", [
+        c(2, "snippet"),
+      ]),
+    ).toEqual([])
+  })
+})
 
 describe("ungroundedFigures (numeric verbatim, Tier-A, no LLM)", () => {
   it("flags a figure absent from every cited snippet", () => {

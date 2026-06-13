@@ -113,6 +113,9 @@ export type Answer = {
   /** Substantial numeric figures asserted but absent from every cited snippet
    * (deterministic Tier-A numeric check — fabricated figures; escalates status). */
   ungroundedFigures?: string[]
+  /** Cited claims whose own snippet shares no salient content word — a likely
+   * mis-attributed citation (deterministic Tier-A attribution check; escalates status). */
+  weaklyAttributedClaims?: string[]
   /** Answer-policy decision (allow | review | block) + reasons, when a policy is
    * configured (KNOWLEDGE_ANSWER_POLICY). A blocked answer is replaced by a refusal. */
   policy?: PolicyDecision
