@@ -24,6 +24,17 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Layer verification & diagnostics framework.** A standardised way to test each
+  layer and localise failures, so it isn't re-invented per incident (see
+  `docs/verification.md`):
+  - `lib/eval/layers.ts` — one declarative manifest of every optional layer (knob,
+    default, purpose, and a pure "did it fire?" predicate). Single source of truth.
+  - `smokeCheckableLayers()` — the "enabled-but-dead" guard: every enabled layer
+    must demonstrably fire. This is exactly the regression the cache (0% hit) and
+    GraphRAG (0 graph rows) outages would have tripped.
+  - `lib/eval/diagnose.ts` (`classifyAnswer`) — codifies the symptom→stage→knob
+    runbook as a pure, unit-tested classifier; `scripts/diagnose.ts` feeds it a live
+    answer's why-trace and prints the ranked "where to fix it".
 - **`scripts/cache-bench.ts`** — integration benchmark for the cache's actual
   purpose (consistency / hit-rate / latency / near-dup) — the test that would have
   caught the bugs above; the pass-rate ablation was blind to it.
