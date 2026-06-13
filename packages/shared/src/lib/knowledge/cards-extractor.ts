@@ -16,6 +16,7 @@ import {
   isCardKind,
   MAX_CARDS_PER_MATERIAL,
 } from "@agenticmind/shared/lib/knowledge/card"
+import { ungroundedFigures } from "@agenticmind/shared/lib/knowledge/faithfulness"
 import {
   getPredicate,
   isValidSubjectType,
@@ -206,6 +207,30 @@ export const validateExtraction = (raw: { cards: RawCard[] }): CardInput[] => {
     }
   }
   return out
+}
+
+/**
+ * Anti-hallucination grounding filter (deterministic, no LLM): drop any extracted
+ * card that asserts a numeric figure absent from the source text it was extracted
+ * from. The LLM extractor can fabricate or garble a number; storing it would seed
+ * a hallucinated fact that later surfaces as a "card_synth" answer. Reuses the
+ * Tier-A numeric-verbatim check. Returns the kept cards + the dropped subjects.
+ */
+export const dropUngroundedCards = (
+  cards: readonly CardInput[],
+  sourceBody: string,
+): { kept: CardInput[]; dropped: string[] } => {
+  const kept: CardInput[] = []
+  const dropped: string[] = []
+  for (const c of cards) {
+    const asserted = `${c.body} ${c.value ?? ""}`
+    if (ungroundedFigures(asserted, [sourceBody]).length > 0) {
+      dropped.push(c.subjectValue)
+    } else {
+      kept.push(c)
+    }
+  }
+  return { kept, dropped }
 }
 
 export type CardsExtractError = { readonly type: string; readonly message: string }

@@ -1,6 +1,41 @@
 import { describe, expect, it } from "vitest"
 
-import { buildExtractionPrompt, validateExtraction, validateRawCard } from "./cards-extractor"
+import {
+  buildExtractionPrompt,
+  dropUngroundedCards,
+  validateExtraction,
+  validateRawCard,
+} from "./cards-extractor"
+
+describe("dropUngroundedCards (card-source grounding, no LLM)", () => {
+  const card = (subjectValue: string, body: string, value?: string) => {return {
+    kind: "fact" as const,
+    subjectType: "Thing",
+    subjectValue,
+    body,
+    value,
+    confidence: 0.9,
+  }}
+
+  it("drops a card asserting a figure absent from the source", () => {
+    const src = "The reactor runs continuously in the north plant."
+    const r = dropUngroundedCards([card("reactor", "The reactor is rated at 47 MW.", "47 MW")], src)
+    expect(r.kept).toHaveLength(0)
+    expect(r.dropped).toEqual(["reactor"])
+  })
+
+  it("keeps a card whose figure is in the source", () => {
+    const src = "Spec: the reactor is rated at 47 MW continuous."
+    const r = dropUngroundedCards([card("reactor", "Rated at 47 MW.", "47 MW")], src)
+    expect(r.kept).toHaveLength(1)
+    expect(r.dropped).toEqual([])
+  })
+
+  it("keeps figure-free cards untouched", () => {
+    const r = dropUngroundedCards([card("x", "A qualitative description.")], "anything")
+    expect(r.kept).toHaveLength(1)
+  })
+})
 
 describe("buildExtractionPrompt", () => {
   it("renders the ontology vocabulary into the prompt", () => {
