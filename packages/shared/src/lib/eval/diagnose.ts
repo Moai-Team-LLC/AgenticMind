@@ -23,6 +23,8 @@ export type AnswerSignals = {
   contestedCount?: number
   contradictedClaims?: number
   unsupportedClaims?: number
+  /** Count of substantial figures asserted but absent from every cited snippet. */
+  ungroundedFigures?: number
   staleSourcesOnly?: boolean
   rerankUsed?: boolean
   /** per-stage timings (ms) from the trace */
@@ -73,6 +75,17 @@ export const classifyAnswer = (signals: AnswerSignals): Diagnosis[] => {
       cause:
         "answer carries no resolving citations and groundedness 0 — out-of-corpus or ungrounded, surfaced as status=unsupported but still returned",
       knob: "KNOWLEDGE_ANSWER_POLICY minGroundedness to force a refusal; check retrieval actually returned sources",
+      severity: "high",
+    })
+  }
+
+  // Fabricated figure: a number asserted but in no cited snippet (deterministic).
+  if ((signals.ungroundedFigures ?? 0) > 0) {
+    out.push({
+      stage: "synthesis (numeric)",
+      cause:
+        "the answer states a figure that appears in no cited snippet — a fabricated/garbled number",
+      knob: "gate on status=needs_review; the deterministic numeric check already flagged it",
       severity: "high",
     })
   }

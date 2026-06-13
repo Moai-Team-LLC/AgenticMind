@@ -20,6 +20,12 @@ describe("classifyAnswer — symptom → stage → knob", () => {
     expect(d.some((x) => x.stage === "answer cache")).toBe(true)
   })
 
+  it("flags a fabricated figure (ungroundedFigures)", () => {
+    const d = classifyAnswer({ citationsCount: 2, groundedness: 0.9, ungroundedFigures: 1 })
+    const f = d.find((x) => x.stage.includes("numeric"))
+    expect(f?.severity).toBe("high")
+  })
+
   it("flags cited-but-unentailed via contradictedClaims", () => {
     const d = classifyAnswer({ citationsCount: 2, groundedness: 0.9, contradictedClaims: 1 })
     const f = d.find((x) => x.stage.includes("Tier-B"))

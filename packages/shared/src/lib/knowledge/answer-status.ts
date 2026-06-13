@@ -35,6 +35,9 @@ export type AnswerStatusSignals = {
   /** Every cited source is non-active (deprecated/superseded/archived) — the
    * answer rests only on stale knowledge. Escalates to needs_review. */
   staleSourcesOnly?: boolean
+  /** Substantial numeric figures asserted in the answer but absent from every
+   * cited snippet (deterministic Tier-A numeric check) — escalates to needs_review. */
+  ungroundedFigures?: readonly string[]
 }
 
 /** Lifecycle states that are NOT current — a citation in one of these is stale. */
@@ -70,7 +73,11 @@ export const deriveAnswerStatus = (signals: AnswerStatusSignals): AnswerStatus =
   }
   // Cited but the snippet doesn't actually support it — the most dangerous case.
   // Or: the answer rests only on stale (non-active) sources. Either way, escalate.
-  if ((signals.contradictedClaims?.length ?? 0) > 0 || signals.staleSourcesOnly === true) {
+  if (
+    (signals.contradictedClaims?.length ?? 0) > 0 ||
+    signals.staleSourcesOnly === true ||
+    (signals.ungroundedFigures?.length ?? 0) > 0
+  ) {
     return "needs_review"
   }
   const grounded = signals.groundedness ?? 1

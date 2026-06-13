@@ -17,6 +17,10 @@ describe("deriveAnswerStatus", () => {
     expect(deriveAnswerStatus({ groundedness: 0.6 })).toBe("partial")
   })
 
+  it("needs_review: a fully-grounded answer with a fabricated figure escalates", () => {
+    expect(deriveAnswerStatus({ groundedness: 1, ungroundedFigures: ["47"] })).toBe("needs_review")
+  })
+
   it("unsupported: almost nothing grounded", () => {
     expect(deriveAnswerStatus({ groundedness: 0.2 })).toBe("unsupported")
   })
