@@ -445,8 +445,31 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   citations = redacted.citations
   mark("output_filter", ts)
 
-  // Tier-1: best-effort cache store.
-  if (props.cacheEnabled === true && citations.length > 0) {
+  // Tier-A faithfulness: structural groundedness + abstention, computed from the
+  // already-parsed citations (no extra LLM call, no added latency).
+  const faith = scoreFaithfulness(answerText, citations, sources.length)
+  // Tier-B (flag-gated, best-effort): semantic entailment of each cited claim
+  // against its own snippet. Returns {} when off / nothing to check / judge fails,
+  // so it spreads cleanly and never fails the answer.
+  const tierBFields = await tierBFaithfulness(props, answerText, citations, model)
+  // Contested-sources (flag-gated, best-effort): surface facts the retrieved
+  // sources disagree on instead of silently trusting the recency-preferred one.
+  const contestedFields = await contestedSourcesCheck(props, sources, model)
+  const staleSourcesOnly = restsOnlyOnStaleSources(citations)
+  const status = deriveAnswerStatus({
+    groundedness: faith.groundedness,
+    semanticGroundedness: tierBFields.semanticGroundedness,
+    contradictedClaims: tierBFields.contradictedClaims,
+    contested: contestedFields.contested,
+    abstained: faith.abstained,
+    staleSourcesOnly,
+  })
+
+  // Tier-1 cache store — gated on quality. Done AFTER faithfulness/status so a
+  // hallucinated or weakly-grounded answer is never cached and then served back
+  // confidently + consistently (cache amplifies whatever it stores). Only a fully
+  // `supported` answer (grounded, no conflict/contradiction/staleness) is cached.
+  if (props.cacheEnabled === true && citations.length > 0 && status === "supported") {
     const updatedByMat = new Map<string, Date | null>()
     for (const s of sources) {
       updatedByMat.set(s.materialId, s.updatedAt)
@@ -474,26 +497,6 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
       console.warn(`ask: cache store failed: ${stored.error.message}`)
     }
   }
-
-  // Tier-A faithfulness: structural groundedness + abstention, computed from the
-  // already-parsed citations (no extra LLM call, no added latency).
-  const faith = scoreFaithfulness(answerText, citations, sources.length)
-  // Tier-B (flag-gated, best-effort): semantic entailment of each cited claim
-  // against its own snippet. Returns {} when off / nothing to check / judge fails,
-  // so it spreads cleanly and never fails the answer.
-  const tierBFields = await tierBFaithfulness(props, answerText, citations, model)
-  // Contested-sources (flag-gated, best-effort): surface facts the retrieved
-  // sources disagree on instead of silently trusting the recency-preferred one.
-  const contestedFields = await contestedSourcesCheck(props, sources, model)
-  const staleSourcesOnly = restsOnlyOnStaleSources(citations)
-  const status = deriveAnswerStatus({
-    groundedness: faith.groundedness,
-    semanticGroundedness: tierBFields.semanticGroundedness,
-    contradictedClaims: tierBFields.contradictedClaims,
-    contested: contestedFields.contested,
-    abstained: faith.abstained,
-    staleSourcesOnly,
-  })
 
   const answer: Answer = {
     answer: answerText,

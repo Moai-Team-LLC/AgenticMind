@@ -6,6 +6,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- **Cache only stores `supported` answers (anti-hallucination defense A).** The
+  cache write moved to *after* faithfulness/status are computed and is now gated on
+  `status === "supported"` — previously any cited answer was cached *before*
+  groundedness was even known, so a weakly-grounded/conflicted/hallucinated answer
+  could be cached and then served back confidently + consistently to many agents
+  (the cache amplifies whatever it holds). Deterministic; no extra cost.
+
 ### Fixed
 
 - **Answer cache never stored or hit (two bugs).** With `KNOWLEDGE_CACHE_ENABLED`
