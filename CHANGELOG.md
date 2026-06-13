@@ -8,6 +8,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Fleet health / drift monitor (anti-hallucination detection D).** `ask_telemetry`
+  now persists each answer's `status` (migration 0010); `summarizeAskHealth` (pure,
+  unit-tested) turns a window's per-status counts into rates + threshold concerns,
+  and `scripts/health.ts` prints them and exits non-zero on a breach (cron/alert
+  friendly). Catches systemic degradation — model swap, corpus drift, regression —
+  that the per-answer guards can't see. `DATABASE_URL` only, no LLM.
 - **Card-source grounding at ingest (anti-hallucination defense C).** A
   deterministic, no-LLM filter (`dropUngroundedCards`): an LLM-extracted card that
   asserts a numeric figure absent from the source text it was extracted from is

@@ -52,6 +52,23 @@ contested, citations) and the ranked diagnosis — e.g. *0 citations + groundedn
 A grounded-but-wrong answer is correctly blamed on the **source/corpus**, not the
 pipeline.
 
+## 4. Fleet health monitor — *is quality drifting?*
+
+The per-answer guards catch one bad answer; they can't see a **systemic** shift —
+a model swap, corpus drift, or a regression that quietly lifts the bad-answer rate
+across the fleet. `ask_telemetry` now persists each answer's `status`, and
+`summarizeAskHealth` (`packages/shared/src/lib/eval/health.ts`, pure, unit-tested)
+turns a window's per-status counts into rates + threshold concerns:
+
+```bash
+HEALTH_WINDOW_HOURS=24 dotenvx run -f .env.local -- bun scripts/health.ts
+```
+
+It prints the status mix and exits non-zero when a rate crosses its floor
+(`needs_review` > 15%, `unsupported` > 25%, `conflicted` > 10%, or a majority of
+rows with no recorded status — an instrumentation blind spot is itself flagged), so
+it runs as a cron / alert. Needs `DATABASE_URL` only — no LLM.
+
 ## The standard
 
 Adding a layer means adding one manifest entry (knob, default, purpose, fired

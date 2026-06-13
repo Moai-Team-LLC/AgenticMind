@@ -9,10 +9,11 @@
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
+import type { StatusCount } from "@agenticmind/shared/lib/eval/health"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { askFeedback, askTelemetry } from "@agenticmind/shared/database/schema"
-import { desc, eq, isNotNull, sql } from "drizzle-orm"
+import { desc, eq, gt, isNotNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 export type AskTelemetryEvent = {
@@ -22,6 +23,8 @@ export type AskTelemetryEvent = {
   questionText?: string | null
   /** Cache | card_synth | synth (enforced by the table check constraint). */
   servedBy: string
+  /** Self-reported trust verdict, persisted for the fleet health/drift monitor. */
+  status?: string | null
   retrievalMs: number
   generationMs: number
   model: string
@@ -43,6 +46,7 @@ export const recordAskTelemetry = (props: { tx: Transaction; event: AskTelemetry
           questionHash: props.event.questionHash,
           questionText: props.event.questionText ?? null,
           servedBy: props.event.servedBy,
+          status: props.event.status ?? null,
           retrievalMs: Math.max(0, Math.round(props.event.retrievalMs)),
           generationMs: Math.max(0, Math.round(props.event.generationMs)),
           model: props.event.model,
@@ -60,6 +64,17 @@ export const recordAskTelemetry = (props: { tx: Transaction; event: AskTelemetry
     })(),
     mapDatabaseError,
   )
+
+/** Per-status answer counts since `since` — input to the fleet health monitor. */
+export const askHealthSince = (props: { tx: Transaction; since: Date }) =>
+  ResultAsync.fromPromise(
+    props.tx
+      .select({ status: askTelemetry.status, count: sql<number>`count(*)::int` })
+      .from(askTelemetry)
+      .where(gt(askTelemetry.createdAt, props.since))
+      .groupBy(askTelemetry.status),
+    mapDatabaseError,
+  ).map((rows): StatusCount[] => rows.map((r) => {return { status: r.status, count: r.count }}))
 
 /** A harvested production query and the net of the agent signals it received. */
 export type HarvestedQuery = { questionText: string; netStrength: number }
