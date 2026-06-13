@@ -49,7 +49,7 @@ sources is flagged (`staleSourcesOnly`, status → `needs_review`).
 | `RETRIEVAL_PARAMS` | engine defaults | A tuned retrieval profile (hybrid weights / recency / topK / rerank) as JSON. Produced by `scripts/tune.ts`, which optimises against the eval corpus **plus** harvested real queries. |
 | `KNOWLEDGE_EVAL_HARVEST` | off | **Privacy-affecting.** When on, the raw question is persisted on the telemetry row (default: only a hash) so signalled real queries can be replayed by the tuner. Leave off unless you want the closed read-path loop. |
 | `KNOWLEDGE_CARDS_ENABLED` | off | Distil ingested text into reusable fact cards. |
-| `KNOWLEDGE_CACHE_ENABLED` | off | Answer cache for repeated questions. |
+| `KNOWLEDGE_CACHE_ENABLED` | off | Answer cache for repeated questions. **Only `supported` answers are cached** — a hallucinated / weakly-grounded / conflicted answer is never stored and then served back confidently to many agents (the cache amplifies whatever it holds). |
 
 ## Compounding loop (worker)
 
