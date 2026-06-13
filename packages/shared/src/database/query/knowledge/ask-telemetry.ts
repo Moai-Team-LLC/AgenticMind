@@ -29,7 +29,6 @@ export type AskTelemetryEvent = {
   answerChars: number
   rerankUsed?: boolean
   rerankLatencyMs?: number | null
-  graphContextRows?: number
   phases?: { phase: string; ms: number }[]
 }
 
@@ -54,7 +53,6 @@ export const recordAskTelemetry = (props: { tx: Transaction; event: AskTelemetry
             props.event.rerankLatencyMs !== undefined && props.event.rerankLatencyMs !== null
               ? Math.max(0, Math.round(props.event.rerankLatencyMs))
               : null,
-          graphContextRows: props.event.graphContextRows ?? 0,
           phases: props.event.phases ?? [],
         })
         .returning({ id: askTelemetry.id })

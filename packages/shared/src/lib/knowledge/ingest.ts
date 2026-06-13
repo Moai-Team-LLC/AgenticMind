@@ -1,19 +1,16 @@
 /**
  * High-level ingestion orchestrator — the single entry to populate the
  * knowledge base. Wires the engine end-to-end: upload (blob + material row) →
- * index (sanitize → chunk → embed → cards) → optional graph extraction
- * (entities/relations → GraphStore). Used by the `kl_ingest` MCP tool and the
- * `scripts/ingest.ts` CLI so the base can actually be filled.
+ * index (sanitize → chunk → embed → cards). Used by the `kl_ingest` MCP tool
+ * and the `scripts/ingest.ts` CLI so the base can actually be filled.
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
-import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 import type { Lifecycle } from "@agenticmind/shared/lib/knowledge/source-trust"
 
 import { updateMaterialLifecycle } from "@agenticmind/shared/database/query/knowledge/materials"
 import { isSupportedLanguage } from "@agenticmind/shared/database/schema/knowledge/_config"
-import { extractGraph } from "@agenticmind/shared/lib/knowledge/graphrag-extractor"
 import { indexMaterial } from "@agenticmind/shared/lib/knowledge/indexer"
 import { uploadManual } from "@agenticmind/shared/lib/knowledge/ingestion"
 import { ResultAsync } from "neverthrow"
@@ -27,8 +24,6 @@ export type IngestResult = {
   materialId: string
   title: string
   chunkCount: number
-  entities: number
-  relations: number
 }
 
 const safeFilename = (title: string): string => {
@@ -41,20 +36,17 @@ const safeFilename = (title: string): string => {
 
 /**
  * Ingests a piece of text as a material. Idempotency is the caller's concern
- * (each call creates a new material). Graph extraction only runs when
- * `graphragEnabled` and a `graph` store are provided.
+ * (each call creates a new material).
  */
 export const ingestText = (props: {
   tx: Transaction
   blobStore: KnowledgeBlobStore
-  graph?: GraphStore
   title: string
   text: string
   contentType?: string
   cardsEnabled?: boolean
   /** Run the acceptance evaluator on extracted cards before storage. Default off. */
   acceptanceEvaluator?: boolean
-  graphragEnabled?: boolean
   language?: string
   /** Content lifecycle to stamp on the material (default active). */
   lifecycle?: Lifecycle
@@ -110,29 +102,10 @@ export const ingestText = (props: {
         throw ingestError(`index: ${indexed.error.message}`)
       }
 
-      let entities = 0
-      let relations = 0
-      if (props.graphragEnabled === true && props.graph !== undefined) {
-        const g = await extractGraph({
-          materialId: material.id,
-          materialTitle: material.title,
-          body: text,
-        })
-        if (g.isOk()) {
-          const up = await props.graph.upsertExtraction(g.value)
-          if (up.isOk()) {
-            entities = g.value.entities.length
-            relations = g.value.relations.length
-          }
-        }
-      }
-
       return {
         materialId: material.id,
         title: material.title,
         chunkCount: indexed.value.chunkCount,
-        entities,
-        relations,
       }
     })(),
     (e) =>

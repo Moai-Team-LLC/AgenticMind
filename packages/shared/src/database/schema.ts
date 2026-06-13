@@ -9,7 +9,6 @@ import * as KnowledgeAskFeedback from "@agenticmind/shared/database/schema/knowl
 import * as KnowledgeAskTelemetry from "@agenticmind/shared/database/schema/knowledge/ask-telemetry"
 import * as KnowledgeBeliefs from "@agenticmind/shared/database/schema/knowledge/beliefs"
 import * as KnowledgeChunks from "@agenticmind/shared/database/schema/knowledge/chunks"
-import * as KnowledgeGraph from "@agenticmind/shared/database/schema/knowledge/graph"
 import * as KnowledgeGuardEvents from "@agenticmind/shared/database/schema/knowledge/guard-events"
 import * as KnowledgeCards from "@agenticmind/shared/database/schema/knowledge/knowledge-cards"
 import * as KnowledgeMaterials from "@agenticmind/shared/database/schema/knowledge/materials"
@@ -29,7 +28,6 @@ export * from "@agenticmind/shared/database/schema/knowledge/guard-events"
 export * from "@agenticmind/shared/database/schema/knowledge/rate-limits"
 export * from "@agenticmind/shared/database/schema/knowledge/knowledge-cards"
 export * from "@agenticmind/shared/database/schema/knowledge/chunks"
-export * from "@agenticmind/shared/database/schema/knowledge/graph"
 export * from "@agenticmind/shared/database/schema/knowledge/materials"
 export * from "@agenticmind/shared/database/schema/knowledge/mcp-tokens"
 
@@ -44,7 +42,6 @@ export const schema = {
   ...KnowledgeAskClusters,
   ...KnowledgeAskClusterMembers,
   ...KnowledgeMcpTokens,
-  ...KnowledgeGraph,
   ...KnowledgeBeliefs,
   ...KnowledgeGuardEvents,
   ...KnowledgeRateLimits,

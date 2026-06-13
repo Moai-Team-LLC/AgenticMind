@@ -177,8 +177,7 @@ const runIndex = async (props: IndexMaterialProps): Promise<{ chunkCount: number
 
   await updateMaterialStatus({ tx, id: material.id, status: "embedded" })
 
-  // Best-effort Tier-1 cards. Skip graphrag for tabular materials (handled
-  // Separately). Graph extraction is wired in a later brick.
+  // Best-effort Tier-1 cards.
   await runCardExtraction(props, body)
 
   return { chunkCount: items.length }
