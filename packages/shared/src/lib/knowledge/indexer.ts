@@ -18,7 +18,10 @@ import { upsertCards } from "@agenticmind/shared/database/query/knowledge/cards"
 import { upsertChunks } from "@agenticmind/shared/database/query/knowledge/chunks"
 import { updateMaterialStatus } from "@agenticmind/shared/database/query/knowledge/materials"
 import { evaluateAcceptance } from "@agenticmind/shared/lib/knowledge/acceptance-evaluator"
-import { extractCards } from "@agenticmind/shared/lib/knowledge/cards-extractor"
+import {
+  dropUngroundedCards,
+  extractCards,
+} from "@agenticmind/shared/lib/knowledge/cards-extractor"
 import { extractFromTables } from "@agenticmind/shared/lib/knowledge/cards-tabular"
 import { approxTokens, splitText } from "@agenticmind/shared/lib/knowledge/chunker"
 import {
@@ -67,7 +70,16 @@ const runCardExtraction = async (props: IndexMaterialProps, body: string): Promi
         console.warn(`index: cards extract failed for ${material.id}: ${extracted.error.message}`)
         return
       }
-      items = extracted.value
+      // Deterministic grounding filter: drop LLM-extracted cards asserting a figure
+      // absent from the source text (a fabricated/garbled number would otherwise be
+      // stored and later surface as a card-backed answer). Tabular cards skip this.
+      const grounded = dropUngroundedCards(extracted.value, body)
+      if (grounded.dropped.length > 0) {
+        console.warn(
+          `index: dropped ${grounded.dropped.length} ungrounded card(s) for ${material.id}: ${grounded.dropped.join(", ")}`,
+        )
+      }
+      items = grounded.kept
     } else {
       return
     }

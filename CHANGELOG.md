@@ -8,6 +8,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Card-source grounding at ingest (anti-hallucination defense C).** A
+  deterministic, no-LLM filter (`dropUngroundedCards`): an LLM-extracted card that
+  asserts a numeric figure absent from the source text it was extracted from is
+  dropped before storage — otherwise a fabricated/garbled number would be persisted
+  as a card and later surface as a confident `card_synth` answer. Tabular (no-LLM)
+  cards skip the filter; reuses the Tier-A numeric check, so no extra LLM call.
 - **Numeric verbatim check (anti-hallucination defense B).** A deterministic,
   no-LLM Tier-A check (`ungroundedFigures`): every *substantial* numeric figure the
   answer asserts must appear in a cited snippet, else the answer escalates to
