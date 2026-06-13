@@ -15,8 +15,6 @@ export const DEFAULT_TOP_K = 8
 export const MAX_SNIPPET_RUNES = 240
 /** Max knowledge cards prepended ahead of chunk sources. */
 export const MAX_CARD_SOURCES = 3
-/** Max graph-context rows folded into the prompt prelude. */
-export const MAX_GRAPH_CONTEXT_ROWS = 5
 
 export const SERVED_BY_CACHE = "cache"
 export const SERVED_BY_CARD = "card_synth"
@@ -79,11 +77,6 @@ export type Citation = {
   trustTier?: number
 }
 
-export type GraphContextRow = {
-  body: string
-  materialIds: string[]
-}
-
 export type Answer = {
   answer: string
   citations: Citation[]
@@ -93,7 +86,6 @@ export type Answer = {
   servedBy: string
   rerankUsed?: boolean
   rerankLatencyMs?: number
-  graphContextRows?: number
   /** Per-phase latency breakdown (embed/cache/retrieve/rerank/synth/output_filter). */
   phases?: { phase: string; ms: number }[]
   /** Ask_telemetry row id, set after the best-effort telemetry write. */
@@ -207,22 +199,9 @@ const truncate = (s: string, max: number): string => {
   return runes.length <= max ? s : `${runes.slice(0, max).join("")}…`
 }
 
-/** Builds the user prompt: optional graph-context prelude + numbered sources + question. */
-export const buildPromptWithGraphContext = (
-  question: string,
-  sources: Source[],
-  graphContext: GraphContextRow[] = [],
-): string => {
+/** Builds the user prompt: numbered sources + question. */
+export const buildPrompt = (question: string, sources: Source[]): string => {
   const parts: string[] = []
-  if (graphContext.length > 0) {
-    parts.push(
-      "Graph context (supplementary, NOT a citable source — only the numbered Sources below count):",
-    )
-    for (const g of graphContext) {
-      parts.push(`- ${g.body}`)
-    }
-    parts.push("")
-  }
   if (sources.length === 0) {
     parts.push("Sources: (none — answer that you don't know)", "")
   } else {
@@ -235,9 +214,6 @@ export const buildPromptWithGraphContext = (
   parts.push(`Question: ${question}`, "", "Answer:")
   return parts.join("\n")
 }
-
-export const buildPrompt = (question: string, sources: Source[]): string =>
-  buildPromptWithGraphContext(question, sources, [])
 
 const CITATION_RE = /\[(\d+)\]/g
 

@@ -51,7 +51,7 @@ enforce their own scope inside the tool. Mint a token with only the scopes an ag
 
 | Tool | Scope required | Risk class |
 | --- | --- | --- |
-| `kl_search`, `kl_ask_global`, `kl_get_material`, `kl_graph_neighbors` | `knowledge:read` | read |
+| `kl_search`, `kl_ask_global`, `kl_get_material` | `knowledge:read` | read |
 | `mem_recall` | `memory:read` | read |
 | `kl_ingest` | `knowledge:write` | write |
 | `mem_write` | `memory:write` | write |

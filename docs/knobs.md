@@ -50,7 +50,6 @@ sources is flagged (`staleSourcesOnly`, status → `needs_review`).
 | `KNOWLEDGE_EVAL_HARVEST` | off | **Privacy-affecting.** When on, the raw question is persisted on the telemetry row (default: only a hash) so signalled real queries can be replayed by the tuner. Leave off unless you want the closed read-path loop. |
 | `KNOWLEDGE_CARDS_ENABLED` | off | Distil ingested text into reusable fact cards. |
 | `KNOWLEDGE_CACHE_ENABLED` | off | Answer cache for repeated questions. |
-| `KNOWLEDGE_GRAPHRAG_ENABLED` | off | Knowledge-graph context + `kl_graph_neighbors`. |
 
 ## Compounding loop (worker)
 

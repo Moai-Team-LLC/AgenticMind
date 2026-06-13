@@ -20,7 +20,6 @@ const CONTRACT: Record<string, { fields: string[]; required: string[] }> = {
   kl_ask_global: { fields: ["facts", "intent", "question"], required: ["question"] },
   kl_forget: { fields: ["id"], required: ["id"] },
   kl_get_material: { fields: ["id"], required: ["id"] },
-  kl_graph_neighbors: { fields: ["limit", "materialId"], required: ["materialId"] },
   kl_ingest: {
     fields: ["language", "lifecycle", "text", "title", "trustTier"],
     required: ["text", "title"],

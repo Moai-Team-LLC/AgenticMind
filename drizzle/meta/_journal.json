@@ -64,6 +64,13 @@
       "when": 1781006770899,
       "tag": "0008_card_provenance",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781100000000,
+      "tag": "0009_drop_graphrag",
+      "breakpoints": true
     }
   ]
 }
