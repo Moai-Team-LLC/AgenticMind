@@ -10,7 +10,6 @@
 import { createClient } from "@agenticmind/shared/database/client"
 import { blobStoreForBucket } from "@agenticmind/shared/lib/knowledge/blobstore"
 import { extract } from "@agenticmind/shared/lib/knowledge/extract"
-import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
 import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 import { storageSettings } from "@agenticmind/shared/settings/storage-settings"
@@ -46,8 +45,6 @@ const blobStore = blobStoreForBucket({
   forcePathStyle: storageSettings.S3_FORCE_PATH_STYLE === "true",
 })
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
-const graphragEnabled = process.env.KNOWLEDGE_GRAPHRAG_ENABLED === "true"
-const graph = graphragEnabled ? createPostgresGraphStore(db) : undefined
 
 const file = arg("file")
 const text = arg("text")
@@ -79,11 +76,9 @@ if (title === undefined || title === "") {
 const res = await ingestText({
   tx: db,
   blobStore,
-  graph,
   title,
   text: body,
   cardsEnabled,
-  graphragEnabled,
 })
 if (res.isErr()) {
   console.error("ingest failed:", res.error.message)
@@ -91,6 +86,6 @@ if (res.isErr()) {
 }
 const r = res.value
 console.log(
-  `Ingested "${r.title}" -> material ${r.materialId}: ${r.chunkCount} chunks, ${r.entities} entities, ${r.relations} relations`,
+  `Ingested "${r.title}" -> material ${r.materialId}: ${r.chunkCount} chunks`,
 )
 process.exit(0)
