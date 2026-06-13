@@ -110,6 +110,9 @@ export type Answer = {
   /** True when every cited source is non-active (deprecated/superseded/archived) —
    * the answer rests only on stale knowledge (also escalates `status` to needs_review). */
   staleSourcesOnly?: boolean
+  /** Substantial numeric figures asserted but absent from every cited snippet
+   * (deterministic Tier-A numeric check — fabricated figures; escalates status). */
+  ungroundedFigures?: string[]
   /** Answer-policy decision (allow | review | block) + reasons, when a policy is
    * configured (KNOWLEDGE_ANSWER_POLICY). A blocked answer is replaced by a refusal. */
   policy?: PolicyDecision

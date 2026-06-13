@@ -6,6 +6,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Numeric verbatim check (anti-hallucination defense B).** A deterministic,
+  no-LLM Tier-A check (`ungroundedFigures`): every *substantial* numeric figure the
+  answer asserts must appear in a cited snippet, else the answer escalates to
+  `status = needs_review` and the figures are surfaced on the answer. Tier-A only
+  checked citation *presence*, never the number itself, so a fabricated figure in a
+  cited sentence slipped through — the highest-impact hallucination class. Catches
+  it without relying on another (fallible) LLM judge. Conservative (commas
+  normalised; lone single digits ignored) to avoid false flags. Wired into the
+  diagnose classifier too.
+
 ### Changed
 
 - **Cache only stores `supported` answers (anti-hallucination defense A).** The

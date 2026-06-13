@@ -49,6 +49,7 @@ const signals: AnswerSignals = {
   contestedCount: a.contested?.length ?? 0,
   contradictedClaims: a.contradictedClaims?.length ?? 0,
   unsupportedClaims: a.unsupportedClaims?.length ?? 0,
+  ungroundedFigures: a.ungroundedFigures?.length ?? 0,
   staleSourcesOnly: a.staleSourcesOnly,
   rerankUsed: a.rerankUsed,
   phases: a.phases,

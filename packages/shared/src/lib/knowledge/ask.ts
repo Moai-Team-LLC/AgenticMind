@@ -56,7 +56,11 @@ import {
   contestedResponseSchema,
   toContestedFacts,
 } from "@agenticmind/shared/lib/knowledge/contested-sources"
-import { scoreFaithfulness, supportedClaims } from "@agenticmind/shared/lib/knowledge/faithfulness"
+import {
+  scoreFaithfulness,
+  supportedClaims,
+  ungroundedFigures,
+} from "@agenticmind/shared/lib/knowledge/faithfulness"
 import {
   aggregateEntailment,
   buildEntailmentUser,
@@ -314,6 +318,10 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
         cached.value.citations.length,
       )
       const cachedStaleOnly = restsOnlyOnStaleSources(cached.value.citations)
+      const cachedUngroundedFigs = ungroundedFigures(
+        cached.value.answerText,
+        cached.value.citations.map((c) => c.snippet ?? ""),
+      )
       const cachedAnswer: Answer = {
         answer: cached.value.answerText,
         citations: cached.value.citations,
@@ -329,8 +337,10 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
           groundedness: faith.groundedness,
           abstained: faith.abstained,
           staleSourcesOnly: cachedStaleOnly,
+          ungroundedFigures: cachedUngroundedFigs,
         }),
         staleSourcesOnly: cachedStaleOnly,
+        ungroundedFigures: cachedUngroundedFigs,
       }
       return applyAnswerPolicy(cachedAnswer, props.answerPolicy)
     }
@@ -456,6 +466,12 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // sources disagree on instead of silently trusting the recency-preferred one.
   const contestedFields = await contestedSourcesCheck(props, sources, model)
   const staleSourcesOnly = restsOnlyOnStaleSources(citations)
+  // Deterministic numeric verbatim check (Tier-A): figures asserted but absent
+  // from every cited snippet — a fabricated number escalates to needs_review.
+  const ungroundedFigs = ungroundedFigures(
+    answerText,
+    citations.map((c) => c.snippet ?? ""),
+  )
   const status = deriveAnswerStatus({
     groundedness: faith.groundedness,
     semanticGroundedness: tierBFields.semanticGroundedness,
@@ -463,6 +479,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     contested: contestedFields.contested,
     abstained: faith.abstained,
     staleSourcesOnly,
+    ungroundedFigures: ungroundedFigs,
   })
 
   // Tier-1 cache store — gated on quality. Done AFTER faithfulness/status so a
@@ -515,6 +532,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     ...contestedFields,
     status,
     staleSourcesOnly,
+    ungroundedFigures: ungroundedFigs,
   }
   return applyAnswerPolicy(answer, props.answerPolicy)
 }

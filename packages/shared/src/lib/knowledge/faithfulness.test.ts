@@ -1,6 +1,38 @@
 import { describe, expect, it } from "vitest"
 
-import { scoreFaithfulness, supportedClaims } from "./faithfulness"
+import { scoreFaithfulness, supportedClaims, ungroundedFigures } from "./faithfulness"
+
+describe("ungroundedFigures (numeric verbatim, Tier-A, no LLM)", () => {
+  it("flags a figure absent from every cited snippet", () => {
+    expect(
+      ungroundedFigures("The reactor is rated at 47 MW.", ["The reactor runs continuously."]),
+    ).toContain("47")
+  })
+
+  it("passes a figure present in a snippet", () => {
+    expect(
+      ungroundedFigures("The reactor is rated at 47 MW.", ["Spec sheet: 47 MW continuous."]),
+    ).toEqual([])
+  })
+
+  it("normalises thousands separators (1,280 ≡ 1280)", () => {
+    expect(ungroundedFigures("It is 1,280 m long.", ["length 1280 metres"])).toEqual([])
+    expect(ungroundedFigures("It is 1280 m long.", ["length 1,280 metres"])).toEqual([])
+  })
+
+  it("ignores lone single digits (no false flag on '2 reviewers')", () => {
+    expect(ungroundedFigures("Needs 2 reviewers.", ["the review process"])).toEqual([])
+  })
+
+  it("handles percentages and decimals", () => {
+    expect(ungroundedFigures("Coverage is 80%.", ["coverage reached 80% last year"])).toEqual([])
+    expect(ungroundedFigures("Coverage is 91%.", ["coverage reached 80%"])).toContain("91%")
+  })
+
+  it("returns nothing when the answer has no substantial figures", () => {
+    expect(ungroundedFigures("It works well.", ["anything"])).toEqual([])
+  })
+})
 
 const cite = (...nums: number[]): { number: number }[] =>
   nums.map((number) => {

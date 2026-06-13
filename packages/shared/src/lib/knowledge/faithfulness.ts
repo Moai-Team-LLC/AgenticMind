@@ -124,6 +124,47 @@ export const supportedClaims = (
   return out
 }
 
+/** Maximal numeric figures: digits with optional thousands-commas, decimal, percent. */
+const FIGURE_RE = /\d[\d,]*(?:\.\d+)?%?/g
+
+/**
+ * Deterministic anti-hallucination check (Tier-A, no LLM): every *substantial*
+ * numeric figure asserted in the answer must appear in at least one cited snippet.
+ * Tier-A's citation-presence check passes a sentence that merely carries a citation
+ * marker — it never verifies the NUMBER itself, so a fabricated figure in a cited
+ * sentence slips through. This catches that, the highest-impact hallucination class.
+ *
+ * Conservative by design (favour under-flagging): a figure is "grounded" if its
+ * digit core appears anywhere in the snippets (commas normalised away); lone single
+ * digits and word-numbers are ignored so "2 reviewers" never false-flags. Returns
+ * the unsupported figures, as written.
+ */
+export const ungroundedFigures = (
+  answerText: string,
+  citedSnippets: readonly string[],
+): string[] => {
+  const haystack = citedSnippets.join("  ").replaceAll(",", "")
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const match of answerText.matchAll(FIGURE_RE)) {
+    const raw = match[0]
+    const core = raw.replaceAll(",", "").replace(/%$/u, "")
+    const digits = core.replaceAll(".", "")
+    // Skip insignificant figures (a lone 0–9 with no comma/decimal/percent).
+    if (digits.length < 2 && !raw.includes(".") && !raw.endsWith("%")) {
+      continue
+    }
+    if (seen.has(core)) {
+      continue
+    }
+    seen.add(core)
+    if (!haystack.includes(core)) {
+      out.push(raw)
+    }
+  }
+  return out
+}
+
 /**
  * Scores an answer against its resolved citations. `sourceCount` is the number
  * of retrieved sources the synthesiser saw (0 ⇒ the engine was forced to decline).
