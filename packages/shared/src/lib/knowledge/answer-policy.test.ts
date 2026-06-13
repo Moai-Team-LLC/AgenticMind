@@ -49,6 +49,21 @@ describe("evaluatePolicy", () => {
     expect(d.action).toBe("block")
   })
 
+  it("blockOnNeedsReview hard-refuses any deterministic flag (figure/quote/attribution/stale)", () => {
+    const d = evaluatePolicy(
+      { blockOnNeedsReview: true },
+      { status: "needs_review", groundedness: 1 },
+    )
+    expect(d.action).toBe("block")
+    expect(d.reasons[0]).toContain("blockOnNeedsReview")
+  })
+
+  it("blockOnNeedsReview leaves a clean answer untouched", () => {
+    expect(
+      evaluatePolicy({ blockOnNeedsReview: true }, { status: "supported", groundedness: 1 }).action,
+    ).toBe("allow")
+  })
+
   it("review on conflict / needs_review when not blocked", () => {
     expect(
       evaluatePolicy({ reviewOnConflict: true }, { status: "conflicted", groundedness: 1 }).action,
