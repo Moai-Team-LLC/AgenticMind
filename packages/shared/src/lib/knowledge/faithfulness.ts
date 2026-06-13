@@ -165,6 +165,95 @@ export const ungroundedFigures = (
   return out
 }
 
+/** Common words excluded when checking claim↔citation content overlap. */
+const ATTRIB_STOPWORDS = new Set<string>([
+  "this",
+  "that",
+  "these",
+  "those",
+  "there",
+  "their",
+  "which",
+  "where",
+  "when",
+  "what",
+  "with",
+  "from",
+  "into",
+  "over",
+  "under",
+  "about",
+  "after",
+  "before",
+  "between",
+  "have",
+  "has",
+  "had",
+  "been",
+  "being",
+  "will",
+  "would",
+  "should",
+  "could",
+  "must",
+  "they",
+  "them",
+  "then",
+  "than",
+  "also",
+  "such",
+  "each",
+  "some",
+  "more",
+  "most",
+  "only",
+  "other",
+  "because",
+])
+/** A cited claim sharing fewer salient content words than this with its snippet... */
+const MIN_ATTRIB_TOKENS = 5
+const contentTokens = (text: string): string[] =>
+  (text.toLowerCase().match(/[a-z0-9]{4,}/gu) ?? []).filter((t) => !ATTRIB_STOPWORDS.has(t))
+
+/**
+ * Deterministic citation-attribution check (Tier-A, no LLM): a substantial cited
+ * claim whose own snippet shares ZERO salient content words is almost certainly
+ * mis-attributed — the citation marker points at an unrelated passage. Tier-A
+ * checks the marker resolves; B checks numbers; this catches a fabricated
+ * *non-numeric* claim wearing a decorative/wrong citation.
+ *
+ * Conservative (favour under-flagging): only claims with ≥5 salient content words
+ * are judged, and only a TOTAL miss (no shared salient word, even accounting for
+ * paraphrase, where a real claim keeps at least one noun/entity) is flagged.
+ * Returns the weakly-attributed claims.
+ */
+export const weaklyAttributedClaims = (
+  answerText: string,
+  citations: readonly { number: number; snippet?: string }[],
+): string[] => {
+  const snippetByNum = new Map(citations.map((c) => [c.number, c.snippet ?? ""]))
+  const out: string[] = []
+  for (const sentence of splitSentences(answerText)) {
+    if (wordCount(sentence) < MIN_CLAIM_WORDS || hasRefusalMarker(sentence)) {
+      continue
+    }
+    const resolving = [...new Set(citationNumbersIn(sentence))].filter((n) => snippetByNum.has(n))
+    if (resolving.length === 0) {
+      continue // Tier-A already counts an unresolved/uncited claim as unsupported.
+    }
+    const claimToks = new Set(contentTokens(stripLeadingMarker(sentence)))
+    if (claimToks.size < MIN_ATTRIB_TOKENS) {
+      continue // too short to judge attribution reliably
+    }
+    const snipToks = new Set(resolving.flatMap((n) => contentTokens(snippetByNum.get(n) ?? "")))
+    const shared = [...claimToks].some((t) => snipToks.has(t))
+    if (!shared) {
+      out.push(normWs(stripLeadingMarker(sentence)))
+    }
+  }
+  return out
+}
+
 /**
  * Scores an answer against its resolved citations. `sourceCount` is the number
  * of retrieved sources the synthesiser saw (0 ⇒ the engine was forced to decline).

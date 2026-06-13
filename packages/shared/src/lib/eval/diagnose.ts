@@ -25,6 +25,8 @@ export type AnswerSignals = {
   unsupportedClaims?: number
   /** Count of substantial figures asserted but absent from every cited snippet. */
   ungroundedFigures?: number
+  /** Count of cited claims whose snippet shares no salient word (mis-attribution). */
+  weaklyAttributedClaims?: number
   staleSourcesOnly?: boolean
   rerankUsed?: boolean
   /** per-stage timings (ms) from the trace */
@@ -86,6 +88,17 @@ export const classifyAnswer = (signals: AnswerSignals): Diagnosis[] => {
       cause:
         "the answer states a figure that appears in no cited snippet — a fabricated/garbled number",
       knob: "gate on status=needs_review; the deterministic numeric check already flagged it",
+      severity: "high",
+    })
+  }
+
+  // Mis-attributed citation: a cited claim sharing no salient word with its snippet.
+  if ((signals.weaklyAttributedClaims ?? 0) > 0) {
+    out.push({
+      stage: "synthesis (attribution)",
+      cause:
+        "a cited claim shares no salient content word with its cited snippet — the citation likely points at an unrelated passage",
+      knob: "gate on status=needs_review; verify the cited source actually supports the claim",
       severity: "high",
     })
   }
