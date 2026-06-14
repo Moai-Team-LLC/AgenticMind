@@ -20,6 +20,12 @@ export const knowledgeFeatureSettings = createEnv({
     KNOWLEDGE_CARDS_ENABLED: z.string().optional(),
     KNOWLEDGE_CACHE_ENABLED: z.string().optional(),
     KNOWLEDGE_GRAPHRAG_ENABLED: z.string().optional(),
+    // GraphRAG entity/relation extractor model. The extraction schema uses
+    // nullish fields, which OpenAI strict structured-output rejects — the default
+    // chat model (an OpenAI strict model) then yields an EMPTY graph. Point this
+    // at a nullish-tolerant model (e.g. a Gemini id) to populate the graph.
+    // Unset = the default chat model (only safe if it is not OpenAI-strict).
+    KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL: z.string().optional(),
     // Tier-B answer faithfulness: semantic entailment of each cited claim against
     // its snippet (one extra LLM call per kl_ask_global). Off by default — Tier-A
     // structural groundedness is always computed for free.
@@ -58,6 +64,7 @@ export const knowledgeFeatureSettings = createEnv({
     KNOWLEDGE_CARDS_ENABLED: process.env.KNOWLEDGE_CARDS_ENABLED,
     KNOWLEDGE_CACHE_ENABLED: process.env.KNOWLEDGE_CACHE_ENABLED,
     KNOWLEDGE_GRAPHRAG_ENABLED: process.env.KNOWLEDGE_GRAPHRAG_ENABLED,
+    KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL: process.env.KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL,
     KNOWLEDGE_FAITHFULNESS_TIER_B: process.env.KNOWLEDGE_FAITHFULNESS_TIER_B,
     KNOWLEDGE_CONTESTED_SOURCES: process.env.KNOWLEDGE_CONTESTED_SOURCES,
     KNOWLEDGE_EVAL_HARVEST: process.env.KNOWLEDGE_EVAL_HARVEST,

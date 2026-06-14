@@ -124,8 +124,16 @@ small fixture can't exercise:
 - **reranker** — re-orders the retrieval pool; it only matters when the right chunk
   is buried below `topK` in the fused order, i.e. on a **large, noisy** corpus. On 48
   chunks the fused vector+BM25 order already surfaces the right chunk in the top 8.
-- **GraphRAG** — adds cross-document/multi-hop context; this fixture's questions are
-  answerable from a single chunk, so there is nothing for the graph to add.
+- **GraphRAG (experimental)** — adds cross-document/multi-hop context; this fixture's
+  questions are answerable from a single chunk, so there is nothing for the graph to
+  add. **Caveat on this +0.0:** the extraction schema uses nullish fields, which
+  OpenAI strict structured-output rejects — so on the default (OpenAI-strict) chat
+  model the graph extracts **zero entities** and the +0.0 partly reflects an *empty
+  graph*, not just an unexercising corpus. Point `KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL`
+  at a nullish-tolerant model (e.g. a Gemini id) to populate it; verified live on an
+  imported corpus (12/12 materials → 82 entities / 121 mentions / 74 relations,
+  `neighbors()` + multi-hop resolve). The `graphrag` layer's smoke predicate now
+  fails on an empty graph so this can't masquerade as "dead" again.
 - **acceptance evaluator** — a **governance/provenance** control, not a retrieval
   lever: it held 29% of extracted cards as `candidate` (flagged for review) instead
   of auto-approving everything. `candidate` cards are still retrievable, so the

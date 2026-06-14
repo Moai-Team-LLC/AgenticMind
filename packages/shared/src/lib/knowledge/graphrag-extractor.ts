@@ -14,8 +14,16 @@ import {
   normalizeEntity,
 } from "@agenticmind/shared/lib/knowledge/graphrag"
 import { mapFreeFormPredicate, mapFreeFormType } from "@agenticmind/shared/lib/knowledge/ontology"
+import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 import { okAsync, ResultAsync } from "neverthrow"
 import * as z from "zod"
+
+/** The configured extraction model, or undefined to fall back to the default
+ * chat model. See KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL: the extraction schema is
+ * nullish, which OpenAI strict structured-output rejects (→ empty graph), so a
+ * nullish-tolerant model must be configured for the graph to populate. */
+const configuredExtractorModel = (): string | undefined =>
+  knowledgeFeatureSettings.KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL ?? undefined
 
 export const EXTRACTION_SYSTEM_PROMPT = `You extract a knowledge graph from one document for a knowledge
 base. Identify the salient entities (concepts, frameworks,
@@ -156,6 +164,9 @@ export const extractGraph = (props: {
   materialId: string
   materialTitle: string
   body: string
+  /** Override the extraction model (else KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL, else
+   * the default chat model). Must be a nullish-schema-tolerant model. */
+  model?: string
 }): ResultAsync<ExtractedGraph, GraphExtractError> => {
   const body = props.body.trim()
   const empty: ExtractedGraph = {
@@ -167,6 +178,7 @@ export const extractGraph = (props: {
   if (body === "") {
     return okAsync<ExtractedGraph, GraphExtractError>(empty)
   }
+  const model = props.model ?? configuredExtractorModel()
   return ResultAsync.fromPromise(
     import("@agenticmind/shared/lib/knowledge/llm"),
     (e): GraphExtractError => {
@@ -178,10 +190,23 @@ export const extractGraph = (props: {
         system: EXTRACTION_SYSTEM_PROMPT,
         user: buildUserPrompt(props.materialTitle, body),
         schema: rawGraphSchema,
+        model,
         purpose: "knowledge graphrag extraction",
       })
       .map((raw) => {
-        return { ...parseExtraction(raw), materialId: props.materialId }
+        const graph = { ...parseExtraction(raw), materialId: props.materialId }
+        // Loud signal for the extractor-model footgun: a non-empty document that
+        // yields zero entities almost always means the extractor ran on an
+        // OpenAI-strict model that rejected the nullish schema. Silent here is
+        // exactly what made the graph look "dead" and get removed in v0.12.0.
+        if (graph.entities.length === 0) {
+          console.warn(
+            `graphrag: extracted 0 entities from a ${body.length}-char document ` +
+              `(model: ${model ?? "default"}). If persistent, set ` +
+              `KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL to a nullish-schema-tolerant model.`,
+          )
+        }
+        return graph
       })
       .mapErr((e): GraphExtractError => {
         return { type: e.type, message: e.message }
