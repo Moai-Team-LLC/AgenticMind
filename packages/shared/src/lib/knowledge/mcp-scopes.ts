@@ -36,6 +36,7 @@ export const TOOL_SCOPE: Record<string, KnowledgeScope> = {
   kl_search: "knowledge:read",
   kl_ask_global: "knowledge:read",
   kl_get_material: "knowledge:read",
+  kl_graph_neighbors: "knowledge:read",
   kl_signal: "knowledge:signal",
   kl_ingest: "knowledge:write",
   kl_forget: "knowledge:admin",

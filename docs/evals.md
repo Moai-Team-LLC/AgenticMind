@@ -111,6 +111,7 @@ the difference), plus the ingest-time acceptance evaluator by re-seeding:
 | Component | On | Off | Contribution |
 | --- | --- | --- | --- |
 | reranker (`RERANK_ENABLED`, Cohere) | 88.9% | 88.9% | +0.0 pts |
+| GraphRAG (`KNOWLEDGE_GRAPHRAG_ENABLED`) | 92.6% | 92.6% | +0.0 pts |
 | acceptance evaluator (`KNOWLEDGE_ACCEPTANCE_EVALUATOR`) | — | — | held **29%** of cards as `candidate` |
 
 Read it honestly: only the two LLM-judge **correctness** features (contested-sources,
@@ -123,6 +124,8 @@ small fixture can't exercise:
 - **reranker** — re-orders the retrieval pool; it only matters when the right chunk
   is buried below `topK` in the fused order, i.e. on a **large, noisy** corpus. On 48
   chunks the fused vector+BM25 order already surfaces the right chunk in the top 8.
+- **GraphRAG** — adds cross-document/multi-hop context; this fixture's questions are
+  answerable from a single chunk, so there is nothing for the graph to add.
 - **acceptance evaluator** — a **governance/provenance** control, not a retrieval
   lever: it held 29% of extracted cards as `candidate` (flagged for review) instead
   of auto-approving everything. `candidate` cards are still retrievable, so the
@@ -161,6 +164,8 @@ dotenvx run -f .env.local -- bun scripts/ablate.ts   # AskProps component contri
 # (disable the cache so a warm cache can't mask the difference):
 RERANK_ENABLED=true  KNOWLEDGE_CACHE_ENABLED=false bun run eval   # reranker (needs RERANK_API_KEY)
 RERANK_ENABLED=false KNOWLEDGE_CACHE_ENABLED=false bun run eval
+KNOWLEDGE_GRAPHRAG_ENABLED=true  bun run eval   # GraphRAG (eval wires graphContext when set)
+KNOWLEDGE_GRAPHRAG_ENABLED=false bun run eval
 # acceptance evaluator: re-seed with the flag on/off and compare card admission
 KNOWLEDGE_ACCEPTANCE_EVALUATOR=true bun scripts/seed-eval-corpus.ts
 

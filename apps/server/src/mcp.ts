@@ -24,6 +24,8 @@ import {
   klAskGlobalInput,
   klGetMaterial,
   klGetMaterialInput,
+  klGraphNeighbors,
+  klGraphNeighborsInput,
   klSearch,
   klSearchInput,
   klSignal,
@@ -47,7 +49,11 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler"
 import { timingSafeEqual } from "node:crypto"
 
 import { getDb } from "@/server/lib/database"
-import { getKnowledgeBlobStore, knowledgeFeatureFlags } from "@/server/lib/knowledge-deps"
+import {
+  getKnowledgeBlobStore,
+  getKnowledgeGraphRepo,
+  knowledgeFeatureFlags,
+} from "@/server/lib/knowledge-deps"
 import { verifyMcpToken } from "@/server/lib/mcp-jwt"
 
 type ToolResult = {
@@ -85,6 +91,7 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     tx: getDb(),
     cardsEnabled: flags.cardsEnabled,
     cacheEnabled: flags.cacheEnabled,
+    graph: flags.graphragEnabled ? getKnowledgeGraphRepo() : undefined,
     scopes: extra?.authInfo?.scopes,
     actorUuid: extra?.authInfo?.clientId ?? null,
     blobStore: getKnowledgeBlobStore(),
@@ -273,6 +280,26 @@ const handler = createMcpHandler(
         }
       },
     )
+
+    // Layer-2 tool only when GraphRAG is enabled.
+    if (knowledgeFeatureFlags().graphragEnabled && getKnowledgeGraphRepo() !== undefined) {
+      registerKlTool(
+        server,
+        "kl_graph_neighbors",
+        "Graph neighbors",
+        "Find materials related to a given material via the knowledge graph (sharing an extracted entity).",
+        klGraphNeighborsInput,
+        async (args, extra) => {
+          try {
+            return jsonContent(await runTenantScoped(extra, async (d) => klGraphNeighbors(d, args)))
+          } catch (error) {
+            return errorContent(
+              error instanceof Error ? error.message : "kl_graph_neighbors failed",
+            )
+          }
+        },
+      )
+    }
   },
   {
     serverInfo: { name: "agenticmind-knowledge", version: MCP_CONTRACT_VERSION },

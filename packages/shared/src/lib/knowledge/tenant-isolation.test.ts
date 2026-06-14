@@ -106,16 +106,30 @@ describe.skipIf(DB_URL === "")("tenant isolation (RLS policy)", () => {
     })
 
     // Positive control: tenant A sees its own row.
-    const seenByA = await inTenant(app, TENANT_A, async (c) =>
-      (await c.query<{ n: number }>("select count(*)::int as n from beliefs where subject = $1", [MARKER]))
-        .rows[0]?.n ?? 0,
+    const seenByA = await inTenant(
+      app,
+      TENANT_A,
+      async (c) =>
+        (
+          await c.query<{ n: number }>(
+            "select count(*)::int as n from beliefs where subject = $1",
+            [MARKER],
+          )
+        ).rows[0]?.n ?? 0,
     )
     expect(seenByA).toBe(1)
 
     // Isolation (USING): tenant B cannot see tenant A's row.
-    const seenByB = await inTenant(app, TENANT_B, async (c) =>
-      (await c.query<{ n: number }>("select count(*)::int as n from beliefs where subject = $1", [MARKER]))
-        .rows[0]?.n ?? 0,
+    const seenByB = await inTenant(
+      app,
+      TENANT_B,
+      async (c) =>
+        (
+          await c.query<{ n: number }>(
+            "select count(*)::int as n from beliefs where subject = $1",
+            [MARKER],
+          )
+        ).rows[0]?.n ?? 0,
     )
     expect(seenByB).toBe(0)
 

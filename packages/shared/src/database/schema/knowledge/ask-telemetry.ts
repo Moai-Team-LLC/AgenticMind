@@ -42,6 +42,7 @@ const askTelemetry = pgTable(
     answerChars: integer("answer_chars").notNull(),
     rerankUsed: boolean("rerank_used").notNull().default(false),
     rerankLatencyMs: integer("rerank_latency_ms"),
+    graphContextRows: integer("graph_context_rows").notNull().default(0),
     phases: jsonb("phases")
       .notNull()
       .default(sql`'[]'::jsonb`),

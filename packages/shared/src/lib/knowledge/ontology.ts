@@ -1,14 +1,17 @@
 /**
- * Ontology V0 — typed-card schema with validation.
+ * Ontology V0 — typed-card schema with validation and free-form mapping.
  *
  * The cards extractor uses validateTriple to drop unknown
- * subject_types / predicates before write.
+ * subject_types / predicates before write; graphrag/qaplan use the free-form
+ * mappers to canonicalise LLM drift onto the frozen V0 vocabulary.
  */
 
 import type { EntityType, Predicate } from "@agenticmind/shared/lib/knowledge/ontology-data"
 
 import {
   ENTITY_TYPES,
+  FREE_FORM_PREDICATE_MAP,
+  FREE_FORM_TYPE_MAP,
   ONTOLOGY_FROZEN_AT,
   ONTOLOGY_VERSION,
   PREDICATES,
@@ -137,4 +140,76 @@ export const validateTriple = (
     }
   }
   return null
+}
+
+/**
+ * Canonicalises a raw predicate string for lookup: lowercased, surrounding
+ * punctuation trimmed, whitespace/dash runs collapsed to a single "_".
+ * "works for", "works-for", "WORKS FOR" all collapse to "works_for".
+ */
+export const normalisePredicate = (raw: string): string => {
+  let clean = raw.trim().toLowerCase()
+  clean = clean.replaceAll(/^[[\](),.;:!?]+|[[\](),.;:!?]+$/g, "")
+  if (clean === "") {
+    return ""
+  }
+  let out = ""
+  let prevWasSep = false
+  for (const r of clean) {
+    if (r === " " || r === "\t" || r === "-" || r === "_") {
+      if (!prevWasSep) {
+        out += "_"
+        prevWasSep = true
+      }
+      continue
+    }
+    out += r
+    prevWasSep = false
+  }
+  return out.replaceAll(/^_+|_+$/g, "")
+}
+
+/**
+ * Canonicalises a free-form entity-type string to a V0 type. Tries the exact
+ * ontology type (case-insensitive) first, then the legacy alias map. Returns
+ * undefined on any miss so callers don't assign a default that hides bad data.
+ */
+export const mapFreeFormType = (raw: string): string | undefined => {
+  const clean = raw.trim()
+  if (clean === "") {
+    return undefined
+  }
+  for (const name of ontologyV0.types.keys()) {
+    if (name.toLowerCase() === clean.toLowerCase()) {
+      return name
+    }
+  }
+  const mapped = FREE_FORM_TYPE_MAP[clean.toLowerCase()]
+  if (mapped !== undefined && ontologyV0.types.has(mapped)) {
+    return mapped
+  }
+  return undefined
+}
+
+/**
+ * Canonicalises a free-form predicate string to a V0 predicate. Direct match
+ * (case-insensitive) first so re-running on typed extractions is idempotent,
+ * then the alias map. Returns undefined on any miss — callers keep the raw
+ * predicate so multi-hop queries still work during rollout.
+ */
+export const mapFreeFormPredicate = (raw: string): string | undefined => {
+  const clean = normalisePredicate(raw)
+  if (clean === "") {
+    return undefined
+  }
+  for (const name of ontologyV0.predicates.keys()) {
+    if (name.toLowerCase() === clean.toLowerCase()) {
+      return name
+    }
+  }
+  const mapped = FREE_FORM_PREDICATE_MAP[clean]
+  if (mapped !== undefined && ontologyV0.predicates.has(mapped)) {
+    return mapped
+  }
+  return undefined
 }

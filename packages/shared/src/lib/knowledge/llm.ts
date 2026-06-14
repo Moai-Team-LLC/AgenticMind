@@ -1,6 +1,6 @@
 /**
  * Knowledge LLM adapter — a thin wrapper over the shared AI layer (`lib/ai`)
- * for the RAG / cards pipeline. It exposes:
+ * for the RAG / cards / graphrag pipeline. It exposes:
  *   - Embedder.Embed      → embedKnowledgeText / embedKnowledgeBatch
  *   - ChatCompleter.Complete → completeKnowledge (system + user)
  *   - CompleteJSON        → completeKnowledgeJson (zod-validated)
@@ -127,7 +127,7 @@ export const completeKnowledge = (props: {
 
 /**
  * Completes a chat turn constrained to a zod schema (JSON mode). The
- * `CompleteJSON` capability used by cards extraction.
+ * `CompleteJSON` capability used by graphrag / cards / qaplan extraction.
  */
 export const completeKnowledgeJson = <T>(props: {
   system: string

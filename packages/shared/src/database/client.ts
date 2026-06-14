@@ -57,7 +57,9 @@ const withTenant = async <T>(
     const appRole = databaseSettings.DATABASE_APP_ROLE
     if (appRole !== undefined && appRole !== "") {
       if (!APP_ROLE_PATTERN.test(appRole)) {
-        throw new Error(`withTenant: DATABASE_APP_ROLE ${JSON.stringify(appRole)} is not a valid role name`)
+        throw new Error(
+          `withTenant: DATABASE_APP_ROLE ${JSON.stringify(appRole)} is not a valid role name`,
+        )
       }
       // sql.identifier quotes the role; SET LOCAL resets it at end of transaction.
       await tx.execute(sql`set local role ${sql.identifier(appRole)}`)

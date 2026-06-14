@@ -11,6 +11,7 @@ import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type { AnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
+import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 import type { RetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
 import type { CallerContext } from "@agenticmind/shared/lib/knowledge/synth"
 
@@ -39,6 +40,7 @@ import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
 import { removeMaterial } from "@agenticmind/shared/lib/knowledge/ingestion"
 import { embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
 import { hasScope } from "@agenticmind/shared/lib/knowledge/mcp-scopes"
+import { createGraphContextProvider } from "@agenticmind/shared/lib/knowledge/qaplan"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { createHash } from "node:crypto"
 import * as z from "zod"
@@ -50,6 +52,9 @@ export type McpToolDeps = {
   cacheEnabled?: boolean
   chatModel?: LlmModel
   memberContext?: CallerContext | null
+  /** Optional GraphRAG store (Postgres flagship / Neo4j swap-in);
+   * kl_graph_neighbors is omitted when absent. */
+  graph?: GraphStore
   /** Capability scopes granted to the calling token (least-privilege).
    * Write tools (kl_signal, mem_write) assert their required scope against this. */
   scopes?: string[]
@@ -248,6 +253,12 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     evalHarvest: deps.evalHarvest,
     answerPolicy: deps.answerPolicy,
     piiRedaction: deps.piiRedaction,
+    // Tier-2: wire qaplan's multi-hop graph traversal as the graph-context
+    // Provider when a graph store is configured.
+    graphContext:
+      deps.graph !== undefined
+        ? createGraphContextProvider({ repo: deps.graph, chatModel: deps.chatModel })
+        : undefined,
   })
   if (answer.isErr()) {
     throw new Error(`kl_ask_global: ${answer.error.message}`)
@@ -270,6 +281,47 @@ export const klGetMaterial = async (
     throw new Error("kl_get_material: not found")
   }
   return res.value
+}
+
+export const klGraphNeighborsInput = z.object({
+  materialId: z.string().min(1),
+  limit: z.number().int().positive().max(50).optional(),
+})
+
+/** Kl_graph_neighbors — materials sharing a graph entity with the seed. */
+export const klGraphNeighbors = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klGraphNeighborsInput>,
+): Promise<{
+  seed: string
+  neighbors: {
+    materialId: string
+    title: string
+    entityName: string
+    entityType: string
+    distance: number
+  }[]
+}> => {
+  if (deps.graph === undefined) {
+    throw new Error("kl_graph_neighbors disabled: graphrag not configured")
+  }
+  const limit = args.limit !== undefined && args.limit > 0 && args.limit <= 50 ? args.limit : 10
+  const result = await deps.graph.neighbors(args.materialId, limit)
+  if (result.isErr()) {
+    throw new Error(`kl_graph_neighbors: ${result.error.message}`)
+  }
+  const titles = new Map<string, string>()
+  const neighbors = []
+  for (const n of result.value) {
+    neighbors.push({
+      materialId: n.materialId,
+      title: await resolveTitle(deps.tx, n.materialId, titles),
+      entityName: n.entity.canonicalName,
+      entityType: n.entity.type,
+      distance: n.distance,
+    })
+  }
+  return { seed: args.materialId, neighbors }
 }
 
 export const klSignalInput = z.object({
@@ -509,10 +561,12 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
   const res = await ingestText({
     tx: deps.tx,
     blobStore: deps.blobStore,
+    graph: deps.graph,
     title: args.title,
     text: args.text,
     cardsEnabled: deps.cardsEnabled,
     acceptanceEvaluator: deps.acceptanceEvaluator,
+    graphragEnabled: deps.graph !== undefined,
     language: args.language,
     lifecycle: args.lifecycle,
     trustTier: args.trustTier,
@@ -553,7 +607,7 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "2.0.0"
+export const MCP_CONTRACT_VERSION = "1.8.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
@@ -573,6 +627,12 @@ export const KNOWLEDGE_MCP_TOOLS = [
     name: "kl_get_material",
     description: "Fetch metadata for a single material by its UUID.",
     inputSchema: klGetMaterialInput,
+  },
+  {
+    name: "kl_graph_neighbors",
+    description:
+      "Find materials related to a given material via the knowledge graph (sharing an extracted entity). Use for 'show me related content' after kl_search/kl_ask_global.",
+    inputSchema: klGraphNeighborsInput,
   },
   {
     name: "kl_signal",

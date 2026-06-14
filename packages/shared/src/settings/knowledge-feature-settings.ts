@@ -6,7 +6,7 @@ import * as z from "zod"
 
 /**
  * Knowledge feature flags + blob bucket. Env-controlled
- * (KNOWLEDGE_CARDS_ENABLED, etc.); they gate the cards/cache tiers and
+ * (KNOWLEDGE_CARDS_ENABLED, etc.); they gate the cards/cache/graphrag tiers and
  * locate the ingestion blob bucket. All optional — absence = disabled / nop
  * blob store, so a minimal deployment (vector RAG only) still works.
  *
@@ -19,6 +19,7 @@ export const knowledgeFeatureSettings = createEnv({
   server: {
     KNOWLEDGE_CARDS_ENABLED: z.string().optional(),
     KNOWLEDGE_CACHE_ENABLED: z.string().optional(),
+    KNOWLEDGE_GRAPHRAG_ENABLED: z.string().optional(),
     // Tier-B answer faithfulness: semantic entailment of each cited claim against
     // its snippet (one extra LLM call per kl_ask_global). Off by default — Tier-A
     // structural groundedness is always computed for free.
@@ -56,6 +57,7 @@ export const knowledgeFeatureSettings = createEnv({
   runtimeEnv: {
     KNOWLEDGE_CARDS_ENABLED: process.env.KNOWLEDGE_CARDS_ENABLED,
     KNOWLEDGE_CACHE_ENABLED: process.env.KNOWLEDGE_CACHE_ENABLED,
+    KNOWLEDGE_GRAPHRAG_ENABLED: process.env.KNOWLEDGE_GRAPHRAG_ENABLED,
     KNOWLEDGE_FAITHFULNESS_TIER_B: process.env.KNOWLEDGE_FAITHFULNESS_TIER_B,
     KNOWLEDGE_CONTESTED_SOURCES: process.env.KNOWLEDGE_CONTESTED_SOURCES,
     KNOWLEDGE_EVAL_HARVEST: process.env.KNOWLEDGE_EVAL_HARVEST,

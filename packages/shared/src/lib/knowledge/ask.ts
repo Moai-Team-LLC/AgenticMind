@@ -21,6 +21,7 @@ import type { RecencyConfig } from "@agenticmind/shared/lib/knowledge/recency"
 import type {
   Answer,
   Citation,
+  GraphContextRow,
   CallerContext,
   Source,
 } from "@agenticmind/shared/lib/knowledge/synth"
@@ -84,11 +85,12 @@ import { rerankPairs } from "@agenticmind/shared/lib/knowledge/rerank"
 import { applyTrust } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { queryVariants } from "@agenticmind/shared/lib/knowledge/stopwords"
 import {
-  buildPrompt,
+  buildPromptWithGraphContext,
   buildSystemPromptWithContext,
   classifyServedBy,
   DEFAULT_TOP_K,
   MAX_CARD_SOURCES,
+  MAX_GRAPH_CONTEXT_ROWS,
   parseCitations,
   SERVED_BY_CACHE,
   SOURCE_ORIGIN_CARD,
@@ -125,6 +127,8 @@ export type AskProps = {
   recencyConfig?: RecencyConfig
   /** Rerank pool size (top-N kept by the cross-encoder); defaults to topK. */
   rerankTopN?: number
+  /** Optional Tier-2 graph-context provider (best-effort). */
+  graphContext?: (question: string, queryEmbedding: number[]) => Promise<GraphContextRow[]>
   /** Tier-B faithfulness: run the semantic-entailment judge (one extra LLM call).
    * Default off — the structural Tier-A signals are always computed for free. */
   faithfulnessTierB?: boolean
@@ -283,6 +287,27 @@ const maybeRedactAnswerPii = (
   }
 }
 
+/** Best-effort graph-context prelude: resolves the optional GraphRAG provider,
+ * capped and fail-soft (a graph failure never fails the answer). Returns [] when
+ * no provider is wired (the default). Extracted from runAsk to keep its branch
+ * count under the complexity ceiling. */
+const resolveGraphContext = async (
+  props: AskProps,
+  question: string,
+  queryVec: number[],
+): Promise<GraphContextRow[]> => {
+  if (props.graphContext === undefined) {
+    return []
+  }
+  try {
+    const rows = await props.graphContext(question, queryVec)
+    return rows.slice(0, MAX_GRAPH_CONTEXT_ROWS)
+  } catch (error) {
+    console.warn(`ask: graph context failed: ${String(error)}`)
+    return []
+  }
+}
+
 const runAsk = async (props: AskProps): Promise<Answer> => {
   const question = props.question.trim()
   if (question === "") {
@@ -429,6 +454,9 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     [Attr.RETRIEVAL_DOC_COUNT]: sources.length,
   })
 
+  // Tier-2: optional graph-context prelude (best-effort).
+  const graphContext = await resolveGraphContext(props, question, queryVec)
+
   const retrievalMs = Date.now() - t0
   // Adaptive model routing: simple fact-lookups go to the cheap/fast model,
   // Multi-part / comparative / long questions to the flagship. Caller override wins.
@@ -437,7 +465,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   ts = Date.now()
   const completion = await completeKnowledge({
     system,
-    user: buildPrompt(question, sources),
+    user: buildPromptWithGraphContext(question, sources, graphContext),
     model,
     purpose: "knowledge ask",
   })
@@ -546,6 +574,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
     generationMs,
     model,
     servedBy: classifyServedBy(citations, sources),
+    graphContextRows: graphContext.length,
     rerankUsed,
     rerankLatencyMs,
     phases,
@@ -719,6 +748,7 @@ export const ask = (props: AskProps): ResultAsync<Answer, AskError> =>
         answerChars: answer.answer.length,
         rerankUsed: answer.rerankUsed ?? false,
         rerankLatencyMs: answer.rerankLatencyMs ?? null,
+        graphContextRows: answer.graphContextRows ?? 0,
         phases: answer.phases ?? [],
       },
     })
