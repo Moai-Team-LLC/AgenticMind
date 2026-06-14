@@ -1,10 +1,10 @@
 /**
  * Ontology V0 — frozen vocabulary (types + predicates).
  *
- * The entity ids and validation are frozen so cards validate against one
- * identical vocabulary. Frozen 2026-05-05 — changes after this require a
- * major bump to V1. This is an example, general-purpose knowledge ontology;
- * swap it for your own domain's vocabulary.
+ * The entity ids and validation are frozen so cards / graphrag / qaplan all
+ * validate against one identical vocabulary. Frozen 2026-05-05 — changes after
+ * this require a major bump to V1. This is an example, general-purpose
+ * knowledge ontology; swap it for your own domain's vocabulary.
  */
 
 export const ONTOLOGY_VERSION = "V0"
@@ -301,3 +301,114 @@ export const PREDICATES: readonly Predicate[] = [
     description: "Person is looking for someone with the named skill (looking-for)",
   },
 ]
+
+/**
+ * Maps legacy/free-form graphrag entity-type strings to V0 types. Misses
+ * return undefined; callers record the entity without a typed annotation
+ * rather than guessing. "framework"/"concept" intentionally unmapped.
+ */
+export const FREE_FORM_TYPE_MAP: Readonly<Record<string, string>> = {
+  company: "Organization",
+  organization: "Organization",
+  person: "Person",
+  technology: "Skill",
+  location: "Location",
+  program: "Program",
+  event: "Event",
+  provider: "Provider",
+  topic: "Topic",
+  field: "Field",
+}
+
+/**
+ * Maps free-form verb-phrase variants to V0 predicates. Keys are pre-normalised
+ * (lowercased, separators → "_").
+ */
+export const FREE_FORM_PREDICATE_MAP: Readonly<Record<string, string>> = {
+  // Works_at family
+  works_at: "works_at",
+  works_for: "works_at",
+  employed_by: "works_at",
+  is_employed_at: "works_at",
+  is_employed_by: "works_at",
+  // Created
+  created: "created",
+  founded: "created",
+  co_founded: "created",
+  founder_of: "created",
+  established: "created",
+  started: "created",
+  // Member_of
+  member_of: "member_of",
+  belongs_to: "member_of",
+  is_part_of: "member_of",
+  // Attended_program
+  attended: "attended_program",
+  attended_program: "attended_program",
+  alumnus_of: "attended_program",
+  went_through: "attended_program",
+  graduated_from: "attended_program",
+  // Focuses_on
+  focuses_on: "focuses_on",
+  focused_on: "focuses_on",
+  works_in: "focuses_on",
+  works_on: "focuses_on",
+  // Has_skill
+  has_skill: "has_skill",
+  skilled_in: "has_skill",
+  expert_in: "has_skill",
+  specialises_in: "has_skill",
+  specializes_in: "has_skill",
+  // Built_with
+  built_with: "built_with",
+  uses: "built_with",
+  powered_by: "built_with",
+  based_on: "built_with",
+  // Relates_to_field
+  relates_to_field: "relates_to_field",
+  targets: "relates_to_field",
+  sells_to: "relates_to_field",
+  // At_stage
+  at_stage: "at_stage",
+  is_at_stage: "at_stage",
+  // Serves
+  serves: "serves",
+  // Located_in
+  located_in: "located_in",
+  based_in: "located_in",
+  headquartered_in: "located_in",
+  in: "located_in",
+  // Operates_in
+  operates_in: "operates_in",
+  active_in: "operates_in",
+  present_in: "operates_in",
+  // Connected_to
+  connected_to: "connected_to",
+  knows: "connected_to",
+  acquainted_with: "connected_to",
+  // Mentored_by
+  mentored_by: "mentored_by",
+  advised_by: "mentored_by",
+  coached_by: "mentored_by",
+  // Attended_event
+  attended_event: "attended_event",
+  was_at: "attended_event",
+  participated_in: "attended_event",
+  // Partnered_with
+  partnered_with: "partnered_with",
+  partners_with: "partnered_with",
+  in_partnership_with: "partnered_with",
+  // Pursues_goal
+  pursues_goal: "pursues_goal",
+  aims_for: "pursues_goal",
+  wants_to: "pursues_goal",
+  // Faces_challenge
+  faces_challenge: "faces_challenge",
+  struggles_with: "faces_challenge",
+  blocked_by: "faces_challenge",
+  // Seeks_skill
+  seeks_skill: "seeks_skill",
+  looking_for: "seeks_skill",
+  hiring_for: "seeks_skill",
+  needs: "seeks_skill",
+}

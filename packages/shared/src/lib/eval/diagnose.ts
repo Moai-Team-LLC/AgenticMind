@@ -31,6 +31,8 @@ export type AnswerSignals = {
   ungroundedQuotes?: number
   staleSourcesOnly?: boolean
   rerankUsed?: boolean
+  /** Count of graph-context rows the GraphRAG prelude contributed (0 = none / off). */
+  graphContextRows?: number
   /** per-stage timings (ms) from the trace */
   phases?: { phase: string; ms: number }[]
 }

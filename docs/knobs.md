@@ -62,6 +62,19 @@ sources is flagged (`staleSourcesOnly`, status → `needs_review`).
 | `KNOWLEDGE_CARDS_ENABLED` | off | Distil ingested text into reusable fact cards. |
 | `KNOWLEDGE_CACHE_ENABLED` | off | Answer cache for repeated questions. **Only `supported` answers are cached** — a hallucinated / weakly-grounded / conflicted answer is never stored and then served back confidently to many agents (the cache amplifies whatever it holds). |
 
+## Experimental
+
+> **GraphRAG is experimental and agent-unproven.** It is restored behind explicit
+> flags after the v0.12.0 removal (which misdiagnosed an empty graph as a dead
+> feature). The graph and multi-hop traversal work, but their value *for agents*
+> (as opposed to human browsing) is not yet established — keep it off unless you are
+> evaluating it.
+
+| Env var | Default | What it does |
+| --- | --- | --- |
+| `KNOWLEDGE_GRAPHRAG_ENABLED` | off | Knowledge-graph context prelude + the `kl_graph_neighbors` tool. Entities/relations are extracted at ingest into the `kg_*` tables (Postgres recursive-CTE traversal, no extra service) and a best-effort neighbour prelude is prepended to retrieval. |
+| `KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL` | unset → default chat model | **Required for the graph to populate.** The extraction schema uses *nullish* fields, which OpenAI strict structured-output rejects → the default (OpenAI-strict) chat model extracts **zero entities** and the graph stays empty. Set this to a nullish-tolerant model (e.g. a Gemini id). The `graphrag` smoke check fails on an empty graph so this misconfiguration surfaces loudly instead of looking "dead". |
+
 ## Compounding loop (worker)
 
 | Env var | Default | What it does |

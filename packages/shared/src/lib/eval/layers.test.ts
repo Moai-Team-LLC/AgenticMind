@@ -33,6 +33,16 @@ describe("layer manifest", () => {
     expect(byId("contested_sources").firedFromAnswer?.({ contestedCount: 0 })).toBe(false)
   })
 
+  it("graphrag (experimental) fires only when the graph contributed context rows", () => {
+    const graphrag = byId("graphrag")
+    expect(isLayerEnabled(graphrag, {})).toBe(false)
+    expect(isLayerEnabled(graphrag, { KNOWLEDGE_GRAPHRAG_ENABLED: "true" })).toBe(true)
+    expect(graphrag.firedFromAnswer?.({ graphContextRows: 3 })).toBe(true)
+    // The enabled-but-dead state (empty graph from a strict-schema extractor): 0 rows.
+    expect(graphrag.firedFromAnswer?.({ graphContextRows: 0 })).toBe(false)
+    expect(graphrag.firedFromAnswer?.({})).toBe(false)
+  })
+
   it("smoke set = enabled layers with an observable predicate", () => {
     const env = { KNOWLEDGE_CACHE_ENABLED: "true", RERANK_ENABLED: "true" }
     const ids = smokeCheckableLayers(env).map((l) => l.id)

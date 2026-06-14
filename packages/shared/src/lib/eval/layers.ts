@@ -67,6 +67,17 @@ export const KNOWLEDGE_LAYERS: readonly KnowledgeLayer[] = [
     firedFromAnswer: (s) => s.rerankUsed === true,
   },
   {
+    id: "graphrag",
+    knob: "KNOWLEDGE_GRAPHRAG_ENABLED",
+    defaultOn: false,
+    // Experimental. On a probe whose corpus has graph neighbours, a populated
+    // graph contributes context rows; zero rows on such a probe means the graph
+    // is empty — the exact "enabled-but-dead" state (an OpenAI-strict extractor
+    // emptied it) that the v0.12.0 removal misread as the feature being useless.
+    purpose: "experimental: graph-neighbour context prelude (needs a nullish-tolerant extractor)",
+    firedFromAnswer: (s) => (s.graphContextRows ?? 0) > 0,
+  },
+  {
     id: "pii_redaction",
     knob: "KNOWLEDGE_PII_REDACTION",
     defaultOn: true,

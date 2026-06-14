@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest"
 import type { Citation, Source } from "./synth"
 
 import {
-  buildPrompt,
+  buildPromptWithGraphContext,
   buildSystemPromptWithContext,
   classifyServedBy,
   formatUpdatedAnnotation,
@@ -50,16 +50,22 @@ describe("formatUpdatedAnnotation", () => {
   })
 })
 
-describe("buildPrompt", () => {
-  it("renders sources and the question/answer scaffold", () => {
-    const out = buildPrompt("What is X?", [chunkSource(1, "c1")])
+describe("buildPromptWithGraphContext", () => {
+  it("renders sources, graph prelude, and the question/answer scaffold", () => {
+    const out = buildPromptWithGraphContext(
+      "What is X?",
+      [chunkSource(1, "c1")],
+      [{ body: "Alice works at Stripe", materialIds: ["m1"] }],
+    )
+    expect(out).toContain("Graph context (supplementary")
+    expect(out).toContain("- Alice works at Stripe")
     expect(out).toContain("[1] Title 1")
     expect(out).toContain("Question: What is X?")
     expect(out.endsWith("Answer:")).toBe(true)
   })
 
   it("handles the no-sources case", () => {
-    expect(buildPrompt("Q", [])).toContain("Sources: (none")
+    expect(buildPromptWithGraphContext("Q", [])).toContain("Sources: (none")
   })
 })
 

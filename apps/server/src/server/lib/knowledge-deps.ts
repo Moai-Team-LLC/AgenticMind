@@ -1,19 +1,25 @@
 /**
  * Knowledge dependency factory for the web server. Builds the singletons the
- * knowledge libs need — blob store (S3-compatible) — and reads the feature
- * flags that gate cards / cache. Used by the knowledge tRPC router (Tier-3
- * rewiring) so the procedures call the TS libs directly.
+ * knowledge libs need — blob store (S3-compatible), optional GraphRAG repo —
+ * and reads the feature flags that gate cards / cache / graphrag. Used by the
+ * knowledge tRPC router (Tier-3 rewiring) so the procedures call the TS libs
+ * directly.
  */
 
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
+import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 
 import { blobStoreForBucket } from "@agenticmind/shared/lib/knowledge/blobstore"
+import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
 import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 import { storageSettings } from "@agenticmind/shared/settings/storage-settings"
+
+import { getDb } from "@/server/lib/database"
 
 export type KnowledgeFeatureFlags = {
   cardsEnabled: boolean
   cacheEnabled: boolean
+  graphragEnabled: boolean
   faithfulnessTierBEnabled: boolean
   contestedSourcesEnabled: boolean
   evalHarvestEnabled: boolean
@@ -21,11 +27,12 @@ export type KnowledgeFeatureFlags = {
   piiRedactionEnabled: boolean
 }
 
-/** Env-controlled tier flags (cards / cache / Tier-B / contested / harvest). */
+/** Env-controlled tier flags (cards / cache / graphrag / Tier-B / contested / harvest). */
 export const knowledgeFeatureFlags = (): KnowledgeFeatureFlags => {
   return {
     cardsEnabled: knowledgeFeatureSettings.KNOWLEDGE_CARDS_ENABLED === "true",
     cacheEnabled: knowledgeFeatureSettings.KNOWLEDGE_CACHE_ENABLED === "true",
+    graphragEnabled: knowledgeFeatureSettings.KNOWLEDGE_GRAPHRAG_ENABLED === "true",
     faithfulnessTierBEnabled: knowledgeFeatureSettings.KNOWLEDGE_FAITHFULNESS_TIER_B === "true",
     contestedSourcesEnabled: knowledgeFeatureSettings.KNOWLEDGE_CONTESTED_SOURCES === "true",
     evalHarvestEnabled: knowledgeFeatureSettings.KNOWLEDGE_EVAL_HARVEST === "true",
@@ -55,4 +62,20 @@ export const getKnowledgeBlobStore = (): KnowledgeBlobStore => {
     forcePathStyle: storageSettings.S3_FORCE_PATH_STYLE === "true",
   })
   return cachedBlobStore
+}
+
+let cachedGraph: GraphStore | undefined
+
+/**
+ * GraphRAG store — **Postgres only** (recursive-CTE traversal on the `kg_*`
+ * tables, no extra service). Graph usage is gated by the `graphragEnabled`
+ * feature flag at the call site. Returns `| undefined` purely so existing
+ * call-site `!== undefined` guards keep compiling; it never returns undefined.
+ */
+export const getKnowledgeGraphRepo = (): GraphStore | undefined => {
+  if (cachedGraph !== undefined) {
+    return cachedGraph
+  }
+  cachedGraph = createPostgresGraphStore(getDb())
+  return cachedGraph
 }

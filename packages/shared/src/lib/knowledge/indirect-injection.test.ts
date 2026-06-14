@@ -22,7 +22,17 @@ describe("indirect prompt injection (Layer 8 / DoD 13)", () => {
 
   it("the red-team corpus fixture carries an injection the shared detector catches", () => {
     const fixture = readFileSync(
-      join(import.meta.dirname, "..", "..", "..", "..", "..", "eval", "corpus", "redteam-indirect-injection.md"),
+      join(
+        import.meta.dirname,
+        "..",
+        "..",
+        "..",
+        "..",
+        "..",
+        "eval",
+        "corpus",
+        "redteam-indirect-injection.md",
+      ),
       "utf8",
     )
     expect(detectInjection(fixture).injection).toBe(true)

@@ -8,14 +8,16 @@ import {
 } from "./cards-extractor"
 
 describe("dropUngroundedCards (card-source grounding, no LLM)", () => {
-  const card = (subjectValue: string, body: string, value?: string) => {return {
-    kind: "fact" as const,
-    subjectType: "Thing",
-    subjectValue,
-    body,
-    value,
-    confidence: 0.9,
-  }}
+  const card = (subjectValue: string, body: string, value?: string) => {
+    return {
+      kind: "fact" as const,
+      subjectType: "Thing",
+      subjectValue,
+      body,
+      value,
+      confidence: 0.9,
+    }
+  }
 
   it("drops a card asserting a figure absent from the source", () => {
     const src = "The reactor runs continuously in the north plant."

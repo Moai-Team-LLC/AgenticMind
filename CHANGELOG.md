@@ -6,6 +6,33 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **GraphRAG restored as experimental — corrects the v0.12.0 removal.** v0.12.0
+  removed GraphRAG as "non-functional (0 graph neighbours)", but that was a
+  **misdiagnosis**: the verification ran the extractor on the default OpenAI-strict
+  chat model, whose strict structured-output rejects the extractor's *nullish*
+  schema → zero entities → empty graph. On a nullish-tolerant extractor the graph
+  populates and resolves (verified live: 12/12 materials → 82 entities / 121
+  mentions / 74 relations, `neighbors()` + multi-hop). The deleted modules and
+  wiring (graph schema, `graphrag`, `graphrag-extractor`, `graphrag-postgres`,
+  `graph-store`, `qaplan`, ontology, `kl_graph_neighbors`) are restored verbatim;
+  migration `0011` re-creates the `kg_*` tables **with tenant-isolation RLS** (the
+  `0009` drop is kept as history, not reverted). Off by default; positioned
+  experimental and agent-unproven (see `docs/knobs.md`).
+- **`KNOWLEDGE_GRAPHRAG_EXTRACTOR_MODEL`** — routes the entity/relation extractor
+  to a nullish-schema-tolerant model (e.g. a Gemini id). This is the actual fix for
+  the empty-graph footgun that caused the wrong removal. Unset = default chat model
+  (safe only if it is not OpenAI-strict).
+
+### Changed
+
+- **GraphRAG is now covered by the enabled-but-dead guard.** The `graphrag` layer
+  joins the manifest with an answer-observable predicate (`graphContextRows > 0`),
+  so `smokeCheckableLayers` fails when GraphRAG is enabled but the graph is empty —
+  exactly the silent state that the v0.12.0 removal misread. The extractor also
+  warns loudly when a non-empty document yields zero entities.
+
 ## [0.12.0] — 2026-06-13
 
 The **anti-hallucination** release. The synthesis LLM is the one component that

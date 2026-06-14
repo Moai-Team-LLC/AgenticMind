@@ -42,7 +42,9 @@ export const parseRetrievalParams = (raw: unknown): RetrievalParams | null => {
  * (use defaults) — a bad config must never crash the server or silently apply a
  * partial profile.
  */
-export const resolveRetrievalParams = (raw: string | undefined | null): RetrievalParams | undefined => {
+export const resolveRetrievalParams = (
+  raw: string | undefined | null,
+): RetrievalParams | undefined => {
   if (raw === undefined || raw === null || raw.trim() === "") {
     return undefined
   }
