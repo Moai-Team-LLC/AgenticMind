@@ -249,6 +249,9 @@ the open standard (plus Claude Code skills) for building production-grade agenti
 | --- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
 | 📐  | **[agentic-product-standard](https://github.com/Moai-Team-LLC/agentic-product-standard)** | You're **designing or building** an agent / agentic product — the standard + skills tell you _how_. |
 | 🧠  | **AgenticMind** (this repo)                                                             | You need a **knowledge & memory layer** for your agent — a working implementation you can run.      |
+| 🚦  | **[AgenticOps](https://github.com/Moai-Team-LLC/AgenticOps)**                             | You're **running a fleet** — manifests, backlog, scheduler, telemetry, and policy for agent operations. |
+| 🩺  | **[AgenticSelfHealingCode](https://github.com/Moai-Team-LLC/AgenticSelfHealingCode)**     | Your product needs **self-healing ops** — incident diagnosis (RCA copilot), test-suite healing, outcome-earned autonomy. |
+| 📊  | **Agent Performance Layer (APL)** — public release in progress                            | You need **observability & evals** — OTel traces, golden-set evals, failure clusters.               |
 
 See the standard's [AgenticMind case study](https://github.com/Moai-Team-LLC/agentic-product-standard/blob/main/examples/agenticmind-case-study.md) for a layer-by-layer map of how this repo implements the canon.
 
