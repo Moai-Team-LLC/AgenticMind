@@ -26,6 +26,12 @@ and a corpus that **improves itself** — served to any agent over **MCP**.
 
 ---
 
+> Part of the Moai Team agentic stack:
+> **[Standard](https://github.com/Moai-Team-LLC/agentic-product-standard)** (the contract) →
+> **AgenticMind** (knowledge & memory) →
+> **[AgenticOps](https://github.com/Moai-Team-LLC/AgenticOps)** (runtime & operations) →
+> **[AgenticPerformance](https://github.com/Moai-Team-LLC/AgenticPerformance)** (evals & improvement).
+
 > **Not "memory storage for an agent."** AgenticMind is the substrate an agent points
 > at when it needs answers it can **trust**, a trail it can **audit**, and a knowledge
 > base that **compounds**.
