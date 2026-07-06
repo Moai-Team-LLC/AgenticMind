@@ -15,6 +15,7 @@ import * as KnowledgeCards from "@agenticmind/shared/database/schema/knowledge/k
 import * as KnowledgeMaterials from "@agenticmind/shared/database/schema/knowledge/materials"
 import * as KnowledgeMcpTokens from "@agenticmind/shared/database/schema/knowledge/mcp-tokens"
 import * as KnowledgeRateLimits from "@agenticmind/shared/database/schema/knowledge/rate-limits"
+import * as KnowledgeToolAuditEvents from "@agenticmind/shared/database/schema/knowledge/tool-audit-events"
 import * as Users from "@agenticmind/shared/database/schema/users"
 
 export * from "@agenticmind/shared/database/schema/users"
@@ -32,6 +33,7 @@ export * from "@agenticmind/shared/database/schema/knowledge/chunks"
 export * from "@agenticmind/shared/database/schema/knowledge/graph"
 export * from "@agenticmind/shared/database/schema/knowledge/materials"
 export * from "@agenticmind/shared/database/schema/knowledge/mcp-tokens"
+export * from "@agenticmind/shared/database/schema/knowledge/tool-audit-events"
 
 export const schema = {
   ...Users,
@@ -48,4 +50,5 @@ export const schema = {
   ...KnowledgeBeliefs,
   ...KnowledgeGuardEvents,
   ...KnowledgeRateLimits,
+  ...KnowledgeToolAuditEvents,
 }

@@ -18,6 +18,7 @@ import type { z } from "zod"
 import { withTenant } from "@agenticmind/shared/database/client"
 import { checkMcpToken } from "@agenticmind/shared/database/query/knowledge/mcp-tokens"
 import { DEFAULT_TENANT_ID } from "@agenticmind/shared/database/schema/knowledge/_tenant"
+import { AUDIT_WRITE_SCOPE } from "@agenticmind/shared/lib/audit/hook-event"
 import { parseAnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import {
   klAskGlobal,
@@ -325,6 +326,7 @@ const API_KEY_SCOPES = [
   "memory:read",
   "memory:write",
   "memory:admin",
+  AUDIT_WRITE_SCOPE,
 ]
 
 /** Constant-time string compare (avoid leaking the key through timing). */
@@ -339,7 +341,10 @@ const constantTimeEqual = (a: string, b: string): boolean => {
  *   1) the static `MCP_API_KEY` (simple single-tenant — no mint, no DB row), or
  *   2) a per-token typ="mcp" JWT whose jti is active (least-privilege, revocable).
  */
-const verifyMcpAccess = async (_req: Request, bearer?: string): Promise<AuthInfo | undefined> => {
+export const verifyMcpAccess = async (
+  _req: Request,
+  bearer?: string,
+): Promise<AuthInfo | undefined> => {
   if (bearer === undefined || bearer === "") {
     return undefined
   }
