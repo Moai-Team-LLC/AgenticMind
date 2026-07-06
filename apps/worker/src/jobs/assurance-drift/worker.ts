@@ -23,21 +23,26 @@ const msUntilNextRun = (now: Date): number => {
   return next.getTime() - now.getTime()
 }
 
-/** Runs the sweep iff this instance wins the advisory lock. */
+/**
+ * Runs the sweep iff this instance wins the advisory lock. The lock is taken INSIDE a transaction so
+ * it lives on one pinned pool connection: `pg_try_advisory_xact_lock` is transaction-scoped and
+ * auto-releases on commit/rollback. Acquiring a session lock on a pool and unlocking it on a
+ * different pooled connection would orphan it and silently wedge the sweep forever — so we don't.
+ */
 const runGuarded = async (): Promise<void> => {
-  const res = await db.execute(sql`SELECT pg_try_advisory_lock(${ADVISORY_LOCK_KEY}) AS locked`)
-  const locked = (res.rows[0] as { locked?: boolean } | undefined)?.locked === true
-  if (!locked) {
-    console.log(
-      `[WORKER] ${new Date().toISOString()}: assurance-drift lock held elsewhere — skipping`,
+  await db.transaction(async (tx) => {
+    const res = await tx.execute(
+      sql`SELECT pg_try_advisory_xact_lock(${ADVISORY_LOCK_KEY}) AS locked`,
     )
-    return
-  }
-  try {
-    await runAssuranceDriftSweep(db)
-  } finally {
-    await db.execute(sql`SELECT pg_advisory_unlock(${ADVISORY_LOCK_KEY})`)
-  }
+    const locked = (res.rows[0] as { locked?: boolean } | undefined)?.locked === true
+    if (!locked) {
+      console.log(
+        `[WORKER] ${new Date().toISOString()}: assurance-drift lock held elsewhere — skipping`,
+      )
+      return
+    }
+    await runAssuranceDriftSweep(tx)
+  })
 }
 
 /** Starts the daily scheduler. Returns a stop handle for graceful shutdown. */
