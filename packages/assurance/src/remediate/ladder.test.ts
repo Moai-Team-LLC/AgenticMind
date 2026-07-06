@@ -1,0 +1,167 @@
+import { describe, expect, it } from "vitest"
+
+import {
+  applyRemediation,
+  approveRemediation,
+  declineRemediation,
+  gateProposal,
+  invertEdit,
+  openRemediation,
+  revertRemediation,
+  type AppliedEdit,
+  type FixProposal,
+  type RemediationJudge,
+} from "./index"
+
+const T = "2026-07-06T00:00:00.000Z"
+
+const validProposal: FixProposal = {
+  id: "fix:prompt-injection",
+  findingId: "atk-1",
+  target: "prompt",
+  rationale: "harden trust rules",
+  edits: [
+    { path: "prompt.system", op: "modify", summary: "reinforce instruction/data separation" },
+  ],
+}
+
+const forbiddenProposal: FixProposal = {
+  id: "fix:escalate",
+  findingId: "atk-2",
+  target: "prompt",
+  rationale: "should never pass",
+  edits: [{ path: "identity.scopes", op: "modify", summary: "grant broader scope" }],
+}
+
+const structuralEdits: AppliedEdit[] = [
+  { path: "prompt.system", op: "modify", before: "old prompt", after: "hardened prompt" },
+]
+
+const supportedJudge: RemediationJudge = () =>
+  Promise.resolve({ verdict: "supported", rationale: "ok" })
+const unsupportedJudge: RemediationJudge = () =>
+  Promise.resolve({ verdict: "unsupported", rationale: "insufficient" })
+const throwingJudge: RemediationJudge = () => Promise.reject(new Error("model down"))
+
+describe("gateProposal", () => {
+  it("refuses a forbidden proposal at the guard, without consulting the judge", async () => {
+    const gate = await gateProposal(forbiddenProposal, supportedJudge)
+    expect(gate.decision).toBe("guard_rejected")
+    expect(gate.verdict).toBeNull()
+  })
+
+  it("rejects when the judge does not return 'supported'", async () => {
+    const gate = await gateProposal(validProposal, unsupportedJudge)
+    expect(gate.decision).toBe("judge_rejected")
+    expect(gate.verdict?.verdict).toBe("unsupported")
+  })
+
+  it("fails closed when the judge throws", async () => {
+    const gate = await gateProposal(validProposal, throwingJudge)
+    expect(gate.decision).toBe("judge_rejected")
+    expect(gate.verdict).toBeNull()
+  })
+
+  it("advances a supported, guard-passing fix to pending approval (never straight to apply)", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    expect(gate.decision).toBe("pending_approval")
+    expect(gate.verdict?.verdict).toBe("supported")
+  })
+})
+
+describe("invertEdit", () => {
+  it("inverts modify by swapping before/after", () => {
+    expect(invertEdit({ path: "p", op: "modify", before: "a", after: "b" })).toEqual({
+      path: "p",
+      op: "modify",
+      before: "b",
+      after: "a",
+    })
+  })
+
+  it("inverts add <-> remove", () => {
+    expect(invertEdit({ path: "p", op: "add", before: null, after: "x" })).toEqual({
+      path: "p",
+      op: "remove",
+      before: "x",
+      after: null,
+    })
+  })
+})
+
+describe("L3 round-trip: judge -> HITL approve -> apply -> revert", () => {
+  it("walks the full lifecycle and records every transition", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    const opened = openRemediation(validProposal, gate, T)
+    expect(opened.state).toBe("pending_approval")
+
+    const approved = approveRemediation(opened, "alex", T)
+    expect(approved.isOk()).toBe(true)
+    const approvedEntry = approved._unsafeUnwrap()
+    expect(approvedEntry.state).toBe("approved")
+
+    const applied = applyRemediation(approvedEntry, structuralEdits, T)
+    expect(applied.isOk()).toBe(true)
+    const appliedEntry = applied._unsafeUnwrap()
+    expect(appliedEntry.state).toBe("applied")
+    expect(appliedEntry.edits).toEqual(structuralEdits)
+
+    const reverted = revertRemediation(appliedEntry, T)
+    expect(reverted.isOk()).toBe(true)
+    const revertedEntry = reverted._unsafeUnwrap()
+    expect(revertedEntry.state).toBe("reverted")
+    expect(revertedEntry.history.map((h) => h.to)).toEqual([
+      "pending_approval",
+      "approved",
+      "applied",
+      "reverted",
+    ])
+  })
+})
+
+describe("L3 fail-closed invariants", () => {
+  it("cannot apply before HITL approval (illegal transition)", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    const pending = openRemediation(validProposal, gate, T)
+    const result = applyRemediation(pending, structuralEdits, T)
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().kind).toBe("transition")
+  })
+
+  it("re-guards concrete edits at apply time — a forbidden edit is refused even after approval", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    const approved = approveRemediation(
+      openRemediation(validProposal, gate, T),
+      "alex",
+      T,
+    )._unsafeUnwrap()
+    const forbiddenEdits: AppliedEdit[] = [
+      { path: "manifest.tools[0].sideEffect", op: "modify", before: "a", after: "b" },
+    ]
+    const result = applyRemediation(approved, forbiddenEdits, T)
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().kind).toBe("guard")
+  })
+
+  it("cannot revert an entry that was never applied", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    const approved = approveRemediation(
+      openRemediation(validProposal, gate, T),
+      "alex",
+      T,
+    )._unsafeUnwrap()
+    const result = revertRemediation(approved, T)
+    expect(result.isErr()).toBe(true)
+  })
+
+  it("cannot approve a declined remediation", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    const declined = declineRemediation(
+      openRemediation(validProposal, gate, T),
+      "alex",
+      T,
+    )._unsafeUnwrap()
+    expect(declined.state).toBe("declined")
+    expect(approveRemediation(declined, "alex", T).isErr()).toBe(true)
+  })
+})
