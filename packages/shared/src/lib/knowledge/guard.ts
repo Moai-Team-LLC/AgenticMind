@@ -127,7 +127,13 @@ export const detectOutputLeak = (
 ): { leaked: boolean; reason?: string } => {
   const a = normWs(answer)
   const sp = normWs(systemPrompt)
-  const WINDOW = 60
+  // A real system-prompt leak regurgitates a long verbatim stretch of the
+  // instruction scaffold. Coincidental overlaps — a common guideline phrase, a
+  // restated caller-context fact, or prose resembling the prompt's example
+  // answers — are short. A 60-char window flagged those legitimate answers
+  // (non-deterministic false refusals); 120 chars keeps real-leak detection
+  // (any regurgitated instruction sentence is longer) while dropping the noise.
+  const WINDOW = 120
   for (let i = 0; i + WINDOW <= sp.length; i += 20) {
     if (a.includes(sp.slice(i, i + WINDOW))) {
       return { leaked: true, reason: "verbatim system-prompt span" }
