@@ -7,6 +7,14 @@ export * from "./proposal"
 export * from "./guard"
 export * from "./triage"
 export * from "./judge"
-export * from "./ledger"
+// The raw `transition` mutator is deliberately NOT re-exported — consumers must go through
+// approveRemediation / applyRemediation / revertRemediation so the HITL + actor invariants hold.
+export type {
+  AppliedEdit,
+  LedgerEvent,
+  RemediationLedgerEntry,
+  RemediationState,
+  TransitionError,
+} from "./ledger"
 export * from "./apply"
 export * from "./revert"

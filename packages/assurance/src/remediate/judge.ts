@@ -88,6 +88,22 @@ export async function gateProposal(
     }
   }
 
+  // A pluggable judge may mis-map a malformed engine response to a non-object; validate the shape
+  // before dereferencing so a bad provider fails closed instead of throwing out of the gate.
+  const resolved = verdict as unknown
+  if (
+    resolved === null ||
+    typeof resolved !== "object" ||
+    typeof (resolved as { verdict?: unknown }).verdict !== "string"
+  ) {
+    return {
+      decision: "judge_rejected",
+      guard,
+      verdict: null,
+      reason: "judge returned a malformed verdict (fail-closed).",
+    }
+  }
+
   if (verdict.verdict !== JUDGE_PASS) {
     return {
       decision: "judge_rejected",

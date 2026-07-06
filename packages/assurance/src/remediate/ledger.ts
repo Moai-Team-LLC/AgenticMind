@@ -74,6 +74,19 @@ const ALLOWED: Record<RemediationState, readonly RemediationState[]> = {
   declined: [],
 }
 
+/**
+ * Per-edge actor authorization: who is allowed to CAUSE each transition. A human (`hitl:`) must
+ * cause approve/decline; only the system apply/revert steps may cause those. This makes human
+ * causation a MACHINE-enforced property, not a naming convention — the raw mutator cannot forge an
+ * approval with a non-human actor (FR-12.2: remediation is never triggerable by an unattended agent).
+ */
+const REQUIRED_ACTOR: Partial<Record<RemediationState, (actor: string) => boolean>> = {
+  approved: (actor) => actor.startsWith("hitl:"),
+  declined: (actor) => actor.startsWith("hitl:"),
+  applied: (actor) => actor === "system:apply",
+  reverted: (actor) => actor === "system:revert",
+}
+
 export interface TransitionInput {
   to: RemediationState
   actor: string
@@ -95,17 +108,33 @@ export function transition(
       message: `illegal transition ${entry.state} -> ${input.to}`,
     })
   }
-  const event: LedgerEvent = {
+  const requiredActor = REQUIRED_ACTOR[input.to]
+  if (requiredActor !== undefined && !requiredActor(input.actor)) {
+    return err({
+      from: entry.state,
+      to: input.to,
+      message: `transition to ${input.to} requires an authorized actor, got "${input.actor}"`,
+    })
+  }
+  const event: LedgerEvent = Object.freeze({
     at: input.at,
     from: entry.state,
     to: input.to,
     actor: input.actor,
     note: input.note,
-  }
-  return ok({
-    ...entry,
-    state: input.to,
-    edits: input.to === "applied" ? (input.edits ?? []) : entry.edits,
-    history: [...entry.history, event],
   })
+  // Deep-copy + freeze the recorded edits so no caller alias can rewrite the ledger after the fact,
+  // and so distinct entries never share a mutable array (runtime immutability, not just `readonly`).
+  const edits =
+    input.to === "applied"
+      ? Object.freeze((input.edits ?? []).map((e) => Object.freeze({ ...e })))
+      : entry.edits
+  return ok(
+    Object.freeze({
+      ...entry,
+      state: input.to,
+      edits,
+      history: Object.freeze([...entry.history, event]),
+    }),
+  )
 }

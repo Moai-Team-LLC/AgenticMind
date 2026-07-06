@@ -11,47 +11,94 @@
  */
 import type { FixProposal, GuardResult, GuardViolation, ProposedEdit } from "./proposal"
 
-/** Paths that touch a side-effecting tool / permission / trust boundary — always forbidden. */
-const FORBIDDEN: { pattern: RegExp; reason: string }[] = [
-  {
-    pattern: /\btools?\b/,
-    reason: "touches a tool definition (side-effecting tools are out of bounds)",
-  },
-  { pattern: /\bside[-_]?effect\b/, reason: "touches a tool's side-effect class" },
-  { pattern: /\begress\b/, reason: "touches an egress capability" },
-  { pattern: /\bexec(ution)?\b|\bcode[-_]?exec\b/, reason: "touches a code-execution capability" },
-  {
-    pattern: /\bpermission|\bscopes?\b|\bgrant\b|\brole\b|\bacl\b/,
-    reason: "touches a permission grant",
-  },
-  {
-    pattern: /\bidentity\b|\bcredential\b|\btoken\b|\bapi[-_]?key\b|\bauth\b/,
-    reason: "touches identity / credentials",
-  },
-  { pattern: /\btrust\b|\bboundary\b|\ballow[-_]?list\b/, reason: "touches a trust boundary" },
-  {
-    pattern: /\bhook\b|\bsettings\b|\bconfig\.(mcp|server|db)/,
-    reason: "touches runtime configuration / hooks",
-  },
-]
+/**
+ * Atomic path tokens that name a side-effecting tool / permission / trust boundary — always
+ * forbidden. Matched as WHOLE tokens (not substrings), so `trusted` never trips `trust`.
+ */
+const FORBIDDEN_TOKENS = new Set<string>([
+  "tool",
+  "tools",
+  "egress",
+  "exec",
+  "execution",
+  "permission",
+  "permissions",
+  "scope",
+  "scopes",
+  "grant",
+  "grants",
+  "role",
+  "roles",
+  "acl",
+  "identity",
+  "credential",
+  "credentials",
+  "token",
+  "tokens",
+  "auth",
+  "trust",
+  "boundary",
+  "allowlist",
+  "allowlists",
+  "hook",
+  "hooks",
+  "settings",
+])
 
-/** Path prefixes that ARE structural configuration — the only edits allowed. */
-const ALLOWED_STRUCTURAL: RegExp[] = [
-  /^prompt\b/,
-  /^context\b/,
-  /^few[-_]?shot/,
-  /^manifest\.declaredmitigations\b/,
-  /^declaredmitigation/,
-  /^system[-_]?prompt\b/,
-]
+/** Compound forbidden terms that camelCase/underscore splitting would break apart — caught on the
+ * separator-stripped join so `sideEffect` / `code_exec` / `apiKey` cannot slip through. */
+const FORBIDDEN_COMPOUNDS = ["sideeffect", "codeexec", "apikey"]
+
+/** Root tokens that ARE structural configuration — the only surfaces an edit may start from. */
+const ALLOWED_ROOTS = new Set<string>([
+  "prompt",
+  "context",
+  "manifest",
+  "few",
+  "fewshot",
+  "system",
+  "systemprompt",
+  "declared",
+])
+
+/**
+ * Split a logical edit path into atomic lowercase tokens: separators (`. _ - / [ ]`) AND camelCase
+ * boundaries both split, so a glued segment like `allowedTools` becomes `allowed` + `tools` and the
+ * forbidden token is exposed. This is what the old `\b`-boundary regexes missed.
+ */
+function tokenize(path: string): string[] {
+  return path
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 0)
+}
 
 function checkEdit(edit: ProposedEdit): GuardViolation | null {
-  const path = edit.path.trim().toLowerCase()
-  for (const { pattern, reason } of FORBIDDEN) {
-    if (pattern.test(path)) return { path: edit.path, reason }
+  const tokens = tokenize(edit.path)
+  const root = tokens[0]
+  if (root === undefined) {
+    return { path: edit.path, reason: "empty / unparseable edit path (fail-closed)" }
   }
-  if (!ALLOWED_STRUCTURAL.some((p) => p.test(path))) {
-    return { path: edit.path, reason: "not a recognized structural-config surface (fail-closed)" }
+  for (const token of tokens) {
+    if (FORBIDDEN_TOKENS.has(token)) {
+      return {
+        path: edit.path,
+        reason: `touches a forbidden surface (\`${token}\`): a tool, permission, or trust boundary`,
+      }
+    }
+  }
+  const collapsed = tokens.join("")
+  for (const compound of FORBIDDEN_COMPOUNDS) {
+    if (collapsed.includes(compound)) {
+      return { path: edit.path, reason: `touches a forbidden surface (\`${compound}\`)` }
+    }
+  }
+  if (!ALLOWED_ROOTS.has(root)) {
+    return {
+      path: edit.path,
+      reason: `root \`${root}\` is not a recognized structural-config surface (fail-closed)`,
+    }
   }
   return null
 }

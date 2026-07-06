@@ -66,4 +66,31 @@ describe("Cycle-of-Trust guard", () => {
     expect(r.allowed).toBe(false)
     expect(r.violations).toHaveLength(1)
   })
+
+  it("REFUSES camelCase/glued forbidden tokens under an allowed prefix (tokenized, not \\b)", () => {
+    const bypasses = [
+      "prompt.allowedTools",
+      "prompt.grantedScopes",
+      "context.toolPermissions",
+      "context.egressAllowlist",
+      "prompt.trustBoundary",
+      "prompt.authToken",
+      "declaredMitigationTool",
+      "manifest.sideEffectPolicy",
+    ]
+    for (const path of bypasses) {
+      const r = enforceCycleOfTrust(proposal([{ path, op: "modify", summary: "x" }]))
+      expect(r.allowed, `${path} must be refused`).toBe(false)
+    }
+  })
+
+  it("still allows a structural path whose word merely contains a forbidden substring", () => {
+    // "trusted" must not trip the "trust" token — this is a real L2 fix path (tool-shadowing).
+    const r = enforceCycleOfTrust(
+      proposal([
+        { path: "context.trusted-descriptions", op: "modify", summary: "pin descriptions" },
+      ]),
+    )
+    expect(r.allowed).toBe(true)
+  })
 })

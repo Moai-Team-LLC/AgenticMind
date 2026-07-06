@@ -49,8 +49,10 @@ export function openRemediation(
     findingId: proposal.findingId,
     state: gate.decision,
     verdict: gate.verdict,
-    edits: [],
-    history: [{ at, from: null, to: gate.decision, actor: "system:gate", note: gate.reason }],
+    edits: Object.freeze([]),
+    history: Object.freeze([
+      Object.freeze({ at, from: null, to: gate.decision, actor: "system:gate", note: gate.reason }),
+    ]),
   }
 }
 
@@ -87,6 +89,16 @@ export function applyRemediation(
   edits: readonly AppliedEdit[],
   at: string,
 ): Result<RemediationLedgerEntry, ApplyError> {
+  // Belt-and-suspenders vs. a hand-forged "approved" entry: a real HITL approval must be on record.
+  const humanApproved = entry.history.some(
+    (e) => e.to === "approved" && e.actor.startsWith("hitl:"),
+  )
+  if (!humanApproved) {
+    return err({
+      kind: "transition",
+      message: "apply refused: no HITL approval recorded in history (FR-12.2).",
+    })
+  }
   const guard = enforceCycleOfTrust(asGuardProposal(entry, edits, "apply-time re-check"))
   if (!guard.allowed) {
     return err({

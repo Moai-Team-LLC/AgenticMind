@@ -12,6 +12,7 @@ import {
   type FixProposal,
   type RemediationJudge,
 } from "./index"
+import { transition } from "./ledger"
 
 const T = "2026-07-06T00:00:00.000Z"
 
@@ -163,5 +164,50 @@ describe("L3 fail-closed invariants", () => {
     )._unsafeUnwrap()
     expect(declined.state).toBe("declined")
     expect(approveRemediation(declined, "alex", T).isErr()).toBe(true)
+  })
+})
+
+describe("L3 hardening (adversarial-review fixes)", () => {
+  it("the state machine refuses a pending -> approved caused by a non-hitl actor", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    const pending = openRemediation(validProposal, gate, T)
+    const forged = transition(pending, { to: "approved", actor: "system:auto", note: "", at: T })
+    expect(forged.isErr()).toBe(true)
+  })
+
+  it("apply refuses a hand-forged 'approved' entry with no HITL approval on record", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    const forgedApproved = {
+      ...openRemediation(validProposal, gate, T),
+      state: "approved" as const,
+    }
+    const result = applyRemediation(forgedApproved, structuralEdits, T)
+    expect(result.isErr()).toBe(true)
+    expect(result._unsafeUnwrapErr().kind).toBe("transition")
+  })
+
+  it("fails closed when the judge resolves a malformed (non-object) verdict", async () => {
+    const badJudge = (() => Promise.resolve(undefined)) as unknown as RemediationJudge
+    const gate = await gateProposal(validProposal, badJudge)
+    expect(gate.decision).toBe("judge_rejected")
+    expect(gate.verdict).toBeNull()
+  })
+
+  it("records a frozen deep copy of applied edits — no caller alias can rewrite the ledger", async () => {
+    const gate = await gateProposal(validProposal, supportedJudge)
+    const approved = approveRemediation(
+      openRemediation(validProposal, gate, T),
+      "alex",
+      T,
+    )._unsafeUnwrap()
+    const callerEdits: AppliedEdit[] = [
+      { path: "prompt.system", op: "modify", before: "a", after: "b" },
+    ]
+    const applied = applyRemediation(approved, callerEdits, T)._unsafeUnwrap()
+    expect(applied.edits).not.toBe(callerEdits)
+    expect(Object.isFrozen(applied.edits)).toBe(true)
+    const firstEdit = callerEdits[0]
+    if (firstEdit) firstEdit.after = "MUTATED"
+    expect(applied.edits[0]?.after).toBe("b")
   })
 })
