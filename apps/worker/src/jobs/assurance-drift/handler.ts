@@ -13,10 +13,13 @@ import type { Transaction } from "@agenticmind/shared/database/client"
 import {
   assembleBundle,
   collectFromEngine,
+  consoleNotifier,
   evaluateDrift,
+  formatDriftAlert,
   ingestCoreReport,
   loadBundledCatalog,
   snapshotBundle,
+  type AssuranceNotifier,
   type ControlSnapshot,
   type CoreReport,
 } from "@agenticmind/assurance"
@@ -45,7 +48,10 @@ function emptyCoreReport(target: string): CoreReport {
   return report.value
 }
 
-export const runAssuranceDriftSweep = async (db: Transaction): Promise<void> =>
+export const runAssuranceDriftSweep = async (
+  db: Transaction,
+  notify: AssuranceNotifier = consoleNotifier,
+): Promise<void> =>
   withSpan("assurance.drift_sweep", SpanKind.CHAIN, async (span) => {
     const at = new Date().toISOString()
     console.log(`[WORKER] ${at}: assurance drift sweep starting (target=${TARGET})`)
@@ -92,11 +98,11 @@ export const runAssuranceDriftSweep = async (db: Transaction): Promise<void> =>
       )
       return
     }
-    // The alert channel (HITL Telegram/Slack, per the self-healing-ops design) is a seam; until it
-    // is wired, surface at the right log level so critical drift is not silent.
-    const log = alert.severity === "critical" ? console.error : console.warn
-    log(
-      `[ASSURANCE_DRIFT] ${alert.severity.toUpperCase()} drift: ${alert.message}`,
-      alert.regressions,
-    )
+    // Emit through the pluggable HITL channel (default logs; a deployment injects Telegram/Slack).
+    // A notifier failure must not fail the sweep — the run is already recorded.
+    try {
+      await notify(formatDriftAlert(TARGET, alert))
+    } catch (error: unknown) {
+      console.error("[ASSURANCE_DRIFT] notifier failed:", error)
+    }
   })
