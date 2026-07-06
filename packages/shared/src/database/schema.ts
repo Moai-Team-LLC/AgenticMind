@@ -2,6 +2,7 @@
 // The per-ask audit trail is `ask_telemetry`; feedback signals key off it.
 // (There are no multi-route assistant tables — the MCP path calls ask() directly.)
 
+import * as AssuranceRuns from "@agenticmind/shared/database/schema/assurance/runs"
 import * as KnowledgeAnswerCache from "@agenticmind/shared/database/schema/knowledge/answer-cache"
 import * as KnowledgeAskClusterMembers from "@agenticmind/shared/database/schema/knowledge/ask-cluster-members"
 import * as KnowledgeAskClusters from "@agenticmind/shared/database/schema/knowledge/ask-clusters"
@@ -34,6 +35,7 @@ export * from "@agenticmind/shared/database/schema/knowledge/graph"
 export * from "@agenticmind/shared/database/schema/knowledge/materials"
 export * from "@agenticmind/shared/database/schema/knowledge/mcp-tokens"
 export * from "@agenticmind/shared/database/schema/knowledge/tool-audit-events"
+export * from "@agenticmind/shared/database/schema/assurance/runs"
 
 export const schema = {
   ...Users,
@@ -51,4 +53,5 @@ export const schema = {
   ...KnowledgeGuardEvents,
   ...KnowledgeRateLimits,
   ...KnowledgeToolAuditEvents,
+  ...AssuranceRuns,
 }

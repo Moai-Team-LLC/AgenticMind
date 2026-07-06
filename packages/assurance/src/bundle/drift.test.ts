@@ -5,7 +5,7 @@ import { loadCatalog, type Catalog } from "../catalog"
 import { collectNative, type EvidenceRecord } from "../evidence"
 import { ingestCoreReport, type CoreAttack, type CoreReport } from "../gap"
 import { assembleBundle } from "./build"
-import { diffBundles } from "./drift"
+import { diffBundles, evaluateDrift, type ControlSnapshot } from "./drift"
 
 const AT = "2026-07-04T00:00:00Z"
 
@@ -96,5 +96,42 @@ describe("drift detection", () => {
     const drift = diffBundles(b, b)
     expect(drift.regressions).toEqual([])
     expect(drift.improvements).toEqual([])
+  })
+})
+
+describe("evaluateDrift (continuous assurance)", () => {
+  const snap = (entries: [string, ControlSnapshot["status"]][]): ControlSnapshot[] =>
+    entries.map(([controlId, status]) => ({ controlId, status }))
+
+  it("treats the first run (no prior) as a baseline — no drift, no alert", () => {
+    const { report: rep, alert } = evaluateDrift(null, snap([["A", "green"]]))
+    expect(rep).toBeNull()
+    expect(alert).toBeNull()
+  })
+
+  it("does not alert when nothing regressed (an improvement is not drift)", () => {
+    const prev = snap([
+      ["A", "green"],
+      ["B", "yellow"],
+    ])
+    const next = snap([
+      ["A", "green"],
+      ["B", "green"],
+    ])
+    const { report: rep, alert } = evaluateDrift(prev, next)
+    expect(rep?.regressions).toEqual([])
+    expect(alert).toBeNull()
+  })
+
+  it("warns on a non-critical regression (yellow→red)", () => {
+    const { alert } = evaluateDrift(snap([["A", "yellow"]]), snap([["A", "red"]]))
+    expect(alert?.severity).toBe("warning")
+    expect(alert?.regressions[0]?.controlId).toBe("A")
+  })
+
+  it("escalates to critical when a control falls green→red", () => {
+    const { report: rep, alert } = evaluateDrift(snap([["A", "green"]]), snap([["A", "red"]]))
+    expect(rep?.hasCriticalDrift).toBe(true)
+    expect(alert?.severity).toBe("critical")
   })
 })

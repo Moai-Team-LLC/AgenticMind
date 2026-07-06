@@ -6,6 +6,7 @@ import { err, ok, type Result } from "neverthrow"
  * ASI id or a missing required field returns a typed error, never a partial catalog.
  */
 import { readFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
 import { parse as parseYaml } from "yaml"
 
 import { Catalog } from "./schema"
@@ -49,6 +50,14 @@ export function loadCatalog(path: string): Result<Catalog, CatalogError> {
     return err({ kind: "parse", path, message: messageOf(cause) })
   }
   return parseCatalog(data, path)
+}
+
+/** Load the catalog YAML bundled with this package — for consumers (e.g. the worker) that should
+ *  not have to know its on-disk path. Resolved relative to this module. */
+export function loadBundledCatalog(): Result<Catalog, CatalogError> {
+  return loadCatalog(
+    fileURLToPath(new URL("../../catalog/aal-control-catalog.yaml", import.meta.url)),
+  )
 }
 
 function messageOf(cause: unknown): string {
