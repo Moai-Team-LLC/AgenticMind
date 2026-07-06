@@ -14,6 +14,15 @@ import { createHash } from "node:crypto"
 /** The scope a bearer must carry to POST audit events. */
 export const AUDIT_WRITE_SCOPE = "audit:write"
 
+/**
+ * Max accepted body size for a single audit event, in bytes. Bounds per-request memory so an
+ * authenticated caller cannot OOM the shared server process (which also serves /mcp) by POSTing a
+ * huge body — the body is buffered before parsing, so the cap must be enforced during the read.
+ * Audit events are small structural payloads; 1 MiB comfortably fits a hook event (even one whose
+ * tool payload we only hash) while rejecting the abuse case. Mirrors `MAX_UPLOAD_BYTES`.
+ */
+export const AUDIT_MAX_BYTES = 1024 * 1024
+
 export const hasAuditWriteScope = (scopes: readonly string[] | undefined): boolean =>
   scopes !== undefined && scopes.includes(AUDIT_WRITE_SCOPE)
 

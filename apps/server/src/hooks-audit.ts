@@ -11,7 +11,12 @@
  */
 
 import { recordToolAuditEvent } from "@agenticmind/shared/database/query/knowledge/tool-audit-events"
-import { hasAuditWriteScope, parseHookEvent } from "@agenticmind/shared/lib/audit/hook-event"
+import {
+  AUDIT_MAX_BYTES,
+  hasAuditWriteScope,
+  parseHookEvent,
+} from "@agenticmind/shared/lib/audit/hook-event"
+import { readCappedJson } from "@agenticmind/shared/lib/audit/read-capped-json"
 
 import { verifyMcpAccess } from "@/mcp"
 import { getDb } from "@/server/lib/database"
@@ -40,14 +45,15 @@ export const hooksAuditFetch = async (req: Request): Promise<Response> => {
     return new Response("Forbidden: audit:write scope required", { status: 403 })
   }
 
-  let raw: unknown
-  try {
-    raw = await req.json()
-  } catch {
-    return new Response("Bad Request: invalid JSON", { status: 400 })
+  // Bound the body BEFORE buffering it — a huge POST here would otherwise OOM the shared process.
+  const body = await readCappedJson(req, AUDIT_MAX_BYTES)
+  if (!body.ok) {
+    return body.reason === "too_large"
+      ? new Response("Payload Too Large", { status: 413 })
+      : new Response("Bad Request: invalid JSON", { status: 400 })
   }
 
-  const parsed = parseHookEvent(raw)
+  const parsed = parseHookEvent(body.value)
   if (parsed === null) {
     return new Response("Bad Request: unrecognized hook event", { status: 400 })
   }
