@@ -9,20 +9,21 @@
  * No new instrumentation on agents (FR-9 non-goal): every read is against a table the engine
  * already writes. Hash-not-text holds — we read hashed columns (`input_hash`), never raw text.
  *
- * WS2 deferral — honest coverage, do not fabricate. The fourth native source, `tool_audit_events`
- * (the unified tool-call audit trail from WS2), does NOT exist in the lean-OSS engine (v0.13.0): WS2
- * has not landed. Its PURE mapper `collectToolAuditEvents` is shipped and unit-tested in this package
- * (`./tool-audit-events`), ready to wire the day the table exists. Until then this collector harvests
- * only the three artifacts that DO exist (`guard_events`, `ask_telemetry`, `mcp_tokens`); controls
- * that depend on the audit trail score `not_verified` (YELLOW) — the designed graceful-degradation,
- * not a bug. To re-enable once WS2 lands: add `toolAuditEvents` to the schema import, restore its
- * `.select().from()` query in the `Promise.all`, and merge `collectToolAuditEvents(auditRows, …)`
- * into the returned records.
+ * Four native sources: `guard_events`, `ask_telemetry`, `mcp_tokens`, and — since WS2 landed —
+ * `tool_audit_events` (the unified external-runtime tool-call audit trail, `POST /hooks/audit`).
+ * Each is fed to a PURE, unit-tested mapper (`collectNative` / `collectToolAuditEvents`); an artifact
+ * the engine does not produce simply yields no evidence, and its controls score `not_verified`
+ * (YELLOW) — honest graceful-degradation, never a fabricated GREEN.
  */
 import type { Transaction } from "@agenticmind/shared/database/client"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
-import { askTelemetry, guardEvents, mcpTokens } from "@agenticmind/shared/database/schema"
+import {
+  askTelemetry,
+  guardEvents,
+  mcpTokens,
+  toolAuditEvents,
+} from "@agenticmind/shared/database/schema"
 import { ResultAsync } from "neverthrow"
 
 import {
@@ -32,6 +33,7 @@ import {
   type GuardEventRow,
   type McpTokenRow,
 } from "./collect"
+import { collectToolAuditEvents, type ToolAuditEventRow } from "./tool-audit-events"
 
 /** Bound the sample so evidence collection is a fast, predictable read. */
 const SAMPLE_LIMIT = 5000
@@ -46,8 +48,8 @@ export interface CollectFromEngineProps {
 }
 
 /**
- * Harvest native evidence from the live engine: `guard_events`, `ask_telemetry`, `mcp_tokens`.
- * (`tool_audit_events` is deferred to WS2 — see the file header.) Returns immutable, sourced records.
+ * Harvest native evidence from the live engine: `guard_events`, `ask_telemetry`, `mcp_tokens`, and
+ * `tool_audit_events` (WS2). Returns immutable, sourced evidence records.
  */
 export function collectFromEngine(props: CollectFromEngineProps) {
   const { tx, collectedAt } = props
@@ -84,9 +86,24 @@ export function collectFromEngine(props: CollectFromEngineProps) {
         })
         .from(mcpTokens)
         .limit(SAMPLE_LIMIT),
+      tx
+        .select({
+          id: toolAuditEvents.id,
+          source: toolAuditEvents.source,
+          eventKind: toolAuditEvents.eventKind,
+          actorUuid: toolAuditEvents.actorUuid,
+          sessionId: toolAuditEvents.sessionId,
+          tool: toolAuditEvents.tool,
+          decision: toolAuditEvents.decision,
+          payloadHash: toolAuditEvents.payloadHash,
+          metadata: toolAuditEvents.metadata,
+          createdAt: toolAuditEvents.createdAt,
+        })
+        .from(toolAuditEvents)
+        .limit(SAMPLE_LIMIT),
     ]),
     mapDatabaseError,
-  ).map(([guard, telem, tokens]) => {
+  ).map(([guard, telem, tokens, audit]) => {
     const rows: EngineRows = {
       guardEvents: guard.map(
         (g): GuardEventRow => ({
@@ -119,6 +136,19 @@ export function collectFromEngine(props: CollectFromEngineProps) {
       ...(props.mcpToolsLockHash ? { mcpToolsLockHash: props.mcpToolsLockHash } : {}),
     }
 
-    return collectNative(rows, collectedAt)
+    const auditRows: ToolAuditEventRow[] = audit.map((t) => ({
+      id: t.id,
+      source: t.source,
+      eventKind: t.eventKind,
+      actorUuid: t.actorUuid,
+      sessionId: t.sessionId,
+      tool: t.tool,
+      decision: t.decision,
+      payloadHash: t.payloadHash,
+      metadata: (t.metadata as Record<string, unknown> | null) ?? null,
+      createdAt: iso(t.createdAt),
+    }))
+
+    return [...collectNative(rows, collectedAt), ...collectToolAuditEvents(auditRows, collectedAt)]
   })
 }

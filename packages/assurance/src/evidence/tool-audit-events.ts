@@ -31,8 +31,8 @@ export interface ToolAuditEventRow {
   tool: string | null
   /** e.g. "accept" | "reject" | "deny" (nullable). */
   decision: string | null
-  /** sha256 of the raw payload — never the raw text (NFR-3). */
-  payloadHash: string
+  /** sha256 of the raw payload — never the raw text (NFR-3). Nullable, like `guard_events.input_hash`. */
+  payloadHash: string | null
   /** Safe structural fields only (no raw payloads). */
   metadata: Record<string, unknown> | null
   createdAt: string
