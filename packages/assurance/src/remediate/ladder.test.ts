@@ -12,6 +12,7 @@ import {
   type FixProposal,
   type GateOutcome,
   type RemediationJudge,
+  type RemediationJudgeResult,
 } from "./index"
 import { transition } from "./ledger"
 
@@ -225,5 +226,22 @@ describe("L3 hardening (adversarial-review fixes)", () => {
     expect(entry.verdict).not.toBe(heldVerdict)
     heldVerdict.rationale = "TAMPERED"
     expect(entry.verdict?.rationale).toBe("ok")
+  })
+
+  it("deep-freezes verdict content an untrusted judge may nest (not just top-level)", () => {
+    const nested = { audit: "orig" }
+    const gate: GateOutcome = {
+      decision: "pending_approval",
+      guard: { allowed: true, violations: [] },
+      verdict: {
+        verdict: "supported",
+        rationale: "ok",
+        nested,
+      } as unknown as RemediationJudgeResult,
+      reason: "t",
+    }
+    const entry = openRemediation(validProposal, gate, T)
+    const recorded = entry.verdict as unknown as { nested: { audit: string } }
+    expect(Object.isFrozen(recorded.nested)).toBe(true)
   })
 })

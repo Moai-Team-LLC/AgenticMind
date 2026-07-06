@@ -108,7 +108,9 @@ export function triageFindings(report: CoreReport): FixProposal[] {
       rationale: fix.rationale,
       edits: [{ path: fix.path, op: fix.op, summary: fix.summary }],
     }
-    // Self-check: never emit a proposal the Cycle-of-Trust guard would reject.
+    // Self-check: never emit a proposal the Cycle-of-Trust guard would reject. NB: the guard is a
+    // fail-closed allowlist (guard.ts `ALLOWED_PATHS`) — a new CLASS_FIX whose path is not allowlisted
+    // is silently dropped here, so add its structural path to `ALLOWED_PATHS` when introducing one.
     if (enforceCycleOfTrust(proposal).allowed) proposals.push(proposal)
   }
   return proposals

@@ -97,6 +97,21 @@ export interface TransitionInput {
 }
 
 /** Validate and apply a transition, returning a NEW immutable entry (fail-closed on illegal edges). */
+/**
+ * Recursively freeze a value so runtime immutability holds even for content the flat types do not
+ * declare — the verdict arrives from an untrusted judge seam and edits are caller-supplied, so a
+ * shallow freeze would leave a snuck-in nested object mutable and alias-shared.
+ */
+export function deepFreeze<T>(value: T): T {
+  if (value !== null && typeof value === "object" && !Object.isFrozen(value)) {
+    Object.freeze(value)
+    for (const key of Object.keys(value)) {
+      deepFreeze((value as Record<string, unknown>)[key])
+    }
+  }
+  return value
+}
+
 export function transition(
   entry: RemediationLedgerEntry,
   input: TransitionInput,
@@ -126,9 +141,7 @@ export function transition(
   // Deep-copy + freeze the recorded edits so no caller alias can rewrite the ledger after the fact,
   // and so distinct entries never share a mutable array (runtime immutability, not just `readonly`).
   const edits =
-    input.to === "applied"
-      ? Object.freeze((input.edits ?? []).map((e) => Object.freeze({ ...e })))
-      : entry.edits
+    input.to === "applied" ? deepFreeze((input.edits ?? []).map((e) => ({ ...e }))) : entry.edits
   return ok(
     Object.freeze({
       ...entry,

@@ -15,7 +15,7 @@ import type { AppliedEdit, RemediationLedgerEntry, TransitionError } from "./led
 import type { FixProposal, ProposedEdit } from "./proposal"
 
 import { enforceCycleOfTrust } from "./guard"
-import { transition } from "./ledger"
+import { deepFreeze, transition } from "./ledger"
 
 /** Re-express concrete applied edits as a proposal so the path-based guard can vet them. */
 function asGuardProposal(
@@ -50,7 +50,7 @@ export function openRemediation(
     state: gate.decision,
     // Deep-copy + freeze the verdict too, so the recorded judge decision cannot be rewritten via a
     // caller alias (audit/provenance integrity) — the fix that froze edits/history missed this.
-    verdict: gate.verdict === null ? null : Object.freeze({ ...gate.verdict }),
+    verdict: gate.verdict === null ? null : deepFreeze({ ...gate.verdict }),
     edits: Object.freeze([]),
     history: Object.freeze([
       Object.freeze({ at, from: null, to: gate.decision, actor: "system:gate", note: gate.reason }),
