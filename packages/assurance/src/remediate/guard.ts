@@ -49,16 +49,17 @@ const FORBIDDEN_TOKENS = new Set<string>([
  * separator-stripped join so `sideEffect` / `code_exec` / `apiKey` cannot slip through. */
 const FORBIDDEN_COMPOUNDS = ["sideeffect", "codeexec", "apikey"]
 
-/** Root tokens that ARE structural configuration — the only surfaces an edit may start from. */
-const ALLOWED_ROOTS = new Set<string>([
-  "prompt",
-  "context",
-  "manifest",
-  "few",
-  "fewshot",
-  "system",
-  "systemprompt",
-  "declared",
+/**
+ * The closed set of structural-config surfaces an edit may target, as normalized token paths (the
+ * tokenizer output joined by "."). A denylist cannot fence an open concept space — a fresh word like
+ * `autoApprove` / `capabilities` / `mcpServers` would slip a denylist — so the guard is an ALLOWLIST:
+ * anything not explicitly listed is refused (fail-closed). These are exactly the surfaces L2 triage
+ * emits; add a new one here (a reviewed change) only when a structural fix genuinely needs it.
+ */
+const ALLOWED_PATHS = new Set<string>([
+  "prompt.system",
+  "context.trusted.descriptions",
+  "manifest.declared.mitigations",
 ])
 
 /**
@@ -94,10 +95,12 @@ function checkEdit(edit: ProposedEdit): GuardViolation | null {
       return { path: edit.path, reason: `touches a forbidden surface (\`${compound}\`)` }
     }
   }
-  if (!ALLOWED_ROOTS.has(root)) {
+  // Primary gate: the normalized path must be an explicitly allowed structural surface (fail-closed).
+  const normalized = tokens.join(".")
+  if (!ALLOWED_PATHS.has(normalized)) {
     return {
       path: edit.path,
-      reason: `root \`${root}\` is not a recognized structural-config surface (fail-closed)`,
+      reason: `\`${normalized}\` is not an allowed structural-config surface (fail-closed allowlist)`,
     }
   }
   return null

@@ -10,6 +10,7 @@ import {
   revertRemediation,
   type AppliedEdit,
   type FixProposal,
+  type GateOutcome,
   type RemediationJudge,
 } from "./index"
 import { transition } from "./ledger"
@@ -209,5 +210,20 @@ describe("L3 hardening (adversarial-review fixes)", () => {
     const firstEdit = callerEdits[0]
     if (firstEdit) firstEdit.after = "MUTATED"
     expect(applied.edits[0]?.after).toBe("b")
+  })
+
+  it("freezes the opened entry and deep-copies the verdict — the recorded decision can't be rewritten", () => {
+    const heldVerdict = { verdict: "supported" as const, rationale: "ok" }
+    const gate: GateOutcome = {
+      decision: "pending_approval",
+      guard: { allowed: true, violations: [] },
+      verdict: heldVerdict,
+      reason: "test",
+    }
+    const entry = openRemediation(validProposal, gate, T)
+    expect(Object.isFrozen(entry)).toBe(true)
+    expect(entry.verdict).not.toBe(heldVerdict)
+    heldVerdict.rationale = "TAMPERED"
+    expect(entry.verdict?.rationale).toBe("ok")
   })
 })

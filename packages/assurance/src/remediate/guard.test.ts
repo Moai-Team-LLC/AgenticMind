@@ -93,4 +93,41 @@ describe("Cycle-of-Trust guard", () => {
     )
     expect(r.allowed).toBe(true)
   })
+
+  it("REFUSES dangerous surfaces a denylist would miss (allowlist is fail-closed)", () => {
+    const refused = [
+      "prompt.autoApprove", // attacks the HITL approval gate itself
+      "context.bypassApproval",
+      "manifest.capabilities",
+      "manifest.entitlements",
+      "context.privilegeLevel",
+      "context.superuser",
+      "prompt.rootAccess",
+      "context.mcpServers",
+      "prompt.shellCommand",
+      "context.oauthClientSecret",
+      "context.privateKey",
+      "prompt.password",
+      "prompt.perm",
+      "context.cap",
+      "manifest.entitlement",
+      "prompt.privilege",
+    ]
+    for (const path of refused) {
+      const r = enforceCycleOfTrust(proposal([{ path, op: "modify", summary: "x" }]))
+      expect(r.allowed, `${path} must be refused`).toBe(false)
+    }
+  })
+
+  it("allows exactly the structural surfaces L2 triage emits", () => {
+    const allowed = [
+      "prompt.system",
+      "manifest.declaredMitigations",
+      "context.trusted-descriptions",
+    ]
+    for (const path of allowed) {
+      const r = enforceCycleOfTrust(proposal([{ path, op: "modify", summary: "structural" }]))
+      expect(r.allowed, `${path} must be allowed`).toBe(true)
+    }
+  })
 })

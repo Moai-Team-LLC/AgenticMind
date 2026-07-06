@@ -43,17 +43,19 @@ export function openRemediation(
   gate: GateOutcome,
   at: string,
 ): RemediationLedgerEntry {
-  return {
+  return Object.freeze({
     id: `rem:${proposal.id}`,
     proposalId: proposal.id,
     findingId: proposal.findingId,
     state: gate.decision,
-    verdict: gate.verdict,
+    // Deep-copy + freeze the verdict too, so the recorded judge decision cannot be rewritten via a
+    // caller alias (audit/provenance integrity) — the fix that froze edits/history missed this.
+    verdict: gate.verdict === null ? null : Object.freeze({ ...gate.verdict }),
     edits: Object.freeze([]),
     history: Object.freeze([
       Object.freeze({ at, from: null, to: gate.decision, actor: "system:gate", note: gate.reason }),
     ]),
-  }
+  })
 }
 
 /** HITL approves a pending remediation. */
@@ -89,7 +91,10 @@ export function applyRemediation(
   edits: readonly AppliedEdit[],
   at: string,
 ): Result<RemediationLedgerEntry, ApplyError> {
-  // Belt-and-suspenders vs. a hand-forged "approved" entry: a real HITL approval must be on record.
+  // Consistency assertion: an entry reaching apply must carry a recorded HITL approval. The SOUND
+  // control is the un-exported, actor-enforced state machine (a non-hitl actor cannot reach
+  // `approved`); this is defense-in-depth for module-produced entries, NOT tamper-evidence — a
+  // caller that fabricates an entry wholesale is outside the in-process trust model.
   const humanApproved = entry.history.some(
     (e) => e.to === "approved" && e.actor.startsWith("hitl:"),
   )
