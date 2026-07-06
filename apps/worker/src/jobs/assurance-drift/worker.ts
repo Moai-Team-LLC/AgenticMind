@@ -5,6 +5,11 @@
  * contending for the same connection burst.
  */
 
+import {
+  consoleNotifier,
+  makeTelegramNotifier,
+  type AssuranceNotifier,
+} from "@agenticmind/assurance"
 import { sql } from "drizzle-orm"
 
 import { runAssuranceDriftSweep } from "@/jobs/assurance-drift/handler"
@@ -13,6 +18,19 @@ import { db } from "@/lib/database"
 /** Fixed key identifying the assurance-drift advisory lock (distinct from the feedback sweep). */
 const ADVISORY_LOCK_KEY = 4_242_043
 const DAILY_HOUR_UTC = 5
+
+/**
+ * Drift alerts go to Telegram when both env vars are set, else a console logger. Resolved at the
+ * composition root (env is app config), so the sweep and the adapter stay pure and injectable.
+ */
+// oxlint-disable-next-line node/no-process-env
+const TELEGRAM_BOT_TOKEN = process.env.ASSURANCE_TELEGRAM_BOT_TOKEN
+// oxlint-disable-next-line node/no-process-env
+const TELEGRAM_CHAT_ID = process.env.ASSURANCE_TELEGRAM_CHAT_ID
+const notifier: AssuranceNotifier =
+  TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID
+    ? makeTelegramNotifier({ botToken: TELEGRAM_BOT_TOKEN, chatId: TELEGRAM_CHAT_ID })
+    : consoleNotifier
 
 const msUntilNextRun = (now: Date): number => {
   const next = new Date(now)
@@ -41,7 +59,7 @@ const runGuarded = async (): Promise<void> => {
       )
       return
     }
-    await runAssuranceDriftSweep(tx)
+    await runAssuranceDriftSweep(tx, notifier)
   })
 }
 
