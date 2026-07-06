@@ -6,6 +6,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-07-04
+
+The **correction** release: v0.12.0's BREAKING GraphRAG removal was a
+misdiagnosis (an OpenAI-strict extractor emptied the graph — a
+misconfiguration, not a dead feature), so GraphRAG returns as **experimental**,
+together with the fix for the footgun and a guard that keeps it from silently
+looking dead again. Deployments that kept `KNOWLEDGE_GRAPHRAG_ENABLED` off are
+unaffected; upgraders from ≤0.11 get the graph tables re-created (with
+tenant-isolation RLS) by migration `0011`.
+
 ### Added
 
 - **GraphRAG restored as experimental — corrects the v0.12.0 removal.** v0.12.0
