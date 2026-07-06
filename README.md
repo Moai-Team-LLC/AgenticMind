@@ -239,19 +239,20 @@ agent principal is slim, and the host is a headless Node/Bun HTTP server. Retrie
 default** — local `bge-m3` embeddings cover many languages with zero keys; full-text search
 uses the language-agnostic `simple` config (configurable per deployment).
 
-## 🌐 Ecosystem
+## 🌐 The AgenticProduct ecosystem
 
-AgenticMind is the flagship **reference implementation** of
-**[the Agentic Product Standard](https://github.com/Moai-Team-LLC/agentic-product-standard)** —
-the open standard (plus Claude Code skills) for building production-grade agentic products.
+One standard and five reference implementations you can run — together they close the loop every production agent needs: **run → remember → measure → heal**, with security as a cross-cutting assurance plane.
 
-|     | Repo | Use it when |
-| --- | --- | --- |
-| 📐  | **[agentic-product-standard](https://github.com/Moai-Team-LLC/agentic-product-standard)** | You're **designing or building** an agent / agentic product — the standard + skills tell you _how_. |
-| ⚙️  | **[AgenticOps](https://github.com/Moai-Team-LLC/AgenticOps)** | You need to **run a fleet** of long-lived agents as deployed infrastructure — manifests, scheduling, a durable backlog, bounded runs, fleet health. |
-| 🧠  | **AgenticMind** (this repo) | You need a **knowledge & memory layer** for your agent — a working implementation you can run. |
-| 📈  | **[AgenticPerformance](https://github.com/Moai-Team-LLC/AgenticPerformance)** | You need to **measure and improve** your agents — traces, golden-set evals with a CI gate, failure clusters, a governed improvement loop. |
-| 🩹  | **[AgenticSelfHealingCode](https://github.com/Moai-Team-LLC/AgenticSelfHealingCode)** | You need agents to **heal what breaks** — production monitoring, incident RCA, and test-suite repair. |
+|  | Project | Role |
+|---|---|---|
+| 📐 | [agentic-product-standard](https://github.com/Moai-Team-LLC/agentic-product-standard) | The contract — principles, the autonomy ladder, the harness layers, and eval discipline (plus a Claude Code skill set). |
+| ⚙️ | [AgenticOps](https://github.com/Moai-Team-LLC/AgenticOps) | Runtime & operations — deployable manifests, scheduling, a durable backlog, a bounded runner, and fleet health. |
+| 🧠 | **AgenticMind** (this repo) | Knowledge & memory — auditable, self-improving, citation-enforced, over MCP; Postgres-only. |
+| 📈 | [AgenticPerformance](https://github.com/Moai-Team-LLC/AgenticPerformance) | Evals & observability — OTel traces, golden-set evals with a CI gate, failure clusters, and the improvement loop. |
+| 🩹 | [AgenticSelfHealingCode](https://github.com/Moai-Team-LLC/AgenticSelfHealingCode) | Self-healing ops — production monitoring, incident diagnosis/RCA, and test-suite healing on earned autonomy. |
+| 🛡️ | [AgenticAssurance](https://github.com/Moai-Team-LLC/AgenticAssurance) | Security & assurance — red-teams any agent (OWASP Agentic + MITRE ATLAS), a toxic-flow graph, and SARIF output. |
+
+**How they compose.** **AgenticOps** runs the fleet, **AgenticMind** gives agents auditable knowledge & memory, **AgenticPerformance** measures every run with traces and evals, and **AgenticSelfHealingCode** repairs what breaks — closing the **run → remember → measure → heal** loop. **AgenticAssurance** red-teams any agent in that loop for security, and the whole stack conforms to the **[agentic-product-standard](https://github.com/Moai-Team-LLC/agentic-product-standard)**.
 
 See the standard's [AgenticMind case study](https://github.com/Moai-Team-LLC/agentic-product-standard/blob/main/examples/agenticmind-case-study.md) for a layer-by-layer map of how this repo implements the canon.
 
