@@ -58,3 +58,30 @@ apps/server/src/{index,mcp}.ts       ← headless Bun MCP host (the agent surfac
 apps/worker/src/                     ← the compounding sweep (self-improvement)
 eval/                                ← grounded eval suite + corpus
 ```
+
+## packages/assurance (`@agenticmind/assurance`) — AAL Evidence
+
+The enterprise compliance & evidence layer of the Agent Assurance Layer. It consumes **AAL Core**'s
+structured findings (`aal scan --json`), maps target facts to the control catalog
+(`catalog/aal-control-catalog.yaml` — AIUC-1 / OWASP ASI / ISO 42001), harvests evidence from the
+engine's existing artifacts, scores every control Green/Yellow/Red, and emits an auditor bundle.
+
+**Native-OK, unlike AAL Core.** This package MAY (and does) import `@agenticmind/shared` — deep
+native integration is the point. AAL Core stays framework-neutral; the coupling lives only here.
+
+**Four hard rules (never weaken):**
+1. **No Green on absence of evidence.** A control with no collected evidence is `not_verified`
+   (YELLOW) at best. A control with a **failing Plane-A test is RED**, regardless of any declared
+   mitigation (tests beat claims).
+2. **Evidence is immutable & sourced.** Every record is insert-only, timestamped, and references a
+   real source id/hash (`guard_events.id`, an `ask-telemetry` id, a `tool_audit_events` id, the
+   `.mcp-tools.lock` hash). Hash-not-text: no raw incident payloads.
+3. **Honest coverage.** Every bundle states its coverage ratio (auto-collected native vs.
+   generic/manual/none). Never over-claim.
+4. **Remediation is structural-only** (when the autonomy ladder lands): prompts/context/manifests/
+   declared-mitigations — never a side-effecting tool, permission, or trust boundary (Cycle of Trust).
+
+**Where its data lives:** evidence is derived on demand from existing engine tables
+(`guard_events`, `ask-telemetry`, `mcp-tokens`, `tool_audit_events`); the layer's own persisted
+tables (`control_status`, `evidence_records`, run history) land with the drift/continuous-assurance
+step (FR-10). Native reads: `src/evidence/collect-db.ts`.
