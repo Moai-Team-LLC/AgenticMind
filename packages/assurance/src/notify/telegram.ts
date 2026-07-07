@@ -9,7 +9,7 @@
  */
 import type { AssuranceNotification, AssuranceNotifier } from "./channel"
 
-export interface TelegramConfig {
+export type TelegramConfig = {
   botToken: string
   chatId: string
   /** Injectable for tests; defaults to the global `fetch`. */
@@ -23,7 +23,7 @@ const ICON: Record<AssuranceNotification["severity"], string> = {
 }
 
 /** Render a notification as the plain-text body of a Telegram message (payload-free). */
-export function renderTelegramText(notification: AssuranceNotification): string {
+export const renderTelegramText = (notification: AssuranceNotification): string => {
   const context = Object.entries(notification.context)
     .map(([key, value]) => `${key}: ${value}`)
     .join(" · ")
@@ -31,7 +31,7 @@ export function renderTelegramText(notification: AssuranceNotification): string 
 }
 
 /** Build a Telegram-backed notifier. Throws on a non-OK API response so the caller can react. */
-export function makeTelegramNotifier(config: TelegramConfig): AssuranceNotifier {
+export const makeTelegramNotifier = (config: TelegramConfig): AssuranceNotifier => {
   const send = config.fetchImpl ?? fetch
   const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`
   return async (notification) => {

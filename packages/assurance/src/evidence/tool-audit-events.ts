@@ -12,7 +12,8 @@
  * That is exactly what an audit trail needs — evidence is about EXISTENCE + ATTRIBUTION of logged
  * tool activity, not about replaying payloads.
  */
-import type { Collector } from "../catalog/schema"
+import type { Collector } from "@agenticmind/assurance/catalog/schema"
+
 import type { EvidenceRecord } from "./schema"
 
 /**
@@ -20,7 +21,7 @@ import type { EvidenceRecord } from "./schema"
  * Mirrors the engine columns: payload is a sha256 hash, `metadata` holds only safe structural
  * fields, and there is never raw text.
  */
-export interface ToolAuditEventRow {
+export type ToolAuditEventRow = {
   id: string
   /** Ingest source, e.g. "claude-code-hook". */
   source: string
@@ -44,14 +45,16 @@ const rec = (
   collector: Collector,
   collectedAt: string,
   summary: string,
-): EvidenceRecord => ({
-  id: `ev:${collector}:${controlId}:${sourceArtifact}`,
-  controlId,
-  sourceArtifact,
-  collector,
-  collectedAt,
-  summary,
-})
+): EvidenceRecord => {
+  return {
+    id: `ev:${collector}:${controlId}:${sourceArtifact}`,
+    controlId,
+    sourceArtifact,
+    collector,
+    collectedAt,
+    summary,
+  }
+}
 
 /**
  * Native collection: turn `tool_audit_events` rows into evidence for the Accountability controls
@@ -61,12 +64,14 @@ const rec = (
  * evidence-only (no Plane-A test required), so this is honest native evidence, never over-claimed.
  * `collectedAt` is passed in so the result is deterministic and reproducible.
  */
-export function collectToolAuditEvents(
+export const collectToolAuditEvents = (
   rows: ToolAuditEventRow[],
   collectedAt: string,
-): EvidenceRecord[] {
+): EvidenceRecord[] => {
   const out: EvidenceRecord[] = []
-  if (rows.length === 0) return out
+  if (rows.length === 0) {
+    return out
+  }
 
   // Any logged tool event with actor/session provenance → decision traceability (AAL-ACC-01).
   const attributed = rows.filter((r) => r.actorUuid !== null || r.sessionId !== null)
@@ -90,10 +95,9 @@ export function collectToolAuditEvents(
       `tool_audit_events:${rows.length}`,
       "native",
       collectedAt,
-      `${rows.length} tool-audit event(s) logged with sha256 payload hashes` +
-        (decided.length > 0
-          ? ` and ${decided.length} recorded accept/reject/deny decision(s).`
-          : "."),
+      `${rows.length} tool-audit event(s) logged with sha256 payload hashes${
+        decided.length > 0 ? ` and ${decided.length} recorded accept/reject/deny decision(s).` : "."
+      }`,
     ),
   )
 

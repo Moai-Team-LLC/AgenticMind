@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest"
 
+import type {
+  AppliedEdit,
+  FixProposal,
+  GateOutcome,
+  RemediationJudge,
+  RemediationJudgeResult,
+} from "./index"
+
 import {
   applyRemediation,
   approveRemediation,
@@ -8,11 +16,6 @@ import {
   invertEdit,
   openRemediation,
   revertRemediation,
-  type AppliedEdit,
-  type FixProposal,
-  type GateOutcome,
-  type RemediationJudge,
-  type RemediationJudgeResult,
 } from "./index"
 import { transition } from "./ledger"
 
@@ -40,11 +43,15 @@ const structuralEdits: AppliedEdit[] = [
   { path: "prompt.system", op: "modify", before: "old prompt", after: "hardened prompt" },
 ]
 
-const supportedJudge: RemediationJudge = () =>
-  Promise.resolve({ verdict: "supported", rationale: "ok" })
-const unsupportedJudge: RemediationJudge = () =>
-  Promise.resolve({ verdict: "unsupported", rationale: "insufficient" })
-const throwingJudge: RemediationJudge = () => Promise.reject(new Error("model down"))
+const supportedJudge: RemediationJudge = async () => {
+  return { verdict: "supported", rationale: "ok" }
+}
+const unsupportedJudge: RemediationJudge = async () => {
+  return { verdict: "unsupported", rationale: "insufficient" }
+}
+const throwingJudge: RemediationJudge = async () => {
+  throw new Error("model down")
+}
 
 describe("gateProposal", () => {
   it("refuses a forbidden proposal at the guard, without consulting the judge", async () => {
@@ -189,7 +196,7 @@ describe("L3 hardening (adversarial-review fixes)", () => {
   })
 
   it("fails closed when the judge resolves a malformed (non-object) verdict", async () => {
-    const badJudge = (() => Promise.resolve(undefined)) as unknown as RemediationJudge
+    const badJudge = (async () => null) as unknown as RemediationJudge
     const gate = await gateProposal(validProposal, badJudge)
     expect(gate.decision).toBe("judge_rejected")
     expect(gate.verdict).toBeNull()
@@ -209,7 +216,9 @@ describe("L3 hardening (adversarial-review fixes)", () => {
     expect(applied.edits).not.toBe(callerEdits)
     expect(Object.isFrozen(applied.edits)).toBe(true)
     const firstEdit = callerEdits[0]
-    if (firstEdit) firstEdit.after = "MUTATED"
+    if (firstEdit) {
+      firstEdit.after = "MUTATED"
+    }
     expect(applied.edits[0]?.after).toBe("b")
   })
 

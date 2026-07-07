@@ -18,7 +18,7 @@ export type StructuralTarget =
   | "capability-manifest"
   | "declared-mitigation"
 
-export interface ProposedEdit {
+export type ProposedEdit = {
   /** Logical path being edited, e.g. `prompt.system` or `manifest.declaredMitigations`. */
   path: string
   op: "add" | "modify" | "remove"
@@ -26,7 +26,7 @@ export interface ProposedEdit {
   summary: string
 }
 
-export interface FixProposal {
+export type FixProposal = {
   id: string
   /** The AAL Core finding / attack this addresses. */
   findingId: string
@@ -35,12 +35,12 @@ export interface FixProposal {
   edits: ProposedEdit[]
 }
 
-export interface GuardViolation {
+export type GuardViolation = {
   path: string
   reason: string
 }
 
-export interface GuardResult {
+export type GuardResult = {
   allowed: boolean
   violations: GuardViolation[]
 }

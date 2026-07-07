@@ -8,7 +8,7 @@
  * are payload-free (control ids + statuses, never raw evidence or secrets), so hash-not-text holds
  * even off-box.
  */
-export interface AssuranceNotification {
+export type AssuranceNotification = {
   kind: "drift" | "approval-request"
   severity: "critical" | "warning" | "info"
   title: string
@@ -25,7 +25,7 @@ export type AssuranceNotifier = (notification: AssuranceNotification) => Promise
  * The safe default: log at the right level. Never throws — a notifier failure must not fail the
  * sweep or the remediation that emitted it (the run is already recorded by then).
  */
-export const consoleNotifier: AssuranceNotifier = (notification) => {
+export const consoleNotifier: AssuranceNotifier = async (notification) => {
   const log =
     notification.severity === "critical"
       ? console.error
@@ -36,5 +36,8 @@ export const consoleNotifier: AssuranceNotifier = (notification) => {
     `[ASSURANCE_NOTIFY] ${notification.kind}/${notification.severity}: ${notification.title} — ${notification.body}`,
     notification.context,
   )
-  return Promise.resolve()
+  // No real async work — the log is synchronous. The interface is Promise-returning (a network
+  // notifier needs to be), so this stays `async` to satisfy `AssuranceNotifier` without a caller-
+  // visible behavior change.
+  await Promise.resolve()
 }

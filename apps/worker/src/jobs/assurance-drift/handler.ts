@@ -1,3 +1,4 @@
+import type { AssuranceNotifier, ControlSnapshot, CoreReport } from "@agenticmind/assurance"
 /**
  * Continuous-assurance drift sweep (FR-10). Each cycle: harvest the engine's native evidence, score
  * the control catalog into a status snapshot, diff it against the prior run, persist the run, and
@@ -19,9 +20,6 @@ import {
   ingestCoreReport,
   loadBundledCatalog,
   snapshotBundle,
-  type AssuranceNotifier,
-  type ControlSnapshot,
-  type CoreReport,
 } from "@agenticmind/assurance"
 import {
   latestAssuranceRun,
@@ -33,7 +31,7 @@ import { SpanKind, withSpan } from "@agenticmind/shared/lib/observability/trace"
 const TARGET = "agenticmind-engine"
 
 /** An empty Plane-A report: no attacks/flows/findings, so scoring reflects native evidence only. */
-function emptyCoreReport(target: string): CoreReport {
+const emptyCoreReport = (target: string): CoreReport => {
   const report = ingestCoreReport({
     schemaVersion: "aal-core-report/0.1",
     target,

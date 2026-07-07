@@ -25,9 +25,10 @@ describe("renderTelegramText", () => {
 describe("makeTelegramNotifier", () => {
   it("POSTs the rendered message to the Telegram sendMessage API", async () => {
     const calls: { url: string; body: { chat_id: string; text: string } }[] = []
-    const fakeFetch = ((url: string | URL | Request, init?: RequestInit) => {
-      calls.push({ url: String(url), body: JSON.parse(String(init?.body)) })
-      return Promise.resolve(new Response("{}", { status: 200 }))
+    const fakeFetch = (async (url: string, init?: RequestInit) => {
+      const body = typeof init?.body === "string" ? init.body : ""
+      calls.push({ url, body: JSON.parse(body) })
+      return new Response("{}", { status: 200 })
     }) as unknown as typeof fetch
 
     const notify = makeTelegramNotifier({ botToken: "TKN", chatId: "42", fetchImpl: fakeFetch })
@@ -40,8 +41,7 @@ describe("makeTelegramNotifier", () => {
   })
 
   it("throws when Telegram returns a non-OK status", async () => {
-    const fakeFetch = (() =>
-      Promise.resolve(new Response("bad", { status: 400 }))) as unknown as typeof fetch
+    const fakeFetch = (async () => new Response("bad", { status: 400 })) as unknown as typeof fetch
     const notify = makeTelegramNotifier({ botToken: "T", chatId: "1", fetchImpl: fakeFetch })
     await expect(notify(notification)).rejects.toThrow(/telegram sendMessage failed/)
   })

@@ -1,4 +1,6 @@
-import { err, ok, type Result } from "neverthrow"
+import type { Result } from "neverthrow"
+
+import { err, ok } from "neverthrow"
 /**
  * Control Catalog loader (FR-7.2/7.3).
  *
@@ -16,50 +18,48 @@ export type CatalogError =
   | { kind: "parse"; path: string; message: string }
   | { kind: "validation"; path: string; message: string; issues: readonly CatalogIssue[] }
 
-export interface CatalogIssue {
+export type CatalogIssue = {
   path: string
   message: string
 }
 
+const messageOf = (cause: unknown): string =>
+  cause instanceof Error ? cause.message : String(cause)
+
 /** Validate an already-in-memory catalog value. */
-export function parseCatalog(raw: unknown, path = "<memory>"): Result<Catalog, CatalogError> {
+export const parseCatalog = (raw: unknown, path = "<memory>"): Result<Catalog, CatalogError> => {
   const parsed = Catalog.safeParse(raw)
   if (!parsed.success) {
     return err({
       kind: "validation",
       path,
       message: `catalog failed validation (${parsed.error.issues.length} issue(s))`,
-      issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      issues: parsed.error.issues.map((i) => {
+        return { path: i.path.join("."), message: i.message }
+      }),
     })
   }
   return ok(parsed.data)
 }
 
 /** Load, parse, and validate the catalog YAML file. */
-export function loadCatalog(path: string): Result<Catalog, CatalogError> {
+export const loadCatalog = (path: string): Result<Catalog, CatalogError> => {
   let text: string
   try {
     text = readFileSync(path, "utf8")
-  } catch (cause) {
-    return err({ kind: "read", path, message: messageOf(cause) })
+  } catch (error) {
+    return err({ kind: "read", path, message: messageOf(error) })
   }
   let data: unknown
   try {
     data = parseYaml(text)
-  } catch (cause) {
-    return err({ kind: "parse", path, message: messageOf(cause) })
+  } catch (error) {
+    return err({ kind: "parse", path, message: messageOf(error) })
   }
   return parseCatalog(data, path)
 }
 
 /** Load the catalog YAML bundled with this package — for consumers (e.g. the worker) that should
  *  not have to know its on-disk path. Resolved relative to this module. */
-export function loadBundledCatalog(): Result<Catalog, CatalogError> {
-  return loadCatalog(
-    fileURLToPath(new URL("../../catalog/aal-control-catalog.yaml", import.meta.url)),
-  )
-}
-
-function messageOf(cause: unknown): string {
-  return cause instanceof Error ? cause.message : String(cause)
-}
+export const loadBundledCatalog = (): Result<Catalog, CatalogError> =>
+  loadCatalog(fileURLToPath(new URL("../../catalog/aal-control-catalog.yaml", import.meta.url)))

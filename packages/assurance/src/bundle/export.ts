@@ -4,23 +4,22 @@
  * Renders the bundle as structured JSON (for downstream compliance tooling) and Markdown (for
  * humans/auditors). Both carry the mandatory coverage ratio (NFR-8) and are payload-free.
  */
-import type { Status } from "../evidence/schema"
+import type { Status } from "@agenticmind/assurance/evidence/schema"
+
 import type { AuditorBundle } from "./build"
 
 /** Schema-versioned JSON for downstream ingestion. */
-export function bundleToJson(bundle: AuditorBundle): string {
-  return JSON.stringify(bundle, null, 2)
-}
+export const bundleToJson = (bundle: AuditorBundle): string => JSON.stringify(bundle, null, 2)
 
 const ICON: Record<Status, string> = { green: "🟢", yellow: "🟡", red: "🔴" }
 
-export function coverageLine(bundle: AuditorBundle): string {
+export const coverageLine = (bundle: AuditorBundle): string => {
   const c = bundle.coverage
   const pct = Math.round(c.ratio * 100)
   return `${c.native}/${c.total} controls backed by auto-collected (native) evidence (${pct}%); generic ${c.generic}, manual ${c.manual}, none ${c.none}`
 }
 
-export function bundleToMarkdown(bundle: AuditorBundle): string {
+export const bundleToMarkdown = (bundle: AuditorBundle): string => {
   const c = bundle.statusCounts
   const lines: string[] = [
     `# AAL Evidence — Auditor Bundle`,

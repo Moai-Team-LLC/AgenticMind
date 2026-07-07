@@ -26,21 +26,18 @@ import {
 } from "@agenticmind/shared/database/schema"
 import { ResultAsync } from "neverthrow"
 
-import {
-  collectNative,
-  type AskTelemetryRow,
-  type EngineRows,
-  type GuardEventRow,
-  type McpTokenRow,
-} from "./collect"
-import { collectToolAuditEvents, type ToolAuditEventRow } from "./tool-audit-events"
+import type { AskTelemetryRow, EngineRows, GuardEventRow, McpTokenRow } from "./collect"
+import type { ToolAuditEventRow } from "./tool-audit-events"
+
+import { collectNative } from "./collect"
+import { collectToolAuditEvents } from "./tool-audit-events"
 
 /** Bound the sample so evidence collection is a fast, predictable read. */
 const SAMPLE_LIMIT = 5000
 
 const iso = (d: Date | string | null): string => (d instanceof Date ? d.toISOString() : (d ?? ""))
 
-export interface CollectFromEngineProps {
+export type CollectFromEngineProps = {
   tx: Transaction
   collectedAt: string
   /** The APS/Core `.mcp-tools.lock` content hash, if pinned (supply-chain evidence, AAL-SEC-04). */
@@ -51,7 +48,7 @@ export interface CollectFromEngineProps {
  * Harvest native evidence from the live engine: `guard_events`, `ask_telemetry`, `mcp_tokens`, and
  * `tool_audit_events` (WS2). Returns immutable, sourced evidence records.
  */
-export function collectFromEngine(props: CollectFromEngineProps) {
+export const collectFromEngine = (props: CollectFromEngineProps) => {
   const { tx, collectedAt } = props
 
   return ResultAsync.fromPromise(
@@ -105,49 +102,53 @@ export function collectFromEngine(props: CollectFromEngineProps) {
     mapDatabaseError,
   ).map(([guard, telem, tokens, audit]) => {
     const rows: EngineRows = {
-      guardEvents: guard.map(
-        (g): GuardEventRow => ({
+      guardEvents: guard.map((g): GuardEventRow => {
+        return {
           id: g.id,
           tool: g.tool,
           reason: g.reason as GuardEventRow["reason"],
           inputHash: g.inputHash,
           createdAt: iso(g.createdAt),
-        }),
-      ),
-      askTelemetry: telem.map(
-        (a): AskTelemetryRow => ({
+        }
+      }),
+      askTelemetry: telem.map((a): AskTelemetryRow => {
+        return {
           id: a.id,
           questionHash: a.questionHash,
           model: a.model,
           citationCount: a.citationCount,
           createdAt: iso(a.createdAt),
-        }),
-      ),
-      mcpTokens: tokens.map(
-        (m): McpTokenRow => ({
+        }
+      }),
+      mcpTokens: tokens.map((m): McpTokenRow => {
+        return {
           jti: m.jti,
           actorType: m.actorType,
           // engine `mcp_tokens.scopes` is `text[]` (not-null) — already the shape McpTokenRow wants.
           scopes: m.scopes,
           expiresAt: iso(m.expiresAt),
           revokedAt: m.revokedAt === null ? null : iso(m.revokedAt),
-        }),
-      ),
-      ...(props.mcpToolsLockHash ? { mcpToolsLockHash: props.mcpToolsLockHash } : {}),
+        }
+      }),
+      ...(props.mcpToolsLockHash !== undefined && props.mcpToolsLockHash !== ""
+        ? { mcpToolsLockHash: props.mcpToolsLockHash }
+        : {}),
     }
 
-    const auditRows: ToolAuditEventRow[] = audit.map((t) => ({
-      id: t.id,
-      source: t.source,
-      eventKind: t.eventKind,
-      actorUuid: t.actorUuid,
-      sessionId: t.sessionId,
-      tool: t.tool,
-      decision: t.decision,
-      payloadHash: t.payloadHash,
-      metadata: (t.metadata as Record<string, unknown> | null) ?? null,
-      createdAt: iso(t.createdAt),
-    }))
+    const auditRows: ToolAuditEventRow[] = audit.map((t) => {
+      return {
+        id: t.id,
+        source: t.source,
+        eventKind: t.eventKind,
+        actorUuid: t.actorUuid,
+        sessionId: t.sessionId,
+        tool: t.tool,
+        decision: t.decision,
+        payloadHash: t.payloadHash,
+        metadata: (t.metadata as Record<string, unknown> | null) ?? null,
+        createdAt: iso(t.createdAt),
+      }
+    })
 
     return [...collectNative(rows, collectedAt), ...collectToolAuditEvents(auditRows, collectedAt)]
   })

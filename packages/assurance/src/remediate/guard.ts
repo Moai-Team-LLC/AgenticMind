@@ -67,15 +67,14 @@ const ALLOWED_PATHS = new Set<string>([
  * boundaries both split, so a glued segment like `allowedTools` becomes `allowed` + `tools` and the
  * forbidden token is exposed. This is what the old `\b`-boundary regexes missed.
  */
-function tokenize(path: string): string[] {
-  return path
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+const tokenize = (path: string): string[] =>
+  path
+    .replaceAll(/([a-z0-9])([A-Z])/g, "$1 $2")
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((t) => t.length > 0)
-}
 
-function checkEdit(edit: ProposedEdit): GuardViolation | null {
+const checkEdit = (edit: ProposedEdit): GuardViolation | null => {
   const tokens = tokenize(edit.path)
   const root = tokens[0]
   if (root === undefined) {
@@ -110,11 +109,13 @@ function checkEdit(edit: ProposedEdit): GuardViolation | null {
  * Enforce the Cycle of Trust on a proposal. Allowed only if EVERY edit is a structural-config
  * surface and NONE touches a tool / permission / trust boundary.
  */
-export function enforceCycleOfTrust(proposal: FixProposal): GuardResult {
+export const enforceCycleOfTrust = (proposal: FixProposal): GuardResult => {
   const violations: GuardViolation[] = []
   for (const edit of proposal.edits) {
     const v = checkEdit(edit)
-    if (v) violations.push(v)
+    if (v) {
+      violations.push(v)
+    }
   }
   return { allowed: violations.length === 0, violations }
 }

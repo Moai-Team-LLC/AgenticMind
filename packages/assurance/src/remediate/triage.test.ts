@@ -1,8 +1,10 @@
+import type { CoreReport } from "@agenticmind/assurance/gap/ingest"
+
+import { ingestCoreJson } from "@agenticmind/assurance/gap/ingest"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { describe, expect, it } from "vitest"
 
-import { ingestCoreJson, type CoreReport } from "../gap"
 import { enforceCycleOfTrust, triageFindings } from "./index"
 
 const report = (): CoreReport => {
@@ -12,7 +14,9 @@ const report = (): CoreReport => {
       "utf8",
     ),
   )
-  if (r.isErr()) throw new Error("ingest failed")
+  if (r.isErr()) {
+    throw new Error("ingest failed")
+  }
   return r.value
 }
 
@@ -48,7 +52,9 @@ describe("L2 triage", () => {
         flows: [],
       }),
     )
-    if (clean.isErr()) throw new Error("ingest failed")
+    if (clean.isErr()) {
+      throw new Error("ingest failed")
+    }
     expect(triageFindings(clean.value)).toHaveLength(0)
   })
 })

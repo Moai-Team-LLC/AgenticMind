@@ -4,10 +4,10 @@
  * Orders non-Green controls by (status severity × control weight) and links each to the driving
  * finding(s) or the missing evidence artifact, so remediation is unambiguous.
  */
-import type { Catalog, ControlScope } from "../catalog/schema"
-import type { ControlStatus, Status } from "../evidence/schema"
+import type { Catalog, ControlScope } from "@agenticmind/assurance/catalog/schema"
+import type { ControlStatus, Status } from "@agenticmind/assurance/evidence/schema"
 
-export interface RemediationItem {
+export type RemediationItem = {
   controlId: string
   title: string
   status: Exclude<Status, "green">
@@ -20,14 +20,18 @@ export interface RemediationItem {
 const STATUS_WEIGHT: Record<Status, number> = { red: 2, yellow: 1, green: 0 }
 const SCOPE_WEIGHT: Record<ControlScope, number> = { core: 2, expand: 1, deferred: 0 }
 
-export function remediationPlan(catalog: Catalog, statuses: ControlStatus[]): RemediationItem[] {
+export const remediationPlan = (catalog: Catalog, statuses: ControlStatus[]): RemediationItem[] => {
   const byId = new Map(catalog.controls.map((c) => [c.id, c]))
   const items: RemediationItem[] = []
 
   for (const s of statuses) {
-    if (s.status === "green") continue
+    if (s.status === "green") {
+      continue
+    }
     const control = byId.get(s.controlId)
-    if (!control) continue
+    if (!control) {
+      continue
+    }
 
     const links =
       s.drivingFindings.length > 0

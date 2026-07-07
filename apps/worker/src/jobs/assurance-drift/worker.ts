@@ -5,11 +5,9 @@
  * contending for the same connection burst.
  */
 
-import {
-  consoleNotifier,
-  makeTelegramNotifier,
-  type AssuranceNotifier,
-} from "@agenticmind/assurance"
+import type { AssuranceNotifier } from "@agenticmind/assurance"
+
+import { consoleNotifier, makeTelegramNotifier } from "@agenticmind/assurance"
 import { sql } from "drizzle-orm"
 
 import { runAssuranceDriftSweep } from "@/jobs/assurance-drift/handler"
@@ -28,7 +26,10 @@ const TELEGRAM_BOT_TOKEN = process.env.ASSURANCE_TELEGRAM_BOT_TOKEN
 // oxlint-disable-next-line node/no-process-env
 const TELEGRAM_CHAT_ID = process.env.ASSURANCE_TELEGRAM_CHAT_ID
 const notifier: AssuranceNotifier =
-  TELEGRAM_BOT_TOKEN && TELEGRAM_CHAT_ID
+  TELEGRAM_BOT_TOKEN !== undefined &&
+  TELEGRAM_BOT_TOKEN !== "" &&
+  TELEGRAM_CHAT_ID !== undefined &&
+  TELEGRAM_CHAT_ID !== ""
     ? makeTelegramNotifier({ botToken: TELEGRAM_BOT_TOKEN, chatId: TELEGRAM_CHAT_ID })
     : consoleNotifier
 

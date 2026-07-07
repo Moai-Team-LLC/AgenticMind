@@ -9,7 +9,7 @@ describe("hasAuditWriteScope", () => {
     expect(hasAuditWriteScope(["knowledge:read", "audit:write"])).toBe(true)
     expect(hasAuditWriteScope(["knowledge:read", "knowledge:write"])).toBe(false)
     expect(hasAuditWriteScope([])).toBe(false)
-    expect(hasAuditWriteScope(undefined)).toBe(false)
+    expect(hasAuditWriteScope()).toBe(false)
   })
 })
 
@@ -29,8 +29,8 @@ describe("parseHookEvent", () => {
     expect(parsed?.sessionId).toBe("sess-123")
     expect(parsed?.tool).toBe("Bash")
     expect(parsed?.decision).toBe("accept")
-    expect(parsed?.metadata["cwd"]).toBe("/repo")
-    expect(parsed?.metadata["permission_mode"]).toBe("default")
+    expect(parsed?.metadata.cwd).toBe("/repo")
+    expect(parsed?.metadata.permission_mode).toBe("default")
   })
 
   it("never stores raw tool input/response — only presence flags + a hash", () => {
@@ -43,8 +43,8 @@ describe("parseHookEvent", () => {
     const serialized = JSON.stringify(parsed)
     expect(serialized).not.toContain("SUPER_SECRET")
     expect(serialized).not.toContain("/etc/passwd")
-    expect(parsed?.metadata["has_tool_input"]).toBe(true)
-    expect(parsed?.metadata["has_tool_response"]).toBe(false)
+    expect(parsed?.metadata.has_tool_input).toBe(true)
+    expect(parsed?.metadata.has_tool_response).toBe(false)
     expect(parsed?.payloadHash).toBe(createHash("sha256").update(JSON.stringify(raw)).digest("hex"))
   })
 
@@ -56,7 +56,7 @@ describe("parseHookEvent", () => {
     })
     expect(parsed?.eventKind).toBe("ConfigChange")
     expect(parsed?.sessionId).toBe("s9")
-    expect(parsed?.metadata["permission_mode"]).toBe("plan")
+    expect(parsed?.metadata.permission_mode).toBe("plan")
   })
 
   it("rejects non-objects and payloads with no event name", () => {

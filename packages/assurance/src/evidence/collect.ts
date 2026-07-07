@@ -12,13 +12,14 @@
  * tables or a tenant-isolation eval / tenant column. Controls that depend on those are left
  * `not_verified` (no native evidence) rather than fabricated.
  */
-import type { Collector } from "../catalog/schema"
+import type { Collector } from "@agenticmind/assurance/catalog/schema"
+
 import type { EvidenceRecord } from "./schema"
 
 // --- Real engine row shapes (from packages/shared/.../schema/knowledge/*) -------------------
 
 /** `guard_events` row — one blocked/redacted request (hashed input, never raw text). */
-export interface GuardEventRow {
+export type GuardEventRow = {
   id: string
   tool: string
   reason: "injection" | "pii_redacted" | "rate_limited" | "output_leak" | "too_long"
@@ -27,7 +28,7 @@ export interface GuardEventRow {
 }
 
 /** `ask-telemetry` row — the replayable why-trace of one answer. */
-export interface AskTelemetryRow {
+export type AskTelemetryRow = {
   id: string
   questionHash: string
   model: string
@@ -36,7 +37,7 @@ export interface AskTelemetryRow {
 }
 
 /** `mcp-tokens` row — a scoped, expiring agent credential (JWT). */
-export interface McpTokenRow {
+export type McpTokenRow = {
   jti: string
   actorType: string
   scopes: string[] | null
@@ -44,7 +45,7 @@ export interface McpTokenRow {
   revokedAt: string | null
 }
 
-export interface EngineRows {
+export type EngineRows = {
   guardEvents?: GuardEventRow[]
   askTelemetry?: AskTelemetryRow[]
   mcpTokens?: McpTokenRow[]
@@ -58,21 +59,23 @@ const rec = (
   collector: Collector,
   collectedAt: string,
   summary: string,
-): EvidenceRecord => ({
-  id: `ev:${collector}:${controlId}:${sourceArtifact}`,
-  controlId,
-  sourceArtifact,
-  collector,
-  collectedAt,
-  summary,
-})
+): EvidenceRecord => {
+  return {
+    id: `ev:${collector}:${controlId}:${sourceArtifact}`,
+    controlId,
+    sourceArtifact,
+    collector,
+    collectedAt,
+    summary,
+  }
+}
 
 /**
  * Native collection: turn existing engine rows into evidence records for the controls they
  * satisfy (per the catalog's evidence_requirement). `collectedAt` is passed in so the result is
  * deterministic and reproducible.
  */
-export function collectNative(rows: EngineRows, collectedAt: string): EvidenceRecord[] {
+export const collectNative = (rows: EngineRows, collectedAt: string): EvidenceRecord[] => {
   const out: EvidenceRecord[] = []
   const guard = rows.guardEvents ?? []
 
@@ -142,7 +145,7 @@ export function collectNative(rows: EngineRows, collectedAt: string): EvidenceRe
     )
   }
   // .mcp-tools.lock → supply-chain / tool pinning (AAL-SEC-04)
-  if (rows.mcpToolsLockHash) {
+  if (rows.mcpToolsLockHash !== undefined && rows.mcpToolsLockHash !== "") {
     out.push(
       rec(
         "AAL-SEC-04",
@@ -157,16 +160,14 @@ export function collectNative(rows: EngineRows, collectedAt: string): EvidenceRe
 }
 
 /** A manual/attested evidence record for a control that cannot be auto-collected (FR-9.2). */
-export function collectManual(
+export const collectManual = (
   controlId: string,
   artifactRef: string,
   collectedAt: string,
   summary: string,
-): EvidenceRecord {
-  return rec(controlId, artifactRef, "manual", collectedAt, summary)
-}
+): EvidenceRecord => rec(controlId, artifactRef, "manual", collectedAt, summary)
 
-export interface Coverage {
+export type Coverage = {
   native: number
   generic: number
   manual: number
@@ -177,12 +178,14 @@ export interface Coverage {
 }
 
 /** Honest coverage across all catalog control ids: native vs generic/manual/none (NFR-8). */
-export function computeCoverage(controlIds: string[], evidence: EvidenceRecord[]): Coverage {
+export const computeCoverage = (controlIds: string[], evidence: EvidenceRecord[]): Coverage => {
   const best = new Map<string, Collector>()
   const rank: Record<Collector, number> = { native: 3, generic: 2, manual: 1 }
   for (const e of evidence) {
     const cur = best.get(e.controlId)
-    if (!cur || rank[e.collector] > rank[cur]) best.set(e.controlId, e.collector)
+    if (!cur || rank[e.collector] > rank[cur]) {
+      best.set(e.controlId, e.collector)
+    }
   }
   let native = 0
   let generic = 0
@@ -190,10 +193,15 @@ export function computeCoverage(controlIds: string[], evidence: EvidenceRecord[]
   let none = 0
   for (const id of controlIds) {
     const c = best.get(id)
-    if (c === "native") native++
-    else if (c === "generic") generic++
-    else if (c === "manual") manual++
-    else none++
+    if (c === "native") {
+      native++
+    } else if (c === "generic") {
+      generic++
+    } else if (c === "manual") {
+      manual++
+    } else {
+      none++
+    }
   }
   const total = controlIds.length
   return { native, generic, manual, none, total, ratio: total === 0 ? 0 : native / total }

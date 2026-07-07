@@ -5,7 +5,13 @@
   "description": "AAL Evidence — compliance & evidence layer over AAL Core findings (AIUC-1 / OWASP ASI / ISO 42001).",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./bundle/*": "./src/bundle/*.ts",
+    "./catalog/*": "./src/catalog/*.ts",
+    "./evidence/*": "./src/evidence/*.ts",
+    "./gap/*": "./src/gap/*.ts",
+    "./notify/*": "./src/notify/*.ts",
+    "./remediate/*": "./src/remediate/*.ts"
   },
   "scripts": {
     "tsc": "tsc --noEmit",
@@ -13,14 +19,14 @@
     "lint": "oxlint --type-aware"
   },
   "dependencies": {
-    "@agenticmind/shared": "workspace:*",
+    "@agenticmind/shared": "*",
     "neverthrow": "^8.2.0",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@agenticmind/oxlint-config": "workspace:*",
-    "@agenticmind/typescript-config": "workspace:*",
+    "@agenticmind/oxlint-config": "*",
+    "@agenticmind/typescript-config": "*",
     "typescript": "^6.0.3"
   }
 }

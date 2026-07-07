@@ -18,7 +18,9 @@ import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import { parseJudgeResponse } from "@agenticmind/shared/lib/knowledge/feedback-judge"
 import { completeKnowledge } from "@agenticmind/shared/lib/knowledge/llm"
 
-import { buildJudgePrompt, type RemediationJudge } from "./judge"
+import type { RemediationJudge } from "./judge"
+
+import { buildJudgePrompt } from "./judge"
 
 /** System turn: the output contract (verdict vocabulary shared with the engine feedback judge). */
 export const REMEDIATION_JUDGE_SYSTEM = `You are an assurance auditor. A proposed STRUCTURAL
@@ -34,8 +36,9 @@ Return ONLY a JSON object:
  * Build a `RemediationJudge` backed by the engine chat model. `chatModel` defaults to the engine's
  * knowledge chat model when omitted.
  */
-export function makeEngineJudge(chatModel?: LlmModel): RemediationJudge {
-  return async (proposal) => {
+export const makeEngineJudge =
+  (chatModel?: LlmModel): RemediationJudge =>
+  async (proposal) => {
     const completion = await completeKnowledge({
       system: REMEDIATION_JUDGE_SYSTEM,
       user: buildJudgePrompt(proposal),
@@ -47,4 +50,3 @@ export function makeEngineJudge(chatModel?: LlmModel): RemediationJudge {
     }
     return parseJudgeResponse(completion.value)
   }
-}

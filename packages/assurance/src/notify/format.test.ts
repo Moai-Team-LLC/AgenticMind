@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest"
+import type { DriftAlert } from "@agenticmind/assurance/bundle/drift"
+import type { RemediationLedgerEntry } from "@agenticmind/assurance/remediate/ledger"
 
-import type { DriftAlert } from "../bundle/drift"
-import type { RemediationLedgerEntry } from "../remediate/ledger"
+import { describe, expect, it } from "vitest"
 
 import { formatApprovalRequest, formatDriftAlert } from "./index"
 

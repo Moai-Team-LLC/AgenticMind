@@ -1,24 +1,32 @@
+import type { Catalog } from "@agenticmind/assurance/catalog/schema"
+import type { EvidenceRecord } from "@agenticmind/assurance/evidence/schema"
+import type { CoreAttack, CoreReport } from "@agenticmind/assurance/gap/ingest"
+
+import { loadCatalog } from "@agenticmind/assurance/catalog/load"
+import { collectNative } from "@agenticmind/assurance/evidence/collect"
+import { ingestCoreReport } from "@agenticmind/assurance/gap/ingest"
 import { fileURLToPath } from "node:url"
 import { beforeAll, describe, expect, it } from "vitest"
 
-import { loadCatalog, type Catalog } from "../catalog"
-import { collectNative, type EvidenceRecord } from "../evidence"
-import { ingestCoreReport, type CoreAttack, type CoreReport } from "../gap"
+import type { ControlSnapshot } from "./drift"
+
 import { assembleBundle } from "./build"
-import { diffBundles, evaluateDrift, type ControlSnapshot } from "./drift"
+import { diffBundles, evaluateDrift } from "./drift"
 
 const AT = "2026-07-04T00:00:00Z"
 
-const attack = (attackClass: string, outcome: CoreAttack["outcome"]): CoreAttack => ({
-  attackId: `${attackClass}-1`,
-  attackClass,
-  owasp: "ASI01",
-  atlas: "AML.T0051",
-  outcome,
-  stability: { pass: outcome === "succeeded" ? 1 : 0, total: 1 },
-  inputHash: "hash",
-  refuseButFire: false,
-})
+const attack = (attackClass: string, outcome: CoreAttack["outcome"]): CoreAttack => {
+  return {
+    attackId: `${attackClass}-1`,
+    attackClass,
+    owasp: "ASI01",
+    atlas: "AML.T0051",
+    outcome,
+    stability: { pass: outcome === "succeeded" ? 1 : 0, total: 1 },
+    inputHash: "hash",
+    refuseButFire: false,
+  }
+}
 
 const report = (attacks: CoreAttack[]): CoreReport => {
   const r = ingestCoreReport({
@@ -29,7 +37,9 @@ const report = (attacks: CoreAttack[]): CoreReport => {
     attacks,
     flows: [],
   })
-  if (r.isErr()) throw new Error("ingest failed")
+  if (r.isErr()) {
+    throw new Error("ingest failed")
+  }
   return r.value
 }
 
@@ -39,7 +49,9 @@ beforeAll(() => {
   const c = loadCatalog(
     fileURLToPath(new URL("../../catalog/aal-control-catalog.yaml", import.meta.url)),
   )
-  if (c.isErr()) throw new Error("catalog load failed")
+  if (c.isErr()) {
+    throw new Error("catalog load failed")
+  }
   catalog = c.value
   // Native injection evidence so AAL-SEC-01 can be GREEN when its test passes.
   evidence = collectNative(
@@ -101,7 +113,9 @@ describe("drift detection", () => {
 
 describe("evaluateDrift (continuous assurance)", () => {
   const snap = (entries: [string, ControlSnapshot["status"]][]): ControlSnapshot[] =>
-    entries.map(([controlId, status]) => ({ controlId, status }))
+    entries.map(([controlId, status]) => {
+      return { controlId, status }
+    })
 
   it("treats the first run (no prior) as a baseline — no drift, no alert", () => {
     const { report: rep, alert } = evaluateDrift(null, snap([["A", "green"]]))

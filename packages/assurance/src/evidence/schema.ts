@@ -6,11 +6,11 @@
  * auditor can trace every claim back to a record. Records are payload-free — a `summary`, never
  * raw incident text (hash-not-text, NFR-3).
  */
-import type { Collector } from "../catalog/schema"
+import type { Collector } from "@agenticmind/assurance/catalog/schema"
 
 export type Status = "green" | "yellow" | "red"
 
-export interface EvidenceRecord {
+export type EvidenceRecord = {
   readonly id: string
   readonly controlId: string
   /** Reference to the source artifact this was harvested from. */
@@ -21,7 +21,7 @@ export interface EvidenceRecord {
   readonly summary: string
 }
 
-export interface ControlStatus {
+export type ControlStatus = {
   controlId: string
   status: Status
   /** Evidence record ids backing this status. */

@@ -1,22 +1,26 @@
 import { describe, expect, it } from "vitest"
 
-import { collectToolAuditEvents, type ToolAuditEventRow } from "./tool-audit-events"
+import type { ToolAuditEventRow } from "./tool-audit-events"
+
+import { collectToolAuditEvents } from "./tool-audit-events"
 
 const AT = "2026-07-03T00:00:00Z"
 
-const row = (over: Partial<ToolAuditEventRow>): ToolAuditEventRow => ({
-  id: "tae1",
-  source: "claude-code-hook",
-  eventKind: "PostToolUse",
-  actorUuid: "actor-1",
-  sessionId: "sess-1",
-  tool: "Bash",
-  decision: "accept",
-  payloadHash: "a".repeat(64),
-  metadata: { cwd_present: true },
-  createdAt: AT,
-  ...over,
-})
+const row = (over: Partial<ToolAuditEventRow>): ToolAuditEventRow => {
+  return {
+    id: "tae1",
+    source: "claude-code-hook",
+    eventKind: "PostToolUse",
+    actorUuid: "actor-1",
+    sessionId: "sess-1",
+    tool: "Bash",
+    decision: "accept",
+    payloadHash: "a".repeat(64),
+    metadata: { cwd_present: true },
+    createdAt: AT,
+    ...over,
+  }
+}
 
 describe("tool_audit_events collector", () => {
   it("maps logged tool events to the accountability audit-trail controls", () => {

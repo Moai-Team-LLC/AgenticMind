@@ -1,3 +1,5 @@
+import type { Result } from "neverthrow"
+
 /**
  * Ingest AAL Core's structured JSON report (FR-8.1 input).
  *
@@ -5,7 +7,7 @@
  * per-attack outcomes, toxic flows, and findings. Fail-closed: a malformed report is a typed
  * error, never a partial ingest.
  */
-import { err, ok, type Result } from "neverthrow"
+import { err, ok } from "neverthrow"
 import { z } from "zod"
 
 export const CoreOutcome = z.enum(["succeeded", "contained", "not_verified"])
@@ -58,25 +60,27 @@ export type IngestError =
   | { kind: "validation"; message: string; issues: readonly { path: string; message: string }[] }
 
 /** Validate an in-memory Core report value. */
-export function ingestCoreReport(raw: unknown): Result<CoreReport, IngestError> {
+export const ingestCoreReport = (raw: unknown): Result<CoreReport, IngestError> => {
   const parsed = CoreReport.safeParse(raw)
   if (!parsed.success) {
     return err({
       kind: "validation",
       message: `core report failed validation (${parsed.error.issues.length} issue(s))`,
-      issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      issues: parsed.error.issues.map((i) => {
+        return { path: i.path.join("."), message: i.message }
+      }),
     })
   }
   return ok(parsed.data)
 }
 
 /** Parse a Core report from JSON text. */
-export function ingestCoreJson(text: string): Result<CoreReport, IngestError> {
+export const ingestCoreJson = (text: string): Result<CoreReport, IngestError> => {
   let data: unknown
   try {
     data = JSON.parse(text)
-  } catch (cause) {
-    return err({ kind: "parse", message: cause instanceof Error ? cause.message : String(cause) })
+  } catch (error) {
+    return err({ kind: "parse", message: error instanceof Error ? error.message : String(error) })
   }
   return ingestCoreReport(data)
 }

@@ -10,12 +10,13 @@
  * This is L2 (propose only). L3 (judge gate → HITL approval → apply → revert) reuses the engine's
  * judge and is the in-monorepo follow-up.
  */
-import type { CoreReport } from "../gap/ingest"
+import type { CoreReport } from "@agenticmind/assurance/gap/ingest"
+
 import type { FixProposal, ProposedEdit, StructuralTarget } from "./proposal"
 
 import { enforceCycleOfTrust } from "./guard"
 
-interface ClassFix {
+type ClassFix = {
   target: StructuralTarget
   path: string
   op: ProposedEdit["op"]
@@ -88,10 +89,12 @@ const CLASS_FIX: Record<string, ClassFix> = {
 }
 
 /** L2: propose structural fixes for the classes that failed. Every proposal passes the guard. */
-export function triageFindings(report: CoreReport): FixProposal[] {
+export const triageFindings = (report: CoreReport): FixProposal[] => {
   const failedClasses = new Map<string, string[]>()
   for (const a of report.attacks) {
-    if (a.outcome !== "succeeded" && !a.refuseButFire) continue
+    if (a.outcome !== "succeeded" && !a.refuseButFire) {
+      continue
+    }
     const ids = failedClasses.get(a.attackClass) ?? []
     ids.push(a.attackId)
     failedClasses.set(a.attackClass, ids)
@@ -100,7 +103,9 @@ export function triageFindings(report: CoreReport): FixProposal[] {
   const proposals: FixProposal[] = []
   for (const [cls, attackIds] of failedClasses) {
     const fix = CLASS_FIX[cls]
-    if (!fix) continue
+    if (!fix) {
+      continue
+    }
     const proposal: FixProposal = {
       id: `fix:${cls}`,
       findingId: attackIds.join(","),
@@ -111,7 +116,9 @@ export function triageFindings(report: CoreReport): FixProposal[] {
     // Self-check: never emit a proposal the Cycle-of-Trust guard would reject. NB: the guard is a
     // fail-closed allowlist (guard.ts `ALLOWED_PATHS`) — a new CLASS_FIX whose path is not allowlisted
     // is silently dropped here, so add its structural path to `ALLOWED_PATHS` when introducing one.
-    if (enforceCycleOfTrust(proposal).allowed) proposals.push(proposal)
+    if (enforceCycleOfTrust(proposal).allowed) {
+      proposals.push(proposal)
+    }
   }
   return proposals
 }

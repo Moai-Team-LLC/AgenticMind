@@ -26,7 +26,9 @@ describe("control catalog", () => {
 
   it("v1.0 core scope is Security + Accountability", () => {
     const r = loadCatalog(catalogPath)
-    if (!r.isOk()) throw new Error("catalog load failed")
+    if (!r.isOk()) {
+      throw new Error("catalog load failed")
+    }
     const core = byScope(r.value, "core")
     const domains = new Set(core.map((c) => c.aiuc1_domain))
     expect(domains).toEqual(new Set(["B", "E"]))
@@ -34,15 +36,21 @@ describe("control catalog", () => {
 
   it("Security domain has the strongest native coverage", () => {
     const r = loadCatalog(catalogPath)
-    if (!r.isOk()) throw new Error("catalog load failed")
+    if (!r.isOk()) {
+      throw new Error("catalog load failed")
+    }
     const security = byDomain(r.value, "B")
     expect(security.length).toBeGreaterThanOrEqual(5)
   })
 
   it("only references the fixed ASI01–ASI10 set", () => {
     const r = loadCatalog(catalogPath)
-    if (!r.isOk()) throw new Error("catalog load failed")
-    for (const asi of referencedAsi(r.value)) expect(asi).toMatch(/^ASI0[1-9]$|^ASI10$/)
+    if (!r.isOk()) {
+      throw new Error("catalog load failed")
+    }
+    for (const asi of referencedAsi(r.value)) {
+      expect(asi).toMatch(/^ASI0[1-9]$|^ASI10$/)
+    }
     expect(requiringPlaneATest(r.value).length).toBeGreaterThan(0)
   })
 

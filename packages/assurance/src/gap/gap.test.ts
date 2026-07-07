@@ -1,16 +1,24 @@
+import type { Catalog } from "@agenticmind/assurance/catalog/schema"
+import type { EngineRows } from "@agenticmind/assurance/evidence/collect"
+import type { EvidenceRecord } from "@agenticmind/assurance/evidence/schema"
+
+import { loadCatalog } from "@agenticmind/assurance/catalog/load"
+import { collectNative } from "@agenticmind/assurance/evidence/collect"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { beforeAll, describe, expect, it } from "vitest"
 
-import { loadCatalog, type Catalog } from "../catalog"
-import { collectNative, type EngineRows, type EvidenceRecord } from "../evidence"
-import { ingestCoreJson, type CoreReport } from "./ingest"
+import type { CoreReport } from "./ingest"
+
+import { ingestCoreJson } from "./ingest"
 import { scoreCatalog, scoreControl } from "./score"
 
 const url = (p: string): string => fileURLToPath(new URL(p, import.meta.url))
 const readJson = (name: string): CoreReport => {
   const r = ingestCoreJson(readFileSync(url(`../../fixtures/${name}`), "utf8"))
-  if (r.isErr()) throw new Error(`ingest ${name} failed: ${r.error.message}`)
+  if (r.isErr()) {
+    throw new Error(`ingest ${name} failed: ${r.error.message}`)
+  }
   return r.value
 }
 
@@ -31,14 +39,18 @@ let catalog: Catalog
 let evidence: EvidenceRecord[]
 beforeAll(() => {
   const c = loadCatalog(url("../../catalog/aal-control-catalog.yaml"))
-  if (c.isErr()) throw new Error("catalog load failed")
+  if (c.isErr()) {
+    throw new Error("catalog load failed")
+  }
   catalog = c.value
   evidence = collectNative(engineRows, AT)
 })
 
 const controlOf = (id: string) => {
   const c = catalog.controls.find((x) => x.id === id)
-  if (!c) throw new Error(`control ${id} missing`)
+  if (!c) {
+    throw new Error(`control ${id} missing`)
+  }
   return c
 }
 

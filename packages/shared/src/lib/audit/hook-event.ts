@@ -23,7 +23,7 @@ export const AUDIT_WRITE_SCOPE = "audit:write"
  */
 export const AUDIT_MAX_BYTES = 1024 * 1024
 
-export const hasAuditWriteScope = (scopes: readonly string[] | undefined): boolean =>
+export const hasAuditWriteScope = (scopes?: readonly string[]): boolean =>
   scopes !== undefined && scopes.includes(AUDIT_WRITE_SCOPE)
 
 /** The content-bearing fields of a parsed event (actor + source added by the caller). */
@@ -43,13 +43,13 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 
 /** Best-effort decision extraction from the varied hook shapes. */
 const readDecision = (p: Record<string, unknown>): string | null => {
-  const direct = asString(p["decision"]) ?? asString(p["permissionDecision"])
+  const direct = asString(p.decision) ?? asString(p.permissionDecision)
   if (direct !== null) {
     return direct
   }
-  const resp = p["tool_response"] ?? p["hook_response"]
+  const resp = p.tool_response ?? p.hook_response
   if (isRecord(resp)) {
-    return asString(resp["decision"]) ?? asString(resp["permissionDecision"])
+    return asString(resp.decision) ?? asString(resp.permissionDecision)
   }
   return null
 }
@@ -63,7 +63,7 @@ export const parseHookEvent = (raw: unknown): ParsedHookEvent | null => {
   if (!isRecord(raw)) {
     return null
   }
-  const eventKind = asString(raw["hook_event_name"]) ?? asString(raw["event"])
+  const eventKind = asString(raw.hook_event_name) ?? asString(raw.event)
   if (eventKind === null) {
     return null
   }
@@ -72,29 +72,29 @@ export const parseHookEvent = (raw: unknown): ParsedHookEvent | null => {
 
   // Only non-sensitive structural fields — never tool_input / tool_response bodies.
   const metadata: Record<string, unknown> = {}
-  const cwd = asString(raw["cwd"])
+  const cwd = asString(raw.cwd)
   if (cwd !== null) {
-    metadata["cwd"] = cwd
+    metadata.cwd = cwd
   }
-  const permissionMode = asString(raw["permission_mode"]) ?? asString(raw["permissionMode"])
+  const permissionMode = asString(raw.permission_mode) ?? asString(raw.permissionMode)
   if (permissionMode !== null) {
-    metadata["permission_mode"] = permissionMode
+    metadata.permission_mode = permissionMode
   }
-  const promptId = asString(raw["prompt_id"]) ?? asString(raw["promptId"])
+  const promptId = asString(raw.prompt_id) ?? asString(raw.promptId)
   if (promptId !== null) {
-    metadata["prompt_id"] = promptId
+    metadata.prompt_id = promptId
   }
-  const toolUseId = asString(raw["tool_use_id"]) ?? asString(raw["toolUseId"])
+  const toolUseId = asString(raw.tool_use_id) ?? asString(raw.toolUseId)
   if (toolUseId !== null) {
-    metadata["tool_use_id"] = toolUseId
+    metadata.tool_use_id = toolUseId
   }
-  metadata["has_tool_input"] = raw["tool_input"] !== undefined
-  metadata["has_tool_response"] = raw["tool_response"] !== undefined
+  metadata.has_tool_input = raw.tool_input !== undefined
+  metadata.has_tool_response = raw.tool_response !== undefined
 
   return {
     eventKind,
-    sessionId: asString(raw["session_id"]) ?? asString(raw["sessionId"]),
-    tool: asString(raw["tool_name"]) ?? asString(raw["tool"]),
+    sessionId: asString(raw.session_id) ?? asString(raw.sessionId),
+    tool: asString(raw.tool_name) ?? asString(raw.tool),
     decision: readDecision(raw),
     payloadHash,
     metadata,

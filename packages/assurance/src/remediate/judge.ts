@@ -20,7 +20,7 @@ import { enforceCycleOfTrust } from "./guard"
 /** The engine feedback judge's verdict vocabulary (packages/shared/.../feedback-judge.ts), reused. */
 export type RemediationVerdict = "supported" | "partially_supported" | "unsupported" | "unknown"
 
-export interface RemediationJudgeResult {
+export type RemediationJudgeResult = {
   verdict: RemediationVerdict
   rationale: string
 }
@@ -30,7 +30,7 @@ export type RemediationJudge = (proposal: FixProposal) => Promise<RemediationJud
 
 export type GateDecision = "guard_rejected" | "judge_rejected" | "pending_approval"
 
-export interface GateOutcome {
+export type GateOutcome = {
   decision: GateDecision
   guard: GuardResult
   verdict: RemediationJudgeResult | null
@@ -44,7 +44,7 @@ const JUDGE_PASS: RemediationVerdict = "supported"
  * Build the judge prompt for a proposal (pure — the LLM call is the injected seam). Payload-free:
  * only the structural summary + rationale, never a raw attack payload or secret.
  */
-export function buildJudgePrompt(proposal: FixProposal): string {
+export const buildJudgePrompt = (proposal: FixProposal): string => {
   const edits = proposal.edits.map((e) => `- ${e.op} ${e.path}: ${e.summary}`).join("\n")
   return [
     "You are an assurance auditor reviewing a proposed STRUCTURAL remediation for a security finding.",
@@ -62,10 +62,10 @@ export function buildJudgePrompt(proposal: FixProposal): string {
  * Gate a proposal for L3. Guard first (un-overridable); then the judge; "supported" advances to
  * pending HITL approval. Every other outcome — including a thrown judge — is fail-closed.
  */
-export async function gateProposal(
+export const gateProposal = async (
   proposal: FixProposal,
   judge: RemediationJudge,
-): Promise<GateOutcome> {
+): Promise<GateOutcome> => {
   const guard = enforceCycleOfTrust(proposal)
   if (!guard.allowed) {
     return {
@@ -79,12 +79,12 @@ export async function gateProposal(
   let verdict: RemediationJudgeResult
   try {
     verdict = await judge(proposal)
-  } catch (cause) {
+  } catch (error) {
     return {
       decision: "judge_rejected",
       guard,
       verdict: null,
-      reason: `judge errored (fail-closed): ${cause instanceof Error ? cause.message : String(cause)}`,
+      reason: `judge errored (fail-closed): ${error instanceof Error ? error.message : String(error)}`,
     }
   }
 

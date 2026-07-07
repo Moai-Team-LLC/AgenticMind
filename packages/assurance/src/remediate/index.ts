@@ -3,11 +3,25 @@
  * only). L2 = triage (propose only); L3 = judge gate -> HITL approval -> apply -> revert, recorded
  * in an immutable, revertable ledger.
  */
-export * from "./proposal"
-export * from "./guard"
-export * from "./triage"
-export * from "./judge"
-export * from "./engine-judge"
+export type {
+  FixProposal,
+  GuardResult,
+  GuardViolation,
+  ProposedEdit,
+  StructuralTarget,
+} from "./proposal"
+export { enforceCycleOfTrust } from "./guard"
+export { triageFindings } from "./triage"
+export {
+  buildJudgePrompt,
+  gateProposal,
+  type GateDecision,
+  type GateOutcome,
+  type RemediationJudge,
+  type RemediationJudgeResult,
+  type RemediationVerdict,
+} from "./judge"
+export { makeEngineJudge, REMEDIATION_JUDGE_SYSTEM } from "./engine-judge"
 // The raw `transition` mutator is deliberately NOT re-exported — consumers must go through
 // approveRemediation / applyRemediation / revertRemediation so the HITL + actor invariants hold.
 export type {
@@ -17,5 +31,11 @@ export type {
   RemediationState,
   TransitionError,
 } from "./ledger"
-export * from "./apply"
-export * from "./revert"
+export {
+  applyRemediation,
+  approveRemediation,
+  declineRemediation,
+  openRemediation,
+  type ApplyError,
+} from "./apply"
+export { invertEdit, revertRemediation, type RevertError } from "./revert"

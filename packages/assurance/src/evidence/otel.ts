@@ -24,35 +24,38 @@ export const OtelGenAiSpan = z.object({
 export type OtelGenAiSpan = z.infer<typeof OtelGenAiSpan>
 
 /** A span counts as a GenAI span if it carries any `gen_ai.*` attribute (OTel GenAI semconv). */
-export function isGenAiSpan(span: OtelGenAiSpan): boolean {
-  return Object.keys(span.attributes).some((k) => k.startsWith("gen_ai."))
-}
+export const isGenAiSpan = (span: OtelGenAiSpan): boolean =>
+  Object.keys(span.attributes).some((k) => k.startsWith("gen_ai."))
 
 const rec = (
   controlId: string,
   sourceArtifact: string,
   collectedAt: string,
   summary: string,
-): EvidenceRecord => ({
-  id: `ev:generic:${controlId}:${sourceArtifact}`,
-  controlId,
-  sourceArtifact,
-  collector: "generic",
-  collectedAt,
-  summary,
-})
+): EvidenceRecord => {
+  return {
+    id: `ev:generic:${controlId}:${sourceArtifact}`,
+    controlId,
+    sourceArtifact,
+    collector: "generic",
+    collectedAt,
+    summary,
+  }
+}
 
 /**
  * Turn OTel GenAI spans into generic evidence: a decision trace exists (traceability, AAL-ACC-01,
  * degraded vs the native why-trace) and a behavioral record for rogue-agent baselining
  * (AAL-REL-03, whose required collector IS generic). `collectedAt` is passed in for determinism.
  */
-export function collectFromOtelSpans(
+export const collectFromOtelSpans = (
   spans: OtelGenAiSpan[],
   collectedAt: string,
-): EvidenceRecord[] {
-  const genAi = spans.filter(isGenAiSpan)
-  if (genAi.length === 0) return []
+): EvidenceRecord[] => {
+  const genAi = spans.filter((s) => isGenAiSpan(s))
+  if (genAi.length === 0) {
+    return []
+  }
   return [
     rec(
       "AAL-ACC-01",

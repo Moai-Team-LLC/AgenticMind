@@ -1,10 +1,14 @@
+import type { Catalog } from "@agenticmind/assurance/catalog/schema"
+import type { EngineRows } from "@agenticmind/assurance/evidence/collect"
+import type { EvidenceRecord } from "@agenticmind/assurance/evidence/schema"
+
+import { loadCatalog } from "@agenticmind/assurance/catalog/load"
+import { collectNative } from "@agenticmind/assurance/evidence/collect"
+import { ingestCoreJson } from "@agenticmind/assurance/gap/ingest"
 import { readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { beforeAll, describe, expect, it } from "vitest"
 
-import { loadCatalog, type Catalog } from "../catalog"
-import { collectNative, type EngineRows, type EvidenceRecord } from "../evidence"
-import { ingestCoreJson } from "../gap"
 import { assembleBundle, bundleToJson, bundleToMarkdown } from "./index"
 
 const url = (p: string): string => fileURLToPath(new URL(p, import.meta.url))
@@ -18,14 +22,18 @@ let catalog: Catalog
 let evidence: EvidenceRecord[]
 beforeAll(() => {
   const c = loadCatalog(url("../../catalog/aal-control-catalog.yaml"))
-  if (c.isErr()) throw new Error("catalog load failed")
+  if (c.isErr()) {
+    throw new Error("catalog load failed")
+  }
   catalog = c.value
   evidence = collectNative(rows, AT)
 })
 
 const report = () => {
   const r = ingestCoreJson(readFileSync(url("../../fixtures/reference-agent.json"), "utf8"))
-  if (r.isErr()) throw new Error("ingest failed")
+  if (r.isErr()) {
+    throw new Error("ingest failed")
+  }
   return r.value
 }
 
@@ -39,7 +47,9 @@ describe("auditor bundle", () => {
     // Remediation is prioritized: red before yellow.
     const firstYellow = bundle.remediation.findIndex((r) => r.status === "yellow")
     const lastRed = bundle.remediation.map((r) => r.status).lastIndexOf("red")
-    if (firstYellow !== -1 && lastRed !== -1) expect(lastRed).toBeLessThan(firstYellow)
+    if (firstYellow !== -1 && lastRed !== -1) {
+      expect(lastRed).toBeLessThan(firstYellow)
+    }
   })
 
   it("renders JSON and Markdown; coverage present; payload-free", () => {

@@ -7,8 +7,9 @@
  *   1. A failing Plane-A test forces RED — regardless of any declared mitigation.
  *   2. GREEN requires evidence AND (where a test is required) a passing test. No evidence ⇒ YELLOW.
  */
-import type { Catalog, ControlEntry, ControlScope } from "../catalog/schema"
-import type { ControlStatus, EvidenceRecord, Status } from "../evidence/schema"
+import type { Catalog, ControlEntry, ControlScope } from "@agenticmind/assurance/catalog/schema"
+import type { ControlStatus, EvidenceRecord, Status } from "@agenticmind/assurance/evidence/schema"
+
 import type { CoreReport } from "./ingest"
 
 /** Evidence strength order: native (auto-read from the engine) > generic (OTel) > manual (doc). */
@@ -26,10 +27,10 @@ const FLOW_CONTROLS: Record<string, string[]> = {
 
 type TestResult = "not-required" | "passed" | "failed" | "not-verified"
 
-function testResultFor(
+const testResultFor = (
   control: ControlEntry,
   report: CoreReport,
-): { result: TestResult; drivingFindings: string[] } {
+): { result: TestResult; drivingFindings: string[] } => {
   const classes = control.test_requirement.attack_class as readonly string[]
   const requiresTest = control.test_requirement.plane_a && classes.length > 0
 
@@ -44,8 +45,12 @@ function testResultFor(
       .filter((a) => a.outcome === "succeeded" || a.refuseButFire)
       .map((a) => a.attackId),
   ]
-  if (failing.length > 0) return { result: "failed", drivingFindings: failing }
-  if (!requiresTest) return { result: "not-required", drivingFindings: [] }
+  if (failing.length > 0) {
+    return { result: "failed", drivingFindings: failing }
+  }
+  if (!requiresTest) {
+    return { result: "not-required", drivingFindings: [] }
+  }
 
   // Required test, nothing failed. Fail-closed: passed only if an attack actually ran and was
   // contained; a not_verified attack or no coverage is not_verified, never a silent pass.
@@ -56,11 +61,11 @@ function testResultFor(
 }
 
 /** Score one control G/Y/R. */
-export function scoreControl(
+export const scoreControl = (
   control: ControlEntry,
   report: CoreReport,
   evidence: EvidenceRecord[],
-): ControlStatus {
+): ControlStatus => {
   const ev = evidence.filter((e) => e.controlId === control.id)
   const { result, drivingFindings } = testResultFor(control, report)
   // Evidence must be at least as strong as the control requires: a native-required control is not
@@ -101,12 +106,12 @@ export function scoreControl(
 }
 
 /** Score the whole catalog (optionally filtered to a scope, e.g. `core` for the v1.0 domains). */
-export function scoreCatalog(
+export const scoreCatalog = (
   catalog: Catalog,
   report: CoreReport,
   evidence: EvidenceRecord[],
   opts: { scope?: ControlScope } = {},
-): ControlStatus[] {
+): ControlStatus[] => {
   const controls = opts.scope
     ? catalog.controls.filter((c) => c.scope === opts.scope)
     : catalog.controls
@@ -114,8 +119,10 @@ export function scoreCatalog(
 }
 
 /** Count statuses. */
-export function statusCounts(statuses: ControlStatus[]): Record<Status, number> {
+export const statusCounts = (statuses: ControlStatus[]): Record<Status, number> => {
   const counts: Record<Status, number> = { green: 0, yellow: 0, red: 0 }
-  for (const s of statuses) counts[s.status]++
+  for (const s of statuses) {
+    counts[s.status]++
+  }
   return counts
 }
