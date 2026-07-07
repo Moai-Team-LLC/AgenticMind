@@ -217,6 +217,13 @@ extraction. Set `CHAT_API_KEY` and (optionally) `CHAT_BASE_URL`:
 - **OpenAI** (default) — set `CHAT_API_KEY`; `CHAT_BASE_URL` defaults to
   `https://api.openai.com/v1`, with model tiers `CHAT_MODEL_SIMPLE` (cheap/fast)
   and `CHAT_MODEL_COMPLEX` (flagship).
+- **[AgenticGateway](https://github.com/Moai-Team-LLC/AgenticGateway)** — the
+  family's model & cost plane, and the paved road when composing the
+  AgenticProduct stack: point `CHAT_BASE_URL` at the gateway (e.g.
+  `http://localhost:8787/v1`) with a tenant key as `CHAT_API_KEY`. Every
+  synthesis/extraction call then gets fail-closed budgets, eval-measured
+  routing, caching, and a hash-not-text evidence trail — without touching this
+  repo's config again when providers change.
 - **Ollama / vLLM / OpenRouter** — point `CHAT_BASE_URL` at the endpoint (e.g.
   `http://localhost:11434/v1` for Ollama, `https://openrouter.ai/api/v1` for
   OpenRouter) with the matching `CHAT_API_KEY` and model ids. Combined with

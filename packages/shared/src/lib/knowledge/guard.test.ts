@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { detectInjection, detectOutputLeak, findPii, guardInput, redactPii } from "./guard"
+import { SYSTEM_PROMPT } from "./synth"
 
 describe("injection detection", () => {
   it("flags injection, passes clean queries", () => {
@@ -69,5 +70,25 @@ describe("detectOutputLeak", () => {
   })
   it("passes a normal grounded answer", () => {
     expect(detectOutputLeak("Ireland corporate tax is 12.5% [1].", sys).leaked).toBe(false)
+  })
+
+  it("does NOT flag a short coincidental overlap with the system prompt", () => {
+    // Regression: the 60-char window falsely flagged legitimate answers that
+    // happened to echo a short span of the prompt's embedded EXAMPLE answer,
+    // producing non-deterministic "safe answer" refusals. This ~70-char echo
+    // would leak at WINDOW=60 but is correctly cleared at 120.
+    const answer = "PostgreSQL is an open-source relational database first released in 1996 [1]."
+    expect(answer.length).toBeGreaterThan(60)
+    expect(answer.length).toBeLessThan(120)
+    expect(detectOutputLeak(answer, SYSTEM_PROMPT).leaked).toBe(false)
+  })
+
+  it("still flags a long verbatim chunk of the system prompt", () => {
+    // A real leak regurgitates a long verbatim stretch of the scaffold (>120 chars).
+    const scaffoldSpan = SYSTEM_PROMPT.slice(0, 160)
+    expect(scaffoldSpan.length).toBeGreaterThan(140)
+    const leak = detectOutputLeak(scaffoldSpan, SYSTEM_PROMPT)
+    expect(leak.leaked).toBe(true)
+    expect(leak.reason).toBe("verbatim system-prompt span")
   })
 })
