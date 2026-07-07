@@ -13,6 +13,7 @@
     "lint": "oxlint --type-aware --fix"
   },
   "dependencies": {
+    "@agenticmind/assurance": "*",
     "@agenticmind/shared": "*",
     "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
     "@opentelemetry/resources": "^2.7.1",

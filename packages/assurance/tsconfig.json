@@ -1,0 +1,11 @@
+{
+  "extends": "@agenticmind/typescript-config/lib.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "@agenticmind/assurance/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}

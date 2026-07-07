@@ -11,6 +11,7 @@
 
 import { isClientDisconnectError } from "@agenticmind/shared/lib/client-disconnect"
 
+import { hooksAuditFetch } from "@/hooks-audit"
 import { mcpFetch } from "@/mcp"
 import { initTracing } from "@/tracing"
 
@@ -53,6 +54,10 @@ const fetchHandler = (req: Request): Response | Promise<Response> => {
 
   if (pathname === "/mcp" || pathname.startsWith("/mcp/")) {
     return mcpFetch(req)
+  }
+
+  if (pathname === "/hooks/audit") {
+    return hooksAuditFetch(req)
   }
 
   return new Response("Not found", { status: 404 })
