@@ -60,7 +60,7 @@ sources is flagged (`staleSourcesOnly`, status → `needs_review`).
 | `RETRIEVAL_PARAMS` | engine defaults | A tuned retrieval profile (hybrid weights / recency / topK / rerank) as JSON. Produced by `scripts/tune.ts`, which optimises against the eval corpus **plus** harvested real queries. |
 | `KNOWLEDGE_EVAL_HARVEST` | off | **Privacy-affecting.** When on, the raw question is persisted on the telemetry row (default: only a hash) so signalled real queries can be replayed by the tuner. Leave off unless you want the closed read-path loop. |
 | `KNOWLEDGE_CARDS_ENABLED` | off | Distil ingested text into reusable fact cards. |
-| `KNOWLEDGE_CACHE_ENABLED` | off | Answer cache for repeated questions. **Only `supported` answers are cached** — a hallucinated / weakly-grounded / conflicted answer is never stored and then served back confidently to many agents (the cache amplifies whatever it holds). |
+| `KNOWLEDGE_CACHE_ENABLED` | off | Answer cache for repeated questions. **Only `supported` answers are cached** — a hallucinated / weakly-grounded / conflicted answer is never stored and then served back confidently to many agents (the cache amplifies whatever it holds). Staleness is enforced at lookup: TTL (default 7 d) **plus source drift** — if any cited material was edited, re-ingested, or deleted after the answer was cached, the entry misses. Accepted lag: a **new** material that would change an answer *without touching its cited sources* is not detected, so the old answer serves until the TTL expires — shorten the TTL on a fast-growing corpus. |
 
 ## Experimental
 

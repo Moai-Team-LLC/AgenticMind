@@ -178,19 +178,13 @@ export const storeAnswer = (props: { tx: Transaction; entry: StoreAnswerInput })
   )
 }
 
-/** Soft-invalidates all active cache rows citing the given material. */
-export const invalidateAnswersByMaterial = (props: {
-  tx: Transaction
-  materialId: string
-  reason: string
-}) =>
-  ResultAsync.fromPromise(
-    props.tx.execute(sql`
-      UPDATE answer_cache SET invalidated_at = now(), invalidated_reason = ${props.reason}
-      WHERE invalidated_at IS NULL AND ${props.materialId} = ANY(source_material_ids)
-    `),
-    mapDatabaseError,
-  )
+// NOTE: an eager `invalidateAnswersByMaterial` used to live here but had zero
+// callers — staleness is enforced at LOOKUP time instead (TTL + the source-drift
+// CTE above: every cited material must still exist with updated_at predating the
+// cached answer), which covers edits, re-ingests, and deletions of cited
+// materials. Known accepted lag: a NEW material that would change an answer
+// without touching its cited sources is served the old cached answer until the
+// TTL expires (documented in docs/knobs.md).
 
 /** Active + total row counts. */
 export const answerCacheStats = (props: { tx: Transaction }) =>
