@@ -14,6 +14,7 @@ import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobs
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 import type { RetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
 import type { CallerContext } from "@agenticmind/shared/lib/knowledge/synth"
+import type { CorpusChunk } from "@agenticmind/shared/lib/skill/compile-live"
 
 import { recordEvent } from "@agenticmind/shared/database/query/knowledge/ask-feedback"
 import {
@@ -25,6 +26,10 @@ import { searchChunks } from "@agenticmind/shared/database/query/knowledge/chunk
 import { recordGuardEvent } from "@agenticmind/shared/database/query/knowledge/guard-events"
 import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materials"
 import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
+import {
+  insertSkillVersion,
+  upsertSkill,
+} from "@agenticmind/shared/database/query/knowledge/skills"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { decayedConfidence, summarizeContested } from "@agenticmind/shared/lib/knowledge/belief"
@@ -38,10 +43,13 @@ import {
 import { guardInput, redactPii } from "@agenticmind/shared/lib/knowledge/guard"
 import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
 import { removeMaterial } from "@agenticmind/shared/lib/knowledge/ingestion"
+import { resolveJudgeModel } from "@agenticmind/shared/lib/knowledge/judge-model"
 import { embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
 import { hasScope } from "@agenticmind/shared/lib/knowledge/mcp-scopes"
 import { createGraphContextProvider } from "@agenticmind/shared/lib/knowledge/qaplan"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
+import { compileSkillLive } from "@agenticmind/shared/lib/skill/compile-live"
+import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
 import { createHash } from "node:crypto"
 import * as z from "zod"
 
@@ -577,6 +585,113 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
   return res.value
 }
 
+export const klCompileSkillInput = z.object({
+  /** The behaviour to encode, e.g. "deploy-strands-safely". */
+  target: z.string().min(1).max(200),
+  name: z.string().min(1).max(200).optional(),
+  /** Retrieval query for the corpus slice; defaults to `target`. */
+  query: z.string().min(1).optional(),
+  limit: z.number().int().positive().max(50).optional(),
+  /** Semver for this compile; defaults to 1.0.0. */
+  version: z.string().min(1).optional(),
+})
+
+/** Convention version of the extraction prompt — bump on prompt changes (reproducibility). */
+const SKILL_EXTRACT_CONVENTION = "skill-extract-v1"
+
+/**
+ * Kl_compile_skill (§4) — compile a reusable, cited SKILL.md for `target` from the corpus:
+ * retrieve → temperature-0 extract → L1 structural gate → decorrelated L2 faithfulness gate
+ * → persist (skill + versioned row). Fail-closed at every gate; the L2 judge must be a
+ * different model family than the extractor, so an unset CHAT_JUDGE_MODEL fails closed
+ * rather than judging with the same mind. Requires knowledge:write.
+ */
+export const klCompileSkill = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klCompileSkillInput>,
+) => {
+  if (!hasScope(deps.scopes, "knowledge:write")) {
+    throw new Error("kl_compile_skill: missing required scope 'knowledge:write'")
+  }
+  const query = (args.query ?? args.target).trim()
+  await enforceGuards(deps, "kl_compile_skill", query)
+  const limit = args.limit !== undefined && args.limit > 0 && args.limit <= 50 ? args.limit : 12
+
+  const hits = await searchMerged(deps, [query], limit)
+  if (hits.length === 0) {
+    return {
+      ok: false as const,
+      errors: ["no corpus retrieved for the target — ingest sources first"],
+    }
+  }
+  const titles = new Map<string, string>()
+  const chunks: CorpusChunk[] = []
+  for (const h of hits) {
+    chunks.push({
+      body: h.body,
+      materialId: h.materialId,
+      chunk: h.chunkId,
+      title: await resolveTitle(deps.tx, h.materialId, titles),
+    })
+  }
+
+  const extractorModel = aiSettings.CHAT_MODEL_COMPLEX
+  const judgeModel = resolveJudgeModel(extractorModel, aiSettings.CHAT_JUDGE_MODEL)
+  const name = args.name ?? args.target
+  const result = await compileSkillLive({
+    name,
+    target: args.target,
+    version: args.version ?? "1.0.0",
+    extractorModel,
+    extractorVersion: SKILL_EXTRACT_CONVENTION,
+    judgeModel,
+    chunks,
+  })
+  if (!result.ok) {
+    return { ok: false as const, errors: result.errors }
+  }
+
+  const skillId = await upsertSkill({ tx: deps.tx, target: args.target, name })
+  if (skillId.isErr()) {
+    throw new Error(`kl_compile_skill: ${skillId.error.message}`)
+  }
+  const fm = result.skill.frontmatter
+  const versionId = await insertSkillVersion({
+    tx: deps.tx,
+    input: {
+      skillId: skillId.value,
+      version: fm.version,
+      corpusSnapshotId: result.corpusSnapshotId,
+      extractorModel: fm.extractorModel,
+      extractorVersion: fm.extractorVersion,
+      judgeModel,
+      judgeVersionHash: result.judgeVersionHash,
+      evalPassRate: result.report.evalPassRate,
+      passed: result.report.passed,
+      md: result.md,
+      citations: result.skill.citations,
+      contradicted: result.report.contradicted,
+      compiledAt: fm.compiledAt !== undefined ? new Date(fm.compiledAt) : new Date(),
+    },
+  })
+  if (versionId.isErr()) {
+    throw new Error(`kl_compile_skill: ${versionId.error.message}`)
+  }
+
+  return {
+    ok: true as const,
+    skillId: skillId.value,
+    versionId: versionId.value,
+    target: args.target,
+    corpusSnapshotId: result.corpusSnapshotId,
+    evalPassRate: result.report.evalPassRate,
+    directives: result.skill.directives.length,
+    negatives: result.skill.negatives.length,
+    citations: result.skill.citations.length,
+    md: result.md,
+  }
+}
+
 export const klForgetInput = z.object({ id: z.string().min(1) })
 
 /**
@@ -607,7 +722,7 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.8.0"
+export const MCP_CONTRACT_VERSION = "1.9.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
@@ -663,6 +778,12 @@ export const KNOWLEDGE_MCP_TOOLS = [
     description:
       "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Later kl_ask_global / kl_search retrieve and cite it.",
     inputSchema: klIngestInput,
+  },
+  {
+    name: "kl_compile_skill",
+    description:
+      "Compile a reusable, fully-cited SKILL.md for a target behaviour from the knowledge base — retrieve, extract cited directives + negatives, then fail-closed on a structural gate AND a decorrelated L2 faithfulness judge before persisting a versioned skill. Requires knowledge:write and a distinct CHAT_JUDGE_MODEL (a different family than the extractor).",
+    inputSchema: klCompileSkillInput,
   },
   {
     name: "kl_forget",
