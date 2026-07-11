@@ -13,7 +13,7 @@ import type { CompiledSkill, SkillCitation, SkillInstruction } from "./types"
 import { checkSkillStructure, renderSkillMd } from "./skill-md"
 
 /** What the injected LLM extractor returns from the corpus slice. */
-export interface ExtractedSkill {
+export type ExtractedSkill = {
   triggers: string[]
   directives: SkillInstruction[]
   negatives: SkillInstruction[]
@@ -23,7 +23,7 @@ export interface ExtractedSkill {
 /** The extraction seam. Live: corpus retriever + temperature-0 extractor. Test: a fake. */
 export type SkillExtractor = (corpus: string) => Promise<ExtractedSkill>
 
-export interface CompileInput {
+export type CompileInput = {
   name: string
   target: string
   version: string
@@ -46,10 +46,18 @@ export const providerFamily = (model: string): string => {
   const m = model.toLowerCase()
   const slash = m.indexOf("/")
   const bare = slash > 0 ? m.slice(slash + 1) : m
-  if (/^(gpt-|o1|o3|o4|chatgpt|text-)/u.test(bare) || m.includes("openai")) return "openai"
-  if (bare.includes("claude") || m.includes("anthropic")) return "anthropic"
-  if (bare.includes("gemini") || m.includes("google")) return "google"
-  if (/llama|mistral|mixtral|qwen|deepseek|gemma/u.test(bare)) return "open-weights"
+  if (/^(gpt-|o1|o3|o4|chatgpt|text-)/u.test(bare) || m.includes("openai")) {
+    return "openai"
+  }
+  if (bare.includes("claude") || m.includes("anthropic")) {
+    return "anthropic"
+  }
+  if (bare.includes("gemini") || m.includes("google")) {
+    return "google"
+  }
+  if (/llama|mistral|mixtral|qwen|deepseek|gemma/u.test(bare)) {
+    return "open-weights"
+  }
   return slash > 0 ? m.slice(0, slash) : "unknown"
 }
 
@@ -81,7 +89,9 @@ export const compileSkill = async (input: CompileInput): Promise<CompileResult> 
   }
 
   const structure = checkSkillStructure(skill)
-  if (!structure.ok) return { ok: false, errors: structure.errors }
+  if (!structure.ok) {
+    return { ok: false, errors: structure.errors }
+  }
 
   return { ok: true, skill, md: renderSkillMd(skill) }
 }
