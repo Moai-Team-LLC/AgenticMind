@@ -32,8 +32,11 @@ export const renderSkillMd = (skill: CompiledSkill): string => {
 
   const citations = skill.citations
     .slice()
-    .sort((a, b) => a.marker - b.marker)
-    .map((c) => `[^${c.marker}]: ${c.materialId}${c.chunk ? `#${c.chunk}` : ""} — ${c.title}`)
+    .toSorted((a, b) => a.marker - b.marker)
+    .map(
+      (c) =>
+        `[^${c.marker}]: ${c.materialId}${typeof c.chunk === "string" && c.chunk.length > 0 ? `#${c.chunk}` : ""} — ${c.title}`,
+    )
     .join("\n")
 
   return [
@@ -56,7 +59,7 @@ export const renderSkillMd = (skill: CompiledSkill): string => {
   ].join("\n")
 }
 
-export interface StructureCheck {
+export type StructureCheck = {
   ok: boolean
   errors: string[]
 }
@@ -69,9 +72,15 @@ export const checkSkillStructure = (skill: CompiledSkill): StructureCheck => {
   const errors: string[] = []
   const defined = new Set(skill.citations.map((c) => c.marker))
 
-  if (skill.triggers.length === 0) errors.push("no triggers (the skill has no router)")
-  if (skill.directives.length === 0) errors.push("no directives (the skill is empty)")
-  if (skill.negatives.length === 0) errors.push("no negative examples (>= 1 required)")
+  if (skill.triggers.length === 0) {
+    errors.push("no triggers (the skill has no router)")
+  }
+  if (skill.directives.length === 0) {
+    errors.push("no directives (the skill is empty)")
+  }
+  if (skill.negatives.length === 0) {
+    errors.push("no negative examples (>= 1 required)")
+  }
 
   const checkCited = (instr: SkillInstruction, kind: string, i: number): void => {
     if (instr.citations.length === 0) {
@@ -79,11 +88,17 @@ export const checkSkillStructure = (skill: CompiledSkill): StructureCheck => {
       return
     }
     for (const m of instr.citations) {
-      if (!defined.has(m)) errors.push(`${kind} #${i + 1} cites [^${m}] which is not defined`)
+      if (!defined.has(m)) {
+        errors.push(`${kind} #${i + 1} cites [^${m}] which is not defined`)
+      }
     }
   }
-  skill.directives.forEach((d, i) => checkCited(d, "directive", i))
-  skill.negatives.forEach((n, i) => checkCited(n, "negative", i))
+  for (const [i, d] of skill.directives.entries()) {
+    checkCited(d, "directive", i)
+  }
+  for (const [i, n] of skill.negatives.entries()) {
+    checkCited(n, "negative", i)
+  }
 
   return { ok: errors.length === 0, errors }
 }
@@ -92,7 +107,9 @@ export const checkSkillStructure = (skill: CompiledSkill): StructureCheck => {
  * gate requires this to be exactly 1.0. */
 export const citationCoverage = (skill: CompiledSkill): number => {
   const all = [...skill.directives, ...skill.negatives]
-  if (all.length === 0) return 0
+  if (all.length === 0) {
+    return 0
+  }
   return all.filter((i) => i.citations.length > 0).length / all.length
 }
 
@@ -102,12 +119,14 @@ const parseInstruction = (line: string): SkillInstruction => {
   const citations: number[] = []
   let m: RegExpExecArray | null
   CITE_RE.lastIndex = 0
-  while ((m = CITE_RE.exec(line)) !== null) citations.push(Number(m[1]))
+  while ((m = CITE_RE.exec(line)) !== null) {
+    citations.push(Number(m[1]))
+  }
   const text = line.replace(/^-\s*/, "").replace(CITE_RE, "").trim()
   return { text, citations }
 }
 
-export interface ParsedSkill {
+export type ParsedSkill = {
   name: string
   version: string
   triggers: string[]
@@ -136,23 +155,31 @@ export const parseSkillMd = (md: string): ParsedSkill => {
 
   const section = (heading: string): string[] => {
     const start = lines.findIndex((l) => l.trim() === heading)
-    if (start < 0) return []
+    if (start === -1) {
+      return []
+    }
     const body: string[] = []
     for (let i = start + 1; i < lines.length; i++) {
       const l = lines[i] ?? ""
-      if (l.startsWith("## ") || l.startsWith("# ")) break
-      if (l.trim().startsWith("- ")) body.push(l.trim())
+      if (l.startsWith("## ") || l.startsWith("# ")) {
+        break
+      }
+      if (l.trim().startsWith("- ")) {
+        body.push(l.trim())
+      }
     }
     return body
   }
 
   const triggers = section("## Triggers").map((l) => l.replace(/^-\s*/, "").trim())
-  const directives = section("## Directives").map(parseInstruction)
-  const negatives = section("## Negative examples").map(parseInstruction)
+  const directives = section("## Directives").map((l) => parseInstruction(l))
+  const negatives = section("## Negative examples").map((l) => parseInstruction(l))
   const citationMarkers: number[] = []
   for (const l of lines) {
     const m = /^\[\^(\d+)\]:/.exec(l.trim())
-    if (m) citationMarkers.push(Number(m[1]))
+    if (m) {
+      citationMarkers.push(Number(m[1]))
+    }
   }
   return { name, version, triggers, directives, negatives, citationMarkers }
 }
