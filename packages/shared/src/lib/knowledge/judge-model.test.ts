@@ -25,7 +25,7 @@ describe("checkJudgeGeneratorDecorrelation (§1a)", () => {
 describe("resolveJudgeModel", () => {
   it("uses a configured judge model, else falls back to the generator model", () => {
     expect(resolveJudgeModel("gpt-4o", "google/gemini-1.5-pro")).toBe("google/gemini-1.5-pro")
-    expect(resolveJudgeModel("gpt-4o", undefined)).toBe("gpt-4o")
+    expect(resolveJudgeModel("gpt-4o")).toBe("gpt-4o")
     expect(resolveJudgeModel("gpt-4o", "")).toBe("gpt-4o")
   })
 })

@@ -12,14 +12,22 @@ export const providerFamily = (model: string): string => {
   const m = model.toLowerCase()
   const slash = m.indexOf("/")
   const bare = slash > 0 ? m.slice(slash + 1) : m
-  if (/^(gpt-|o1|o3|o4|chatgpt|text-)/u.test(bare) || m.includes("openai")) return "openai"
-  if (bare.includes("claude") || m.includes("anthropic")) return "anthropic"
-  if (bare.includes("gemini") || m.includes("google")) return "google"
-  if (/llama|mistral|mixtral|qwen|deepseek|gemma/u.test(bare)) return "open-weights"
+  if (/^(gpt-|o1|o3|o4|chatgpt|text-)/u.test(bare) || m.includes("openai")) {
+    return "openai"
+  }
+  if (bare.includes("claude") || m.includes("anthropic")) {
+    return "anthropic"
+  }
+  if (bare.includes("gemini") || m.includes("google")) {
+    return "google"
+  }
+  if (/llama|mistral|mixtral|qwen|deepseek|gemma/u.test(bare)) {
+    return "open-weights"
+  }
   return slash > 0 ? m.slice(0, slash) : "unknown"
 }
 
-export interface JudgeDecorrelation {
+export type JudgeDecorrelation = {
   decorrelated: boolean
   reason?: string
 }
