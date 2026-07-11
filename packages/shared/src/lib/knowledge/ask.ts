@@ -71,7 +71,10 @@ import {
   entailmentResponseSchema,
 } from "@agenticmind/shared/lib/knowledge/faithfulness-entailment"
 import { detectOutputLeak, redactPii } from "@agenticmind/shared/lib/knowledge/guard"
-import { resolveJudgeModel } from "@agenticmind/shared/lib/knowledge/judge-model"
+import {
+  checkJudgeGeneratorDecorrelation,
+  resolveJudgeModel,
+} from "@agenticmind/shared/lib/knowledge/judge-model"
 import {
   completeKnowledge,
   completeKnowledgeJson,
@@ -509,6 +512,7 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // CHAT_JUDGE_MODEL of a different family is configured, the judges run on it instead
   // of the answer model, so a same-family second pass does not co-sign its blind spots.
   const judgeModel = resolveJudgeModel(model, aiSettings.CHAT_JUDGE_MODEL)
+  warnIfJudgeCorrelated(props, model, judgeModel, aiSettings.CHAT_JUDGE_MODEL)
   const tierBFields = await tierBFaithfulness(props, answerText, citations, judgeModel)
   // Contested-sources (flag-gated, best-effort): surface facts the retrieved
   // sources disagree on instead of silently trusting the recency-preferred one.
@@ -633,6 +637,30 @@ const applyAnswerPolicy = (answer: Answer, policy: AnswerPolicy | undefined): An
  * than two sources, or the judge call fails, so it spreads straight into the
  * Answer and never breaks the answer path.
  */
+/**
+ * Fail loud on a mis-decorrelated judge (doctrine §1a): if an operator configured a
+ * distinct CHAT_JUDGE_MODEL but it still resolves to the generator's family, the second
+ * pass co-signs the same blind spots — the seam looks "on" while decorrelation is not
+ * real. An unset CHAT_JUDGE_MODEL is the intended honest-degraded path and is not warned;
+ * a routed-but-unreachable foreign judge already surfaces via the per-call `isErr` warns.
+ */
+export const warnIfJudgeCorrelated = (
+  judgeFlags: Pick<AskProps, "faithfulnessTierB" | "contestedSources">,
+  generatorModel: LlmModel,
+  judgeModel: LlmModel,
+  configuredJudge: string | undefined,
+): void => {
+  const judgesWillRun =
+    judgeFlags.faithfulnessTierB === true || judgeFlags.contestedSources === true
+  if (!judgesWillRun || configuredJudge === undefined || configuredJudge.length === 0) {
+    return
+  }
+  const decorr = checkJudgeGeneratorDecorrelation(generatorModel, judgeModel)
+  if (!decorr.decorrelated) {
+    console.warn(`ask: judge decorrelation OFF — ${decorr.reason}`)
+  }
+}
+
 const contestedSourcesCheck = async (
   props: AskProps,
   sources: readonly Source[],
