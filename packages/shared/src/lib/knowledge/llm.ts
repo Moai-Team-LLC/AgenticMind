@@ -19,6 +19,7 @@ import {
   configuredEmbeddingModelId,
   embeddingsProvider,
 } from "@agenticmind/shared/lib/ai/embeddings"
+import { providerFamily } from "@agenticmind/shared/lib/knowledge/judge-model"
 import { Attr, recordChildSpan, SpanKind } from "@agenticmind/shared/lib/observability/trace"
 import { buildRetryOptions } from "@agenticmind/shared/lib/retry"
 import { parseZodSchema } from "@agenticmind/shared/lib/zod/parse"
@@ -130,8 +131,43 @@ export const completeKnowledge = (props: {
 }
 
 /**
- * Completes a chat turn constrained to a zod schema (JSON mode). The
- * `CompleteJSON` capability used by graphrag / cards / qaplan extraction.
+ * Tolerant parse of a JSON object out of a model reply — strips markdown fences and, if
+ * the body is prose-wrapped, falls back to the first `{`…last `}` slice. For non-OpenAI
+ * judges (e.g. a Gemini model routed via the gateway) that don't honor strict
+ * responseFormat and may return fenced/prefixed JSON. Throws when no object is present.
+ */
+export const parseJsonObjectLoose = (raw: string): unknown => {
+  let clean = raw.trim()
+  if (clean.startsWith("```json")) {
+    clean = clean.slice("```json".length)
+  } else if (clean.startsWith("```")) {
+    clean = clean.slice(3)
+  }
+  if (clean.endsWith("```")) {
+    clean = clean.slice(0, -3)
+  }
+  clean = clean.trim()
+  try {
+    return JSON.parse(clean)
+  } catch {
+    const first = clean.indexOf("{")
+    const last = clean.lastIndexOf("}")
+    if (first !== -1 && last > first) {
+      return JSON.parse(clean.slice(first, last + 1))
+    }
+    throw new Error("model reply contained no JSON object")
+  }
+}
+
+/**
+ * Completes a chat turn constrained to a zod schema (JSON mode). The `CompleteJSON`
+ * capability used by graphrag / cards / qaplan extraction and the verify judges.
+ *
+ * OpenAI honors strict structured outputs (`responseFormat`); other families — notably a
+ * decorrelated Gemini judge routed via the gateway — reject it and can return prose- or
+ * fence-wrapped JSON, so the strict path would drop the schema and the judge would fail
+ * closed (silently `{}`). For those, ask for JSON in the prompt and parse defensively;
+ * the final `parseZodSchema` still enforces the schema either way.
  */
 export const completeKnowledgeJson = <T>(props: {
   system: string
@@ -143,19 +179,34 @@ export const completeKnowledgeJson = <T>(props: {
   purpose?: string
 }) => {
   const purpose = props.purpose ?? "knowledge complete json"
+  const model = props.model ?? KNOWLEDGE_CHAT_MODEL
+  const temperature = props.temperature ?? 0
+  const maxOutputTokens = aiSettings.CHAT_MAX_OUTPUT_TOKENS ?? DEFAULT_MAX_OUTPUT_TOKENS
+  const nativeStructured = providerFamily(model) === "openai"
   return ResultAsync.fromPromise(
-    pRetry(async () => {
+    pRetry(async (): Promise<unknown> => {
       const start = Date.now()
-      const { output, usage } = await generateText({
-        model: chatModel(props.model ?? KNOWLEDGE_CHAT_MODEL),
-        system: props.system,
+      if (nativeStructured) {
+        const { output, usage } = await generateText({
+          model: chatModel(model),
+          system: props.system,
+          prompt: props.user,
+          temperature,
+          output: Output.object({ schema: props.schema }),
+          maxOutputTokens,
+        })
+        recordLlmUsage("llm.complete.json", model, usage, start)
+        return output
+      }
+      const { text, usage } = await generateText({
+        model: chatModel(model),
+        system: `${props.system}\n\nReturn a single valid JSON object only — no prose, no markdown fences.`,
         prompt: props.user,
-        temperature: props.temperature ?? 0,
-        output: Output.object({ schema: props.schema }),
-        maxOutputTokens: aiSettings.CHAT_MAX_OUTPUT_TOKENS ?? DEFAULT_MAX_OUTPUT_TOKENS,
+        temperature,
+        maxOutputTokens,
       })
-      recordLlmUsage("llm.complete.json", props.model ?? KNOWLEDGE_CHAT_MODEL, usage, start)
-      return output
+      recordLlmUsage("llm.complete.json", model, usage, start)
+      return parseJsonObjectLoose(text)
     }, buildRetryOptions(purpose)),
     (error) => aiError(`Failed to complete json for ${purpose}`, error),
   ).andThen((output) => parseZodSchema(props.schema, output))
