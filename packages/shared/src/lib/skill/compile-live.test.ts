@@ -38,6 +38,7 @@ const deps = (over: Partial<SkillCompileDeps> = {}): SkillCompileDeps => {
   return {
     extract: async () => goodLlm,
     judge: entailAll("entailed"),
+    completeness: async () => [],
     now: () => "2026-07-11T00:00:00.000Z",
     ...over,
   }
@@ -70,6 +71,8 @@ describe("compileSkillLive (§4 live compile + L2 faithfulness)", () => {
     expect(r.skill.frontmatter.judgeVersionHash).toBe(r.judgeVersionHash)
     expect(r.md).toContain("migrate deploy")
     expect(r.md).toContain("[^1]:")
+    expect(r.completeness.completenessScore).toBe(1)
+    expect(r.completeness.missed).toHaveLength(0)
   })
 
   it("fails closed when the judge shares the extractor's family (§1a)", async () => {
@@ -114,6 +117,33 @@ describe("compileSkillLive (§4 live compile + L2 faithfulness)", () => {
       return
     }
     expect(r.errors.some((e) => e.includes("not defined") || e.includes("no citation"))).toBe(true)
+  })
+
+  it("records completeness advisory-style — a missed directive lowers the score but still compiles", async () => {
+    const missed = async () => [{ text: "Always back up the DB before deploy.", chunk: 1 }]
+    const r = await compileSkillLive(input(), deps({ completeness: missed }))
+    expect(r.ok).toBe(true)
+    if (!r.ok) {
+      return
+    }
+    // 2 captured, 1 missed → 2/3
+    expect(r.completeness.completenessScore).toBeCloseTo(0.667, 2)
+    expect(r.completeness.missed).toHaveLength(1)
+  })
+
+  it("fails closed on completeness only when a threshold is enforced", async () => {
+    const missed = async () => [{ text: "Always back up the DB before deploy.", chunk: 1 }]
+    const advisory = await compileSkillLive(input(), deps({ completeness: missed }))
+    expect(advisory.ok).toBe(true) // advisory by default — a missed item never blocks
+    const enforced = await compileSkillLive(
+      input({ completenessThreshold: 0.9 }),
+      deps({ completeness: missed }),
+    )
+    expect(enforced.ok).toBe(false)
+    if (enforced.ok) {
+      return
+    }
+    expect(enforced.errors[0]).toContain("L2 completeness")
   })
 })
 

@@ -73,6 +73,13 @@ const skillVersions = pgTable(
     contradicted: jsonb("contradicted")
       .notNull()
       .default(sql`'[]'::jsonb`),
+    /** L2 completeness recall score, captured / (captured + missed). Nullable — advisory,
+     * added after the first cut, so pre-completeness rows carry null. */
+    completenessScore: real("completeness_score"),
+    /** Skill-worthy directives/negatives the corpus states but the extractor missed (advisory). */
+    missed: jsonb("missed")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     /** Git sha, once the SKILL.md is landed by an operator/CI step (nullable). */
     gitSha: text("git_sha"),
     compiledAt: timestamp("compiled_at", { withTimezone: true }).notNull(),

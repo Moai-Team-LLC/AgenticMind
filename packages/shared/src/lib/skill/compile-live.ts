@@ -18,11 +18,18 @@ import { completeKnowledgeJson } from "@agenticmind/shared/lib/knowledge/llm"
 import { Attr, SpanKind, withSpan } from "@agenticmind/shared/lib/observability/trace"
 import { createHash } from "node:crypto"
 
+import type { CompletenessReport, MissedItem } from "./completeness"
 import type { CitationMeta, ExtractedSkillLlm } from "./extract"
 import type { SkillFaithfulnessReport } from "./faithfulness"
 import type { CompiledSkill } from "./types"
 
 import { providerFamily } from "./compile"
+import {
+  buildCompletenessUser,
+  COMPLETENESS_SYSTEM,
+  completenessReport,
+  completenessResponseSchema,
+} from "./completeness"
 import {
   assembleExtractedSkill,
   buildExtractUser,
@@ -46,6 +53,9 @@ export type SkillCompileLiveInput = {
   chunks: CorpusChunk[]
   /** L2 gate: min entailed/judged fraction. Defaults to 1.0 (every directive grounded). */
   faithfulnessThreshold?: number
+  /** L2 completeness gate: min captured/(captured+missed). UNSET = advisory (record, never
+   * block); set it to enforce a recall floor. Faithfulness stays the hard correctness gate. */
+  completenessThreshold?: number
 }
 
 /** Injected LLM boundaries + clock — defaults call the real seam; tests pass fakes. */
@@ -56,6 +66,7 @@ export type SkillCompileDeps = {
     user: string,
     model: string,
   ) => Promise<{ index: number; verdict: EntailmentVerdict }[]>
+  completeness?: (system: string, user: string, model: string) => Promise<MissedItem[]>
   now?: () => string
 }
 
@@ -65,6 +76,7 @@ export type SkillCompileLiveResult =
       skill: CompiledSkill
       md: string
       report: SkillFaithfulnessReport
+      completeness: CompletenessReport
       corpusSnapshotId: string
       judgeVersionHash: string
     }
@@ -118,6 +130,24 @@ const defaultJudge = async (
   return res.value.verdicts
 }
 
+const defaultCompleteness = async (
+  system: string,
+  user: string,
+  model: string,
+): Promise<MissedItem[]> => {
+  const res = await completeKnowledgeJson({
+    system,
+    user,
+    schema: completenessResponseSchema,
+    model,
+    purpose: "skill completeness",
+  })
+  if (res.isErr()) {
+    throw new Error(res.error.message)
+  }
+  return res.value.missed
+}
+
 /** Compile a skill end to end, fail-closed, with the L2 faithfulness gate + APL span. */
 export const compileSkillLive = async (
   input: SkillCompileLiveInput,
@@ -140,6 +170,7 @@ export const compileSkillLive = async (
 
     const extract = deps.extract ?? defaultExtract
     const judge = deps.judge ?? defaultJudge
+    const completeness = deps.completeness ?? defaultCompleteness
     const now = deps.now ?? (() => new Date().toISOString())
 
     const numberedChunks = input.chunks.map((c) => c.body)
@@ -204,11 +235,38 @@ export const compileSkillLive = async (
       }
     }
 
+    // Gate 4 (L2, decorrelated): completeness — skill-worthy corpus content the extractor
+    // missed. Advisory by default (records the score + missed list); only blocks when the
+    // caller sets completenessThreshold. Runs after faithfulness passes.
+    const capturedCount = skill.directives.length + skill.negatives.length
+    const missed = await completeness(
+      COMPLETENESS_SYSTEM,
+      buildCompletenessUser(skill, numberedChunks),
+      input.judgeModel,
+    )
+    const completenessRep = completenessReport(
+      capturedCount,
+      missed,
+      input.completenessThreshold ?? 0,
+    )
+    span.setAttribute("agenticmind.skill.completeness", completenessRep.completenessScore)
+    span.setAttribute("agenticmind.skill.missed_count", completenessRep.missed.length)
+
+    if (input.completenessThreshold !== undefined && !completenessRep.passed) {
+      return {
+        ok: false,
+        errors: [
+          `L2 completeness ${completenessRep.completenessScore} < ${input.completenessThreshold} — missed: ${completenessRep.missed.map((m) => m.text).join("; ")}`,
+        ],
+      }
+    }
+
     return {
       ok: true,
       skill,
       md: renderSkillMd(skill),
       report,
+      completeness: completenessRep,
       corpusSnapshotId: snapshotId,
       judgeVersionHash: jvHash,
     }
