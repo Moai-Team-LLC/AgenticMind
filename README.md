@@ -241,7 +241,7 @@ uses the language-agnostic `simple` config (configurable per deployment).
 
 ## 🌐 The AgenticProduct ecosystem
 
-One standard and six reference implementations you can run — together they close the loop every production agent needs: **run → remember → measure → heal**, with security as a cross-cutting assurance plane.
+One standard and five reference implementations you can run — together they close the loop every production agent needs: **run → remember → measure**, with security as a cross-cutting assurance plane.
 
 |  | Project | Role |
 |---|---|---|
@@ -249,11 +249,10 @@ One standard and six reference implementations you can run — together they clo
 | ⚙️ | [AgenticOps](https://github.com/Moai-Team-LLC/AgenticOps) | Runtime & operations — deployable manifests, scheduling, a durable backlog, a bounded runner, and fleet health. |
 | 🧠 | **AgenticMind** (this repo) | Knowledge & memory — auditable, self-improving, citation-enforced, over MCP; Postgres-only. |
 | 📈 | [AgenticPerformance](https://github.com/Moai-Team-LLC/AgenticPerformance) | Evals & observability — OTel traces, golden-set evals with a CI gate, failure clusters, and the improvement loop. |
-| 🩹 | [AgenticSelfHealingCode](https://github.com/Moai-Team-LLC/AgenticSelfHealingCode) | Self-healing ops — production monitoring, incident diagnosis/RCA, and test-suite healing on earned autonomy. |
 | 🌉 | [AgenticGateway](https://github.com/Moai-Team-LLC/AgenticGateway) | Model & cost plane — one key, measured routing, ceilings, cache, evidence. |
 | 🛡️ | [AgenticAssurance](https://github.com/Moai-Team-LLC/AgenticAssurance) | Security & assurance — red-teams any agent (OWASP Agentic + MITRE ATLAS), a toxic-flow graph, and SARIF output. |
 
-**How they compose.** **AgenticOps** runs the fleet, **AgenticMind** gives agents auditable knowledge & memory, **AgenticPerformance** measures every run with traces and evals, and **AgenticSelfHealingCode** repairs what breaks — closing the **run → remember → measure → heal** loop. **AgenticGateway** is the model plane every LLM call in that loop passes through — one key, eval-measured routing, cost ceilings — and **AgenticAssurance** red-teams any agent in the loop, with the whole stack conforming to the **[agentic-product-standard](https://github.com/Moai-Team-LLC/agentic-product-standard)**.
+**How they compose.** **AgenticOps** runs the fleet, **AgenticMind** gives agents auditable knowledge & memory, and **AgenticPerformance** measures every run with traces and evals — closing the **run → remember → measure** loop. **AgenticGateway** is the model plane every LLM call in that loop passes through — one key, eval-measured routing, cost ceilings — and **AgenticAssurance** red-teams any agent in the loop, with the whole stack conforming to the **[agentic-product-standard](https://github.com/Moai-Team-LLC/agentic-product-standard)**.
 
 See the standard's [AgenticMind case study](https://github.com/Moai-Team-LLC/agentic-product-standard/blob/main/examples/agenticmind-case-study.md) for a layer-by-layer map of how this repo implements the canon.
 
