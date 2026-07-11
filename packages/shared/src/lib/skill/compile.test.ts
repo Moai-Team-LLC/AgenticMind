@@ -56,7 +56,9 @@ describe("compileSkill (§4)", () => {
       extract: fakeExtractor(goodExtract),
     })
     expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.errors[0]).toContain("different family")
+    if (!r.ok) {
+      expect(r.errors[0]).toContain("different family")
+    }
   })
 
   it("fails closed on an uncited directive (L1 gate)", async () => {
@@ -65,7 +67,9 @@ describe("compileSkill (§4)", () => {
       extract: fakeExtractor({ ...goodExtract, directives: [{ text: "Do it.", citations: [] }] }),
     })
     expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.errors.some((e) => e.includes("no citation"))).toBe(true)
+    if (!r.ok) {
+      expect(r.errors.some((e) => e.includes("no citation"))).toBe(true)
+    }
   })
 
   it("fails closed on a missing negative example (L1 gate)", async () => {
