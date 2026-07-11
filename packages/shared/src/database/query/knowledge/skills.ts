@@ -46,6 +46,8 @@ export type InsertSkillVersionInput = {
   md: string
   citations: unknown
   contradicted: unknown
+  completenessScore?: number | null
+  missed?: unknown
   gitSha?: string | null
   compiledAt: Date
 }
@@ -71,6 +73,8 @@ export const insertSkillVersion = (props: { tx: Transaction; input: InsertSkillV
           md: v.md,
           citations: v.citations,
           contradicted: v.contradicted,
+          completenessScore: v.completenessScore ?? null,
+          missed: v.missed ?? [],
           gitSha: v.gitSha ?? null,
           compiledAt: v.compiledAt,
         })
@@ -87,6 +91,8 @@ export const insertSkillVersion = (props: { tx: Transaction; input: InsertSkillV
             md: v.md,
             citations: v.citations,
             contradicted: v.contradicted,
+            completenessScore: v.completenessScore ?? null,
+            missed: v.missed ?? [],
             compiledAt: v.compiledAt,
           },
         })

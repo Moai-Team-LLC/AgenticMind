@@ -671,6 +671,8 @@ export const klCompileSkill = async (
       md: result.md,
       citations: result.skill.citations,
       contradicted: result.report.contradicted,
+      completenessScore: result.completeness.completenessScore,
+      missed: result.completeness.missed,
       compiledAt: fm.compiledAt !== undefined ? new Date(fm.compiledAt) : new Date(),
     },
   })
@@ -685,6 +687,8 @@ export const klCompileSkill = async (
     target: args.target,
     corpusSnapshotId: result.corpusSnapshotId,
     evalPassRate: result.report.evalPassRate,
+    completenessScore: result.completeness.completenessScore,
+    missed: result.completeness.missed.length,
     directives: result.skill.directives.length,
     negatives: result.skill.negatives.length,
     citations: result.skill.citations.length,
