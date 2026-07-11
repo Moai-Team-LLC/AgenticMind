@@ -6,7 +6,7 @@
  * git steps live in the compile integration.
  */
 
-export interface SkillCitation {
+export type SkillCitation = {
   /** Footnote marker number — `[^1]` → 1. */
   marker: number
   /** Corpus material this citation resolves to. */
@@ -17,14 +17,14 @@ export interface SkillCitation {
   title: string
 }
 
-export interface SkillInstruction {
+export type SkillInstruction = {
   /** Imperative one-liner ("Do X." / "Never Y."). */
   text: string
   /** Citation markers backing this instruction — the structural gate requires >= 1. */
   citations: number[]
 }
 
-export interface SkillFrontmatter {
+export type SkillFrontmatter = {
   name: string
   /** The behaviour this skill encodes, e.g. "deploy-strands-safely". */
   target: string
@@ -45,7 +45,7 @@ export interface SkillFrontmatter {
   compiledAt?: string
 }
 
-export interface CompiledSkill {
+export type CompiledSkill = {
   frontmatter: SkillFrontmatter
   /** "Use when …" router phrases — must be non-empty. */
   triggers: string[]
@@ -58,7 +58,7 @@ export interface CompiledSkill {
 
 /** A golden case the compiled skill's L2 eval judges (the LLM judge lives in the
  * compile integration; kept here so the eval-set shape is shared). */
-export interface SkillEvalCase {
+export type SkillEvalCase = {
   input: string
   /** Behaviour that applying the skill should produce. */
   expectBehavior: string
