@@ -41,6 +41,11 @@ export const aiSettings = createEnv({
     // Tiered routing: cheap/fast model for simple lookups, flagship for complex.
     CHAT_MODEL_SIMPLE: z.string().min(1).default("gpt-4o-mini"),
     CHAT_MODEL_COMPLEX: z.string().min(1).default("gpt-4o"),
+    // Verify-judge model (doctrine §1a decorrelation). Point at a DIFFERENT family than
+    // the generator (e.g. a Gemini/Claude id via the Gateway) so a same-family judge
+    // does not co-sign the generator's blind spots. Unset → judge falls back to the
+    // generator model (a correlated, degraded check).
+    CHAT_JUDGE_MODEL: z.string().min(1).optional(),
     // Per-run output-token ceiling for synthesis/extraction — a cost circuit
     // breaker (Layer 9). Caps a single generation; the input side is bounded by
     // retrieval token-budgeting. Configurable per deployment.
@@ -68,6 +73,7 @@ export const aiSettings = createEnv({
     CHAT_API_KEY: process.env.CHAT_API_KEY,
     CHAT_MODEL_SIMPLE: process.env.CHAT_MODEL_SIMPLE,
     CHAT_MODEL_COMPLEX: process.env.CHAT_MODEL_COMPLEX,
+    CHAT_JUDGE_MODEL: process.env.CHAT_JUDGE_MODEL,
     CHAT_MAX_OUTPUT_TOKENS: process.env.CHAT_MAX_OUTPUT_TOKENS,
     RERANK_ENABLED: process.env.RERANK_ENABLED,
     RERANK_BASE_URL: process.env.RERANK_BASE_URL,

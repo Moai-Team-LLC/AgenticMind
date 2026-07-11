@@ -106,6 +106,9 @@ export const completeKnowledge = (props: {
   system: string
   user: string
   model?: LlmModel
+  /** Sampling temperature; defaults to 0 (deterministic) — an extractor or judge whose
+   * output changes run-to-run cannot be calibrated. A caller that wants diversity opts in. */
+  temperature?: number
   purpose?: string
 }): ResultAsync<string, KnowledgeAiError> => {
   const purpose = props.purpose ?? "knowledge complete"
@@ -116,6 +119,7 @@ export const completeKnowledge = (props: {
         model: chatModel(props.model ?? KNOWLEDGE_CHAT_MODEL),
         system: props.system,
         prompt: props.user,
+        temperature: props.temperature ?? 0,
         maxOutputTokens: aiSettings.CHAT_MAX_OUTPUT_TOKENS ?? DEFAULT_MAX_OUTPUT_TOKENS,
       })
       recordLlmUsage("llm.complete", props.model ?? KNOWLEDGE_CHAT_MODEL, usage, start)
@@ -134,6 +138,8 @@ export const completeKnowledgeJson = <T>(props: {
   user: string
   schema: z.ZodType<T>
   model?: LlmModel
+  /** Sampling temperature; defaults to 0 (deterministic) — see completeKnowledge. */
+  temperature?: number
   purpose?: string
 }) => {
   const purpose = props.purpose ?? "knowledge complete json"
@@ -144,6 +150,7 @@ export const completeKnowledgeJson = <T>(props: {
         model: chatModel(props.model ?? KNOWLEDGE_CHAT_MODEL),
         system: props.system,
         prompt: props.user,
+        temperature: props.temperature ?? 0,
         output: Output.object({ schema: props.schema }),
         maxOutputTokens: aiSettings.CHAT_MAX_OUTPUT_TOKENS ?? DEFAULT_MAX_OUTPUT_TOKENS,
       })
