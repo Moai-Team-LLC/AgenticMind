@@ -71,6 +71,7 @@ import {
   entailmentResponseSchema,
 } from "@agenticmind/shared/lib/knowledge/faithfulness-entailment"
 import { detectOutputLeak, redactPii } from "@agenticmind/shared/lib/knowledge/guard"
+import { resolveJudgeModel } from "@agenticmind/shared/lib/knowledge/judge-model"
 import {
   completeKnowledge,
   completeKnowledgeJson,
@@ -104,6 +105,7 @@ import {
   SpanKind,
   withSpan,
 } from "@agenticmind/shared/lib/observability/trace"
+import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
 import { okAsync, ResultAsync } from "neverthrow"
 
 export type AskError = { readonly type: "ask_error"; readonly message: string }
@@ -503,10 +505,14 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   // Tier-B (flag-gated, best-effort): semantic entailment of each cited claim
   // against its own snippet. Returns {} when off / nothing to check / judge fails,
   // so it spreads cleanly and never fails the answer.
-  const tierBFields = await tierBFaithfulness(props, answerText, citations, model)
+  // Decorrelate the verify judges from the generator (doctrine §1a): when a
+  // CHAT_JUDGE_MODEL of a different family is configured, the judges run on it instead
+  // of the answer model, so a same-family second pass does not co-sign its blind spots.
+  const judgeModel = resolveJudgeModel(model, aiSettings.CHAT_JUDGE_MODEL)
+  const tierBFields = await tierBFaithfulness(props, answerText, citations, judgeModel)
   // Contested-sources (flag-gated, best-effort): surface facts the retrieved
   // sources disagree on instead of silently trusting the recency-preferred one.
-  const contestedFields = await contestedSourcesCheck(props, sources, model)
+  const contestedFields = await contestedSourcesCheck(props, sources, judgeModel)
   const staleSourcesOnly = restsOnlyOnStaleSources(citations)
   // Deterministic numeric verbatim check (Tier-A): figures asserted but absent
   // from every cited snippet — a fabricated number escalates to needs_review.
