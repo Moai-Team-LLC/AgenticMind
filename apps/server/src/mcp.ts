@@ -39,6 +39,8 @@ import {
   memWriteInput,
   klIngest,
   klIngestInput,
+  klCompileSkill,
+  klCompileSkillInput,
   klForget,
   klForgetInput,
   MCP_CONTRACT_VERSION,
@@ -263,6 +265,21 @@ const handler = createMcpHandler(
           return jsonContent(await runTenantScoped(extra, async (d) => klIngest(d, args)))
         } catch (error) {
           return errorContent(error instanceof Error ? error.message : "kl_ingest failed")
+        }
+      },
+    )
+
+    registerKlTool(
+      server,
+      "kl_compile_skill",
+      "Compile skill",
+      "Compile a reusable, fully-cited SKILL.md for a target behaviour from the knowledge base: retrieve the corpus slice, extract imperative directives + negative examples (each cited), then fail-closed on a structural gate AND a decorrelated L2 faithfulness judge (a different model family than the extractor) before persisting a versioned skill. Requires knowledge:write. Needs a distinct CHAT_JUDGE_MODEL — an unset one fails closed rather than judging with the same mind.",
+      klCompileSkillInput,
+      async (args, extra) => {
+        try {
+          return jsonContent(await runTenantScoped(extra, async (d) => klCompileSkill(d, args)))
+        } catch (error) {
+          return errorContent(error instanceof Error ? error.message : "kl_compile_skill failed")
         }
       },
     )
