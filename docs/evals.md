@@ -28,6 +28,7 @@ with the failures published*.
 | Bucket | What it guards against | Level |
 | --- | --- | --- |
 | `factual_retrieval` | the right fact is retrieved + stated | 1 |
+| `retrieval_ranking` | the right memory is *retrievable* (Recall@k / MRR), scored separately from synthesis — see [`retrieval-eval.md`](retrieval-eval.md) | ranking |
 | `citation_grounding` | claims carry resolving citations; no fabrication phrasing | 1 |
 | `out_of_scope` | honest abstention when the corpus can't answer | 1 |
 | `faithfulness` | groundedness floor + correct abstention | 1 |
