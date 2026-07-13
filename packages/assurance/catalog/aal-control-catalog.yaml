@@ -17,9 +17,9 @@
 #     forces RED regardless of declared mitigation; no evidence yields YELLOW at best; GREEN
 #     requires evidence AND (if a test is required) a passing test.
 
-version: "0.1.0"
+version: "0.2.0"
 catalog: "AAL Control Catalog"
-updated: "2026-07-03"
+updated: "2026-07-13"
 
 owasp_asi_reference:
   ASI01: "Agent Goal Hijack"
@@ -235,6 +235,23 @@ controls:
       plane_a: true
     status_rule: "RED if a high-impact action can be approved via the agent alone; GREEN iff consent is out-of-band AND self-approval probes fail; else YELLOW."
 
+  - id: AAL-ACC-05
+    title: "Ground-truth provenance — golden sets are anchored"
+    scope: core
+    aiuc1_domain: E
+    aiuc1_confirm: true
+    owasp_asi: [ASI06]
+    iso42001: ["Annex A — Data for AI systems; record-keeping"]
+    iso_confirm: true
+    intent: "Every golden/eval set backing an autonomy license or release gate declares labeling provenance (rubric version, labeler, date, agreement) and no `unanchored` set backs a gate; rubrics are versioned instruction artifacts. Realizes Agentic Product Standard v3.1 DoD 22 / Part V Ground-truth discipline."
+    evidence_requirement:
+      artifact: "golden-set provenance records (AgenticPerformance): rubric_version, labeler, label_date, agreement(kappa), origin; set-level `unanchored` flag"
+      collector: generic
+    test_requirement:
+      attack_class: []
+      plane_a: false
+    status_rule: "GREEN iff every eval set backing a gate/license declares provenance and none is `unanchored`; YELLOW if some provenance is missing but no unanchored set gates; RED if an unanchored set backs a gate or license."
+
   # ---------------- Domain A — Data & Privacy ----------------
   - id: AAL-DAP-01
     title: "PII leakage prevention"
@@ -338,6 +355,23 @@ controls:
       attack_class: []
       plane_a: false
     status_rule: "GREEN iff a baseline + deviation monitoring exist; YELLOW if telemetry exists but no baseline; RED if no monitoring."
+
+  - id: AAL-REL-04
+    title: "Calibrated verification — judges that gate are calibrated"
+    scope: expand
+    aiuc1_domain: D
+    aiuc1_confirm: true
+    owasp_asi: [ASI09]
+    iso42001: ["Annex A — AI system operation; performance evaluation"]
+    iso_confirm: true
+    intent: "Any LLM judge that gates an L3+ transition, an auto-apply, or a release is calibrated — accuracy and calibration error (ECE/Brier) measured against an anchored ground-truth sample within a recency window; an uncalibrated or stale judge gates nothing, and raw verbalized confidence is not a gating signal. Realizes Agentic Product Standard v3.1 DoD 20 / Part V Judge calibration; a flaky grader in a release gate is a check that isn't one."
+    evidence_requirement:
+      artifact: "current Judge Cards (AgenticPerformance): anchored_accuracy, ece/brier, swap_consistency, bias_battery, status per gating judge"
+      collector: generic
+    test_requirement:
+      attack_class: []
+      plane_a: false
+    status_rule: "GREEN iff every judge gating L3+/auto-apply/release has a current Judge Card with status=calibrated; YELLOW if Judge Cards exist but any gating judge is stale/uncalibrated or gates on raw verbalized confidence; RED if a judge with no Judge Card gates anything."
 
   # ---------------- Domain C — Safety (often documentation-satisfiable) ----------------
   - id: AAL-SAF-01
