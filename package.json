@@ -19,6 +19,7 @@
     "tsc": "turbo run tsc",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:db": "dotenvx run -f .env.local -- vitest run",
     "eval": "dotenvx run -f .env.local -- tsx scripts/eval.ts",
     "build-eval": "tsx scripts/build-eval-cases.ts",
     "seed-eval": "dotenvx run -f .env.local -- tsx scripts/seed-eval-corpus.ts",

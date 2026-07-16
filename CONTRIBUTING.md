@@ -38,6 +38,9 @@ bun run check                   # typecheck + tests — must pass before a PR
 ## Tests & evals
 
 - `bun test` — unit tests (engine, guardrails, judge calibration, eval harness).
+- `bun run test:db` — the same suite with `DATABASE_URL` loaded from `.env.local`, so the
+  Postgres-gated RLS / tenant-isolation tests (silently skipped by bare `bun test`) actually
+  run. Use it after `./setup.sh` before any PR touching tenancy, RLS, or schema.
 - `bun run eval` — full integration eval against the live engine; needs
   `DATABASE_URL` + `CHAT_API_KEY`. It exits non-zero on regression vs the
   baseline pass rate. CI runs the unit suite; run the eval before changing
