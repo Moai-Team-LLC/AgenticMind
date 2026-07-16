@@ -179,6 +179,10 @@ it with the `Authorization: Bearer <MCP_API_KEY>` header.
 *synthesis* step needs a chat model: `OPENAI_API_KEY` for OpenAI (the default), or
 point `CHAT_BASE_URL` at any OpenAI-compatible endpoint — a local Ollama or vLLM.
 
+> The published Docker image reads `OPENAI_API_KEY` and maps it to the server's
+> `CHAT_API_KEY` internally; the from-source path below sets `CHAT_API_KEY` directly in
+> `.env.local` — same secret, just named for each entry point.
+
 Prefer to read before you run? Same thing, explicit (just the `deploy/` drop-in, no full clone):
 
 ```bash
