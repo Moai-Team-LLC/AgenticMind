@@ -95,17 +95,19 @@ const baseRules: RuleConfig = {
   "unicorn/custom-error-definition": "error",
   "no-await-in-loop": "off", // Sequential awaits are often intentional (ordering / rate-limits); auto-parallelizing risks behavior changes.
   "typescript/only-throw-error": "off", // We throw tagged-union errors immediately caught by ResultAsync.fromPromise mappers (neverthrow idiom); wrapping them in Error would obscure the tag the catch narrows on.
-  "typescript/no-unsafe-type-assertion": "off", // Casts at I/O boundaries (raw SQL rows, parsed LLM JSON, neverthrow tagged-error narrowing) are architectural; conforming needs runtime validation everywhere (behavior + perf risk).
-  // The no-unsafe-* family is non-deterministic here: oxlint's type-aware engine
-  // intermittently fails to resolve the `createEnv` (t3-env) generic and then
-  // floods every settings-derived value as `error`-typed (observed 3 vs 1307
-  // findings across identical runs). `tsc` is the real type-safety gate and is
-  // clean; these rules are unreliable on this codebase, so they're off.
-  "typescript/no-unsafe-assignment": "off",
-  "typescript/no-unsafe-member-access": "off",
-  "typescript/no-unsafe-call": "off",
-  "typescript/no-unsafe-argument": "off",
-  "typescript/no-unsafe-return": "off",
+  // no-unsafe-* catches `any` propagating from I/O boundaries (raw SQL rows, parsed LLM
+  // JSON) — which `tsc` CANNOT catch: `any` is assignable to everything, so the compiler is
+  // NOT a substitute for these rules. Enforced at "error" repo-wide. The earlier
+  // "non-deterministic (3 vs 1307)" flakiness is GONE as of oxlint 1.66 + tsgolint 0.23
+  // (verified: a stable 158 findings across 4 identical runs). Those 158 pre-existing
+  // findings are quarantined below (test files + a shrinking debt list) so NEW violations
+  // are gated everywhere — burn the debt list down to zero, don't blanket-disable.
+  "typescript/no-unsafe-type-assertion": "error",
+  "typescript/no-unsafe-assignment": "error",
+  "typescript/no-unsafe-member-access": "error",
+  "typescript/no-unsafe-call": "error",
+  "typescript/no-unsafe-argument": "error",
+  "typescript/no-unsafe-return": "error",
   "typescript/non-nullable-type-assertion-style": "off", // Conflicts with typescript/no-non-null-assertion (kept), which forbids the `!` it prefers.
   "require-unicode-regexp": "off", // Adding the `u` flag changes escape semantics; not worth a repo-wide sweep.
   "unicorn/consistent-function-scoping": "off", // Local helpers kept next to their only caller aid readability; hoisting for its own sake hurts locality.
@@ -162,6 +164,66 @@ const schemaFileOverrides: OverridesConfig = [
       "typescript/no-non-null-assertion": "off",
       "unicorn/no-await-expression-member": "off",
       "typescript/require-await": "off",
+      // Mocks + fixtures cast freely; unsafe-any in test scaffolding is not a defect.
+      "typescript/no-unsafe-assignment": "off",
+      "typescript/no-unsafe-member-access": "off",
+      "typescript/no-unsafe-call": "off",
+      "typescript/no-unsafe-argument": "off",
+      "typescript/no-unsafe-return": "off",
+      "typescript/no-unsafe-type-assertion": "off",
+    },
+  },
+  {
+    // BURN-DOWN DEBT — not a blanket disable. These files carry pre-existing unsafe-any at
+    // I/O boundaries (LLM JSON, SQL rows, drift jobs); the family is "error" everywhere else
+    // so NEW violations are caught. Shrink this list to zero as each file is typed. Snapshot
+    // 2026-07: 158 findings across these files (oxlint 1.66, stable).
+    files: [
+      "scripts/ablate.ts",
+      "scripts/build-eval-cases.ts",
+      "scripts/cache-bench.ts",
+      "scripts/calibrate.ts",
+      "scripts/eval.ts",
+      "scripts/health.ts",
+      "scripts/reembed.ts",
+      "scripts/seed-eval-corpus.ts",
+      "scripts/tune.ts",
+      "apps/server/src/mcp.ts",
+      "apps/worker/src/jobs/assurance-drift/handler.ts",
+      "apps/worker/src/jobs/assurance-drift/worker.ts",
+      "packages/assurance/src/catalog/load.ts",
+      "packages/assurance/src/evidence/collect-db.ts",
+      "packages/assurance/src/remediate/ledger.ts",
+      "packages/shared/src/database/query/knowledge/answer-cache.ts",
+      "packages/shared/src/database/query/knowledge/beliefs.ts",
+      "packages/shared/src/database/query/knowledge/rate-limits.ts",
+      "packages/shared/src/lib/ai/embeddings.ts",
+      "packages/shared/src/lib/knowledge/ask.ts",
+      "packages/shared/src/lib/knowledge/cards-tabular.ts",
+      "packages/shared/src/lib/knowledge/extract-html.ts",
+      "packages/shared/src/lib/knowledge/feedback-judge.ts",
+      "packages/shared/src/lib/knowledge/feedback-promoter.ts",
+      "packages/shared/src/lib/knowledge/graphrag-postgres.ts",
+      "packages/shared/src/lib/knowledge/indexer.ts",
+      "packages/shared/src/lib/knowledge/ingest.ts",
+      "packages/shared/src/lib/knowledge/source-trust.ts",
+      "packages/shared/src/lib/knowledge/synth.ts",
+    ],
+    rules: {
+      "typescript/no-unsafe-assignment": "off",
+      "typescript/no-unsafe-member-access": "off",
+      "typescript/no-unsafe-call": "off",
+      "typescript/no-unsafe-argument": "off",
+      "typescript/no-unsafe-return": "off",
+      "typescript/no-unsafe-type-assertion": "off",
+    },
+  },
+  {
+    // Same untyped-`any` payloads in the drift handler also trip strict-boolean-expressions
+    // (pre-existing debt, same root cause) — on the burn-down list until the file is typed.
+    files: ["apps/worker/src/jobs/assurance-drift/handler.ts"],
+    rules: {
+      "typescript/strict-boolean-expressions": "off",
     },
   },
 ]
