@@ -156,6 +156,23 @@ const schemaFileOverrides: OverridesConfig = [
     },
   },
   {
+    // `scripts/**` is dev/eval tooling, not shipped package code. It is ALSO the
+    // one place the type-aware engine is non-deterministic: on the whole-repo
+    // root run these cross-package CLIs intermittently fail to resolve and flood
+    // as `error`-typed (23 vs 11 findings across identical runs) — the flakiness
+    // that historically justified disabling no-unsafe-* repo-wide. Scoping it off
+    // HERE (same tier as tests) keeps the root run deterministic while the net
+    // stays `error` for all shipped package source.
+    files: ["scripts/**/*.ts"],
+    rules: {
+      "typescript/no-unsafe-assignment": "off",
+      "typescript/no-unsafe-member-access": "off",
+      "typescript/no-unsafe-call": "off",
+      "typescript/no-unsafe-argument": "off",
+      "typescript/no-unsafe-return": "off",
+    },
+  },
+  {
     // Tests legitimately use `x!` on known fixtures, `(await fn()).prop` in
     // assertions, and async mocks that satisfy async interfaces without
     // awaiting — none of which are defects in test code. The no-unsafe-* family
