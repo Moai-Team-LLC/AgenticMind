@@ -1,1 +1,19 @@
-bunx commitlint --edit "$1"
+# Enforce Conventional Commits locally so a bad message is caught at commit time,
+# not in CI. Resilient to the fresh-worktree window: when dev deps aren't
+# installed yet, `bunx commitlint` cannot resolve @commitlint/config-conventional
+# and hard-fails even on a valid message — which is what tempts a blanket
+# `--no-verify`. So run the LOCAL commitlint when present (full rules), and
+# otherwise fall back to a dependency-free header-length check (the most common
+# miss) rather than blocking the commit on missing tooling. CI's commitlint is
+# the backstop for everything else.
+if [ -x node_modules/.bin/commitlint ]; then
+  node_modules/.bin/commitlint --edit "$1"
+else
+  header=$(head -n 1 "$1")
+  if [ "${#header}" -gt 72 ]; then
+    echo "commit-msg: header is ${#header} chars (max 72) — shorten it." >&2
+    echo "  (commitlint not installed here; run 'bun install' for the full ruleset.)" >&2
+    exit 1
+  fi
+  echo "commit-msg: commitlint not installed — checked header length only; CI enforces the rest."
+fi
