@@ -60,7 +60,9 @@ export const parseTabularSchema = (raw: unknown): Result<TabularSchema, string> 
   const predicates: TabularPredicateMap[] = []
   if (Array.isArray(mp.predicates)) {
     for (let i = 0; i < mp.predicates.length; i++) {
-      const pRaw = mp.predicates[i]
+      // `Array.isArray` narrows an `unknown` to `any[]` (a TS quirk), so pin the
+      // element back to `unknown` — the guards below re-narrow it explicitly.
+      const pRaw: unknown = mp.predicates[i]
       if (typeof pRaw !== "object" || pRaw === null) {
         return err(`tabular schema: predicates[${i}] is not an object`)
       }
