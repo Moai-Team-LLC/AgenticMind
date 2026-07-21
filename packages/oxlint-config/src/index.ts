@@ -96,16 +96,18 @@ const baseRules: RuleConfig = {
   "no-await-in-loop": "off", // Sequential awaits are often intentional (ordering / rate-limits); auto-parallelizing risks behavior changes.
   "typescript/only-throw-error": "off", // We throw tagged-union errors immediately caught by ResultAsync.fromPromise mappers (neverthrow idiom); wrapping them in Error would obscure the tag the catch narrows on.
   "typescript/no-unsafe-type-assertion": "off", // Casts at I/O boundaries (raw SQL rows, parsed LLM JSON, neverthrow tagged-error narrowing) are architectural; conforming needs runtime validation everywhere (behavior + perf risk).
-  // The no-unsafe-* family is non-deterministic here: oxlint's type-aware engine
-  // intermittently fails to resolve the `createEnv` (t3-env) generic and then
-  // floods every settings-derived value as `error`-typed (observed 3 vs 1307
-  // findings across identical runs). `tsc` is the real type-safety gate and is
-  // clean; these rules are unreliable on this codebase, so they're off.
-  "typescript/no-unsafe-assignment": "off",
-  "typescript/no-unsafe-member-access": "off",
-  "typescript/no-unsafe-call": "off",
-  "typescript/no-unsafe-argument": "off",
-  "typescript/no-unsafe-return": "off",
+  // The no-unsafe-* family is the net that catches an `any` (from a raw SQL row,
+  // parsed LLM JSON, or a cast) silently propagating into typed code — the one
+  // hole `strict` tsc leaves open by design. It is ON (error) for all production
+  // code and relaxed only in `**/*.test.ts` (see the test override below), where
+  // fixtures legitimately traffic in raw pg-client rows and vitest mocks. Cast at
+  // an I/O boundary to a concrete shape (no-unsafe-type-assertion is off for that
+  // architectural reason) so the values downstream stay typed.
+  "typescript/no-unsafe-assignment": "error",
+  "typescript/no-unsafe-member-access": "error",
+  "typescript/no-unsafe-call": "error",
+  "typescript/no-unsafe-argument": "error",
+  "typescript/no-unsafe-return": "error",
   "typescript/non-nullable-type-assertion-style": "off", // Conflicts with typescript/no-non-null-assertion (kept), which forbids the `!` it prefers.
   "require-unicode-regexp": "off", // Adding the `u` flag changes escape semantics; not worth a repo-wide sweep.
   "unicorn/consistent-function-scoping": "off", // Local helpers kept next to their only caller aid readability; hoisting for its own sake hurts locality.
@@ -156,12 +158,21 @@ const schemaFileOverrides: OverridesConfig = [
   {
     // Tests legitimately use `x!` on known fixtures, `(await fn()).prop` in
     // assertions, and async mocks that satisfy async interfaces without
-    // awaiting — none of which are defects in test code.
+    // awaiting — none of which are defects in test code. The no-unsafe-* family
+    // is also relaxed HERE ONLY (it stays `error` for production above): test
+    // bodies read raw pg-client rows (`.$client`, `.query`, `.rows`) and vitest
+    // mocks (`.mock`), which are inherently `any`; fully typing them is churn
+    // with no safety value, and production data flow keeps the full net.
     files: ["**/*.test.ts"],
     rules: {
       "typescript/no-non-null-assertion": "off",
       "unicorn/no-await-expression-member": "off",
       "typescript/require-await": "off",
+      "typescript/no-unsafe-assignment": "off",
+      "typescript/no-unsafe-member-access": "off",
+      "typescript/no-unsafe-call": "off",
+      "typescript/no-unsafe-argument": "off",
+      "typescript/no-unsafe-return": "off",
     },
   },
 ]
