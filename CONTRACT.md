@@ -5,29 +5,39 @@ the set of MCP **tool names**, their **input schemas**, and the **scopes** they
 require. It is surfaced to clients as `serverInfo.version` and guarded in CI by a
 snapshot test (`packages/shared/src/lib/knowledge/mcp-contract.test.ts`).
 
-**Current version: `1.4.0`** (see `MCP_CONTRACT_VERSION` in
+**Current version: `1.10.0`** (see `MCP_CONTRACT_VERSION` in
 `packages/shared/src/lib/knowledge/mcp-tools.ts`).
 
 ## Tools
 
 | Tool | Scope | Required input | Optional input |
 | --- | --- | --- | --- |
-| `kl_search` | `knowledge:read` | `q` | `limit`, `queries`, `tokenBudget` |
+| `kl_search` | `knowledge:read` | `q` | `queries`, `limit`, `tokenBudget` |
 | `kl_ask_global` | `knowledge:read` | `question` | `intent`, `facts` |
 | `kl_get_material` | `knowledge:read` | `id` | — |
 | `kl_graph_neighbors` | `knowledge:read` | `materialId` | `limit` |
-| `kl_ingest` | `knowledge:write` | `title`, `text` | `language` |
-| `kl_forget` | `knowledge:admin` | `id` | — |
 | `kl_signal` | `knowledge:signal` | `askId`, `signal` | `strength`, `note` |
+| `kl_ingest` | `knowledge:write` | `title`, `text` | `language`, `lifecycle`, `trustTier` |
+| `kl_compile_skill` | `knowledge:write` | `target` | `name`, `query`, `limit`, `version` |
+| `kl_forget` | `knowledge:admin` | `id` | — |
 | `mem_recall` | `memory:read` | — | `subject`, `query`, `asOf`, `includeShared`, `limit` |
 | `mem_write` | `memory:write` | `subject`, `predicate`, `object` | `confidence`, `embed` |
 | `mem_forget` | `memory:admin` | `id` | — |
+| `hitl_request` | `hitl:request` | `question` | `kind`, `requestId`, `context`, `expiresInSeconds` |
+| `hitl_respond` | `hitl:respond` | `id`, `answer` | — |
+| `hitl_get` | `hitl:request` | `id` | — |
 
 `kl_graph_neighbors` is exposed only when GraphRAG is enabled
 (`KNOWLEDGE_GRAPHRAG_ENABLED=true`). All write/signal tools assert their scope in
 code (fail-closed); `kl_forget` requires the elevated `knowledge:admin` (strictly
 above `knowledge:write`) and `mem_forget` the elevated `memory:admin` (above
-`memory:write`); read tools require `knowledge:read` at the endpoint.
+`memory:write`); read tools require `knowledge:read` at the endpoint. `hitl_respond`
+needs `hitl:respond`, a human-facing scope the requesting agent's own token should not
+carry. The non-MCP `POST /hooks/audit` endpoint requires `audit:write`.
+
+Every input collection is bounded (array `maxItems`, map `maxProperties`), and the
+request body and per-call element count can be capped — see
+[configuration knobs](docs/knobs.md#mcp-input-limits).
 
 ## Versioning policy (SemVer)
 
@@ -70,24 +80,15 @@ unknown fields and tools they don't use.
 The contract above freezes tool **inputs** (names, fields, required, scopes). Tool
 **outputs** are additive-only and not version-gated: new fields may be added to a
 result envelope at any time, and clients must ignore unknown ones. For example,
-`kl_ask_global` answers carry Tier-A faithfulness signals — `groundedness` (0..1
-fraction of claim-sentences with a resolving citation), `unsupportedClaims`, and
-`abstained` — alongside `citations`; and `mem_recall` annotates beliefs with
+`kl_ask_global` answers carry a `status` to gate on — `supported`, `partial`,
+`unsupported`, `conflicted` or `needs_review` — and the Tier-A faithfulness signals
+behind it — `groundedness` (0..1 fraction of claim-sentences with a resolving
+citation), `unsupportedClaims`, and `abstained` — alongside `citations`; and `mem_recall` annotates beliefs with
 `contested` + `effectiveConfidence`. These are advisory: an agent may gate on them,
 but their presence never breaks a client that ignores them.
 
 ## MCP registry
 
-`server.json` at the repo root is the machine-readable manifest for MCP
-registries (the official MCP registry, Smithery, mcp.so). It follows the
-official `server.schema.json` (`2025-12-11`): reverse-DNS `name`
-(`io.github.Moai-Team-LLC/agenticmind`), `version` mirroring this contract
-(`1.1.0`), the `repository`, and a `streamable-http` `remotes` entry pointing at
-`{baseUrl}/mcp` (default `http://localhost:3000`) with a required, secret
-`Authorization: Bearer …` header (the fail-closed `typ="mcp"` JWT).
-
-The nine tools above are listed under
-`_meta."io.modelcontextprotocol.registry/publisher-provided".tools` (the schema
-caps `description` at 100 chars, so the full surface lives in `_meta` rather than
-the description). When the tool set or `MCP_CONTRACT_VERSION` changes, bump
-`server.json`'s `version` and its tool list in the same PR.
+AgenticMind is self-hosted, so no registry manifest is published (the former
+`server.json` was dropped). Clients discover the tool set from the server itself
+(`tools/list`) and pin the contract through `serverInfo.version`.

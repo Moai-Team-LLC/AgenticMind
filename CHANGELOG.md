@@ -19,6 +19,25 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   issue object per failing element with no cap). The MCP SDK carried its own
   nested Zod 4.4.3, which parses every incoming JSON-RPC message; the root
   `overrides` entry now pins one Zod copy as well.
+- **Dependencies by reachability.** A new gate, `bun run audit:reachable` (in
+  CI), bundles the server and worker entry points, intersects their import
+  graphs with `bun audit`, and fails on any advisory in a package a running
+  service imports unless `scripts/audit-allowlist.json` records why no input
+  reaches it. Fixed what it found reachable: `@hono/node-server` → 1.19.17,
+  OpenTelemetry → `sdk-trace-node`/`resources` 2.8 + exporter 0.219 (core ≥ 2.8,
+  unbounded W3C Baggage parsing), `fast-uri` → 3.1.9 (via `ajv`), `ai` → 6.0.299
+  and `@ai-sdk/openai-compatible` → 2.0.87 (`provider-utils` ≥ 4.0.33). Root
+  `overrides` keep single copies of `@hono/node-server` and `fast-uri` (the SDK
+  held older nested ones). `sharp` (libvips/libheif/librsvg advisories) is
+  bundled through `@huggingface/transformers` but no service decodes images, so
+  it is accepted with that reason until the next embedding re-validation.
+  The remaining reported advisories are in dev tooling and CLI-only parsers, in
+  no service's import graph.
+- **xlsx 0.18.5 → 0.20.3** from the official SheetJS archive, pinned with its
+  integrity hash in the lockfile (GHSA-4r6h-8v6p-xvw6 prototype pollution,
+  GHSA-5pgg-2g8v-p4x9 ReDoS). The parser is reachable only from the
+  `scripts/ingest.ts` CLI, not from the server or worker; it is kept so CLI
+  ingestion of `.xlsx` keeps working.
 - **Every collection in every MCP tool input is bounded.** The one unbounded
   field, `hitl_request.context` (free-form JSON), is now capped at 100
   top-level keys and 64 KiB serialized, advertised to clients as
@@ -26,6 +45,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   tightening in this release, far above any legitimate context. A test walks
   every tool schema from the registry and fails on any array, map or free-form
   value without a bound.
+
+### Fixed
+
+- **One Bun version everywhere.** `packageManager`, both Docker base images and
+  CI now pin Bun 1.3.12 (0.14.0 images ran 1.3.11 while CI tested 1.3.12); a
+  test fails when any of them drifts.
+- **eval-gate no longer passes when it did not run.** Without the
+  `CHAT_API_KEY` secret the weekly run used to skip every step and show green;
+  it now writes `eval-gate: SKIPPED` to the job summary and fails. A real run
+  reports `eval-gate: RAN — result: …`.
+- **CONTRACT.md matches the code again**: contract version `1.10.0` (was
+  documented as `1.4.0`), all 14 tools with their scopes and input fields
+  (`kl_compile_skill` and the three `hitl_*` tools were missing), every answer
+  `status`, `audit:write` and the `hitl:*` scopes; the stale `server.json`
+  registry section is replaced. The security model's scope table gains the same
+  rows. A test derives all of this from the tool registry and fails on drift.
 
 ### Added
 

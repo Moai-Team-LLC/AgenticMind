@@ -6,9 +6,11 @@ name: eval-gate
 # BASELINE_PASS_RATE — that non-zero is the gate.
 #
 # Cost-aware: it makes real chat-model calls, so it runs weekly + on demand,
-# not on every PR. It is INERT until a CHAT_API_KEY secret is set (steps skip
-# cleanly), so the workflow can land before the secret exists. Add CHAT_API_KEY
-# (and optionally a CHAT_BASE_URL repo variable) in Settings → Secrets to enable.
+# not on every PR. Without a CHAT_API_KEY secret it cannot evaluate anything, and
+# that is reported as such: the run is marked SKIPPED in the job summary and
+# FAILS — a skipped gate is not a passed one. (Until 0.14.1 it skipped cleanly
+# and showed green every week.) Add CHAT_API_KEY (and optionally a CHAT_BASE_URL
+# repo variable) in Settings → Secrets to enable it.
 on:
   workflow_dispatch:
     inputs:
@@ -50,9 +52,16 @@ jobs:
         run: |
           if [ -n "$CHAT_API_KEY" ]; then
             echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "eval-gate: RUNNING the live eval"
           else
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::eval-gate is inert — set the CHAT_API_KEY secret to enable the live eval run."
+            {
+              echo "### eval-gate: SKIPPED — nothing was evaluated"
+              echo "The CHAT_API_KEY secret is not set. A skipped gate is not a pass,"
+              echo "so this run fails. Set the secret to enable the live eval."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::eval-gate SKIPPED — CHAT_API_KEY is not set, nothing was evaluated (a skip is not a pass)."
+            exit 1
           fi
 
       - name: Initialize DB extensions
@@ -76,9 +85,16 @@ jobs:
         run: bunx tsx scripts/seed-eval-corpus.ts
 
       - name: Run the eval (non-zero exit on regression = the gate)
+        id: eval
         if: steps.gate.outputs.enabled == 'true'
         env:
           CHAT_API_KEY: ${{ secrets.CHAT_API_KEY }}
           CHAT_BASE_URL: ${{ vars.CHAT_BASE_URL || 'https://api.openai.com/v1' }}
           BASELINE_PASS_RATE: ${{ github.event.inputs.baseline || '0.8' }}
         run: bunx tsx scripts/eval.ts
+
+      - name: Report the gate outcome
+        if: always() && steps.gate.outputs.enabled == 'true'
+        run: |
+          echo "### eval-gate: RAN — result: ${{ steps.eval.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "eval-gate: RAN — result: ${{ steps.eval.outcome }}"

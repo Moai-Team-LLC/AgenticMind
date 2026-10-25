@@ -56,8 +56,12 @@ enforce their own scope inside the tool. Mint a token with only the scopes an ag
 | `kl_ingest` | `knowledge:write` | write |
 | `mem_write` | `memory:write` | write |
 | `kl_signal` | `knowledge:signal` | feedback |
+| `kl_compile_skill` | `knowledge:write` | write |
 | `kl_forget` | `knowledge:admin` | destructive |
 | `mem_forget` | `memory:admin` | destructive |
+| `hitl_request`, `hitl_get` | `hitl:request` | human-in-the-loop |
+| `hitl_respond` | `hitl:respond` | human decision (give it to the human-facing client, not the requesting agent) |
+| `POST /hooks/audit` (not MCP) | `audit:write` | evidence ingestion |
 
 Give a retrieval-only agent a `knowledge:read` token and it physically cannot ingest,
 delete, or write memory — the capability is absent from the token, not hidden behind a
