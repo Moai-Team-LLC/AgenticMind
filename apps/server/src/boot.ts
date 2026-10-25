@@ -13,8 +13,10 @@ import {
   readDatabaseRoleFacts,
 } from "@agenticmind/shared/database/role-check"
 import { resolveDatabaseTls } from "@agenticmind/shared/database/tls"
+import { parseAnswerPolicyResult } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import { isStrict } from "@agenticmind/shared/lib/profile"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
+import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 
 import { resolveActiveMcpLimits } from "@/mcp-limits"
 import { getDb } from "@/server/lib/database"
@@ -70,9 +72,33 @@ const checkDatabaseTls = (profile: Profile): string[] => {
   return []
 }
 
+/**
+ * KNOWLEDGE_ANSWER_POLICY: "set but invalid" is not "not set". Strict refuses to
+ * start on it; standard keeps ignoring it, as before.
+ */
+const checkAnswerPolicy = (profile: Profile): string[] => {
+  const policy = parseAnswerPolicyResult(knowledgeFeatureSettings.KNOWLEDGE_ANSWER_POLICY)
+  if (policy.isErr()) {
+    return isStrict(profile) ? [`strict: KNOWLEDGE_ANSWER_POLICY is invalid — ${policy.error}`] : []
+  }
+  if (
+    policy.value?.requireSemanticVerification !== undefined &&
+    knowledgeFeatureSettings.KNOWLEDGE_FAITHFULNESS_TIER_B !== "true"
+  ) {
+    console.warn(
+      `[SERVER] KNOWLEDGE_ANSWER_POLICY requires semantic verification but KNOWLEDGE_FAITHFULNESS_TIER_B is off — every answer will be ${policy.value.requireSemanticVerification === "block" ? "refused" : "marked needs_review"}`,
+    )
+  }
+  return []
+}
+
 /** Runs every boot check for the profile; returns all refusals (empty = start). */
 export const bootRefusals = async (profile: Profile): Promise<string[]> => {
-  const refusals = [...checkMcpLimits(profile), ...checkDatabaseTls(profile)]
+  const refusals = [
+    ...checkMcpLimits(profile),
+    ...checkDatabaseTls(profile),
+    ...checkAnswerPolicy(profile),
+  ]
   if (refusals.length > 0) {
     // The role check opens a connection, which an invalid TLS setting forbids.
     return refusals

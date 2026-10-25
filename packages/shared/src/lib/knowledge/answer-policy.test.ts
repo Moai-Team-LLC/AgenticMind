@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { evaluatePolicy, parseAnswerPolicy } from "./answer-policy"
+import {
+  evaluatePolicy,
+  parseAnswerPolicy,
+  parseAnswerPolicyResult,
+  SEMANTIC_MISSING_REASON,
+  withProfileDefaults,
+} from "./answer-policy"
 
 describe("parseAnswerPolicy", () => {
   it("parses a valid policy JSON", () => {
@@ -81,5 +87,76 @@ describe("evaluatePolicy", () => {
         { status: "supported", groundedness: 1 },
       ),
     ).toEqual({ action: "allow", reasons: [] })
+  })
+})
+
+describe("parseAnswerPolicyResult (A6: unset vs invalid)", () => {
+  it("unset or blank is not an error", () => {
+    for (const raw of [undefined, null, "", "  "]) {
+      expect(parseAnswerPolicyResult(raw)._unsafeUnwrap()).toBeNull()
+    }
+  })
+
+  it("invalid JSON and schema violations are errors, with the reason", () => {
+    expect(parseAnswerPolicyResult("{minGroundedness:0.8}")._unsafeUnwrapErr()).toMatch(
+      /^not valid JSON \(/u,
+    )
+    expect(parseAnswerPolicyResult('{"minGroundedness":2}')._unsafeUnwrapErr()).toBe(
+      "minGroundedness: Too big: expected number to be <=1",
+    )
+    expect(parseAnswerPolicyResult('{"bogus":true}').isErr()).toBe(true)
+    expect(parseAnswerPolicyResult('{"requireSemanticVerification":"maybe"}').isErr()).toBe(true)
+  })
+
+  it("a valid policy parses identically to parseAnswerPolicy", () => {
+    const raw = '{"minSemanticGroundedness":0.95,"requireSemanticVerification":"review"}'
+    expect(parseAnswerPolicyResult(raw)._unsafeUnwrap()).toEqual(parseAnswerPolicy(raw))
+  })
+})
+
+describe("missing signals (A6)", () => {
+  const semanticFloor = { minSemanticGroundedness: 0.95 } as const
+
+  it("today: a missing semantic signal silently skips the 0.95 floor", () => {
+    expect(evaluatePolicy(semanticFloor, { status: "supported", groundedness: 1 })).toEqual({
+      action: "allow",
+      reasons: [],
+    })
+  })
+
+  it("requireSemanticVerification: review / block when the signal is missing at 0.95", () => {
+    const input = { status: "supported" as const, groundedness: 1 }
+    expect(
+      evaluatePolicy({ ...semanticFloor, requireSemanticVerification: "review" }, input),
+    ).toEqual({ action: "review", reasons: [SEMANTIC_MISSING_REASON] })
+    expect(
+      evaluatePolicy({ ...semanticFloor, requireSemanticVerification: "block" }, input),
+    ).toEqual({ action: "block", reasons: [SEMANTIC_MISSING_REASON] })
+  })
+
+  it("requireSemanticVerification does not fire when the signal is present", () => {
+    const d = evaluatePolicy(
+      { ...semanticFloor, requireSemanticVerification: "block" },
+      { status: "supported", groundedness: 1, semanticGroundedness: 0.97 },
+    )
+    expect(d).toEqual({ action: "allow", reasons: [] })
+  })
+
+  it("missing Tier-A groundedness passes in standard and blocks under the strict default", () => {
+    const floor = { minGroundedness: 0.8 }
+    expect(evaluatePolicy(floor, { status: "supported" }).action).toBe("allow")
+    const strict = withProfileDefaults(floor, "strict")
+    expect(strict).toEqual({ minGroundedness: 0.8, missingGroundedness: "block" })
+    expect(evaluatePolicy(strict!, { status: "supported" })).toEqual({
+      action: "block",
+      reasons: ["groundedness signal missing (missingGroundedness: block)"],
+    })
+    // standard leaves the policy as configured; an explicit setting wins in strict.
+    expect(withProfileDefaults(floor, "standard")).toBe(floor)
+    expect(withProfileDefaults({ ...floor, missingGroundedness: "pass" }, "strict")).toEqual({
+      ...floor,
+      missingGroundedness: "pass",
+    })
+    expect(withProfileDefaults(undefined, "strict")).toBeUndefined()
   })
 })

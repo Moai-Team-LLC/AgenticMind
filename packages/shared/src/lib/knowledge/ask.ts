@@ -627,7 +627,15 @@ const applyAnswerPolicy = (answer: Answer, policy: AnswerPolicy | undefined): An
       policy: decision,
     }
   }
-  return { ...answer, policy: decision }
+  // A required-but-missing semantic signal under "review" downgrades the status,
+  // so a caller gating on `status` sees it without reading the policy trace.
+  const semanticReview =
+    decision.action === "review" &&
+    policy.requireSemanticVerification === "review" &&
+    answer.semanticGroundedness === undefined
+  return semanticReview
+    ? { ...answer, status: "needs_review", policy: decision }
+    : { ...answer, policy: decision }
 }
 
 /**
