@@ -63,6 +63,13 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `minGroundedness`, where a missing value used to count as 1.0. `strict`
   defaults `missingGroundedness` to `block`. A boot warning flags
   `requireSemanticVerification` with Tier-B off.
+- **Strict: the acceptance gate fails closed.** With
+  `KNOWLEDGE_ACCEPTANCE_EVALUATOR` on, a card the judge returned no verdict for,
+  and every card of a batch whose judge call failed, used to be admitted as
+  `approved`. In `strict` they stay `candidate`, with the reason in
+  `confidence_reason`, so an unavailable evaluator produces no approved cards.
+  The mode follows the active profile inside the indexer itself, so no caller can
+  forget to pass it. `standard` is unchanged.
 - **`deploy/docker-compose.strict.yml`.** An overlay that keeps migrations on the
   owner role, provisions a least-privilege `agenticmind_server` LOGIN role and
   runs the server as it in `strict`. `gen-secrets.sh` now also writes

@@ -13,6 +13,7 @@
  */
 
 import type { CardInput } from "@agenticmind/shared/database/query/knowledge/cards"
+import type { Result } from "neverthrow"
 
 import { okAsync, ResultAsync } from "neverthrow"
 import * as z from "zod"
@@ -59,12 +60,15 @@ export const buildAcceptanceUser = (cards: readonly CardInput[]): string =>
  * - accept → status `approved` (retrievable).
  * - human_review / merge → status `candidate`, with the judge's reason recorded.
  * - reject → dropped (not stored).
- * - a missing verdict fails OPEN (→ approved) so judge omissions never silently
- *   discard good knowledge.
+ * - a missing verdict fails OPEN (→ approved) by default, so judge omissions never
+ *   silently discard good knowledge. With `failClosed` (the strict profile) it
+ *   leaves the card a `candidate` with the reason recorded instead: an omission
+ *   is not an acceptance.
  */
 export const applyAcceptance = (
   cards: readonly CardInput[],
   verdicts: readonly { index: number; decision: AcceptanceDecision; reason: string }[],
+  options: { failClosed?: boolean } = {},
 ): CardInput[] => {
   const byIndex = new Map<number, { decision: AcceptanceDecision; reason: string }>()
   for (const v of verdicts) {
@@ -77,6 +81,10 @@ export const applyAcceptance = (
   for (const card of cards) {
     i += 1
     const verdict = byIndex.get(i)
+    if (verdict === undefined && options.failClosed === true) {
+      out.push({ ...card, status: "candidate", confidenceReason: MISSING_VERDICT_REASON })
+      continue
+    }
     const decision = verdict?.decision ?? "accept"
     if (decision === "reject") {
       continue
@@ -90,7 +98,37 @@ export const applyAcceptance = (
   return out
 }
 
+/** Recorded on a card the judge returned no verdict for (fail-closed mode). */
+export const MISSING_VERDICT_REASON = "acceptance: no verdict returned for this card"
+
 export type AcceptanceError = { readonly type: string; readonly message: string }
+
+/**
+ * What survives the acceptance stage. A judged batch is used as is. When the
+ * judge itself failed, the default keeps the cards unjudged (born `approved` at
+ * the DB, today's behaviour); `failClosed` (the strict profile) keeps them as
+ * `candidate` with the failure recorded, so an unavailable evaluator never
+ * produces approved cards. Pure.
+ */
+export const admitCards = (
+  items: readonly CardInput[],
+  judged: Result<CardInput[], AcceptanceError>,
+  options: { failClosed?: boolean } = {},
+): CardInput[] => {
+  if (judged.isOk()) {
+    return judged.value
+  }
+  if (options.failClosed !== true) {
+    return [...items]
+  }
+  return items.map((card) => {
+    return {
+      ...card,
+      status: "candidate" as const,
+      confidenceReason: `acceptance evaluator failed (${judged.error.type}): ${judged.error.message}`,
+    }
+  })
+}
 
 /**
  * Runs the acceptance judge over candidate cards and returns the survivors with
@@ -100,6 +138,7 @@ export type AcceptanceError = { readonly type: string; readonly message: string 
  */
 export const evaluateAcceptance = (
   cards: CardInput[],
+  options: { failClosed?: boolean } = {},
 ): ResultAsync<CardInput[], AcceptanceError> => {
   if (cards.length === 0) {
     return okAsync<CardInput[], AcceptanceError>([])
@@ -117,7 +156,7 @@ export const evaluateAcceptance = (
         schema: acceptanceResponseSchema,
         purpose: "knowledge acceptance",
       })
-      .map((raw) => applyAcceptance(cards, raw.verdicts))
+      .map((raw) => applyAcceptance(cards, raw.verdicts, options))
       .mapErr((e): AcceptanceError => {
         return { type: e.type, message: e.message }
       }),
