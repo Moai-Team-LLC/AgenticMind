@@ -5,6 +5,8 @@
  * itself — there is no separate queue or message broker to run.
  */
 
+import { resolveActiveProfile } from "@agenticmind/shared/lib/profile"
+
 import { startAssuranceDriftScheduler } from "@/jobs/assurance-drift/worker"
 import { startHitlExpiryScheduler } from "@/jobs/hitl-expiry/worker"
 import { startHitlResumeScheduler } from "@/jobs/hitl-resume/worker"
@@ -13,6 +15,14 @@ import { initTracing } from "@/tracing"
 
 // Register the OTLP trace exporter before scheduling, if configured (no-op otherwise).
 initTracing()
+
+// Same boot rule as the server: an unknown AGENTICMIND_PROFILE refuses to start.
+const profile = resolveActiveProfile()
+if (profile.isErr()) {
+  console.error(`[WORKER] ${profile.error.message} — refusing to start`)
+  process.exit(1)
+}
+console.log(`[WORKER] profile: ${profile.value}`)
 
 const scheduler = startKnowledgeFeedbackScheduler()
 const driftScheduler = startAssuranceDriftScheduler()

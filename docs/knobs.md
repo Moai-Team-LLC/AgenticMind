@@ -7,6 +7,16 @@ only when you want the capability it buys.
 
 All knobs are environment variables read once at boot.
 
+## Profile
+
+| Env var | Default | What it does |
+| --- | --- | --- |
+| `AGENTICMIND_PROFILE` | `standard` | `standard` keeps today's behaviour. `strict` turns the hardening checks below into refusals: the server and worker print the active profile at boot, and an unknown value (a typo such as `Strict`) refuses to start instead of silently running as `standard`. |
+
+What `strict` changes is listed in the [security model](security-model.md#strict-profile).
+New deployments should start in `strict`; existing ones can switch once the
+checks it adds pass.
+
 ## Answer quality & trust
 
 | Env var | Default | What it does |
