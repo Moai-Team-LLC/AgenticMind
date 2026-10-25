@@ -1,0 +1,58 @@
+# AgenticMind — strict-profile overlay for docker-compose.yml.
+#
+#   ./gen-secrets.sh            # also writes AGENTICMIND_APP_DB_PASSWORD
+#   docker compose -f docker-compose.yml -f docker-compose.strict.yml up -d
+#
+# What it changes:
+#   - migrations keep running as the postgres owner (the migration role);
+#   - a one-shot `agenticmind-app-role` service provisions a least-privilege
+#     LOGIN role `agenticmind_server` (member of `agenticmind_app`, migration
+#     0004), idempotently, on every `up`;
+#   - the MCP server connects as that role with AGENTICMIND_PROFILE=strict, so
+#     row-level security applies to every query, and the server refuses to start
+#     if it is ever pointed back at a superuser.
+#
+# The worker stays on the owner role: its sweeps run across tenants with no
+# tenant context, and it exposes no network surface.
+#
+# The base file is unchanged, so existing deployments keep working as before.
+
+configs:
+  agenticmind-app-role-sql:
+    content: |
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agenticmind_server') THEN
+          CREATE ROLE agenticmind_server LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
+        END IF;
+      END
+      $$;
+      ALTER ROLE agenticmind_server LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD :'app_password';
+      GRANT agenticmind_app TO agenticmind_server;
+
+services:
+  agenticmind-app-role:
+    image: timescale/timescaledb-ha:pg17
+    entrypoint: ["sh", "-c"]
+    command:
+      - >-
+        psql -v ON_ERROR_STOP=1 -h agenticmind-db -U postgres -d postgres
+        -v app_password="$$AGENTICMIND_APP_DB_PASSWORD" -f /provision.sql
+    environment:
+      PGPASSWORD: ${AGENTICMIND_DB_PASSWORD:?run ./gen-secrets.sh first}
+      AGENTICMIND_APP_DB_PASSWORD: ${AGENTICMIND_APP_DB_PASSWORD:?run ./gen-secrets.sh first}
+    configs:
+      - source: agenticmind-app-role-sql
+        target: /provision.sql
+    depends_on:
+      agenticmind-migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  agenticmind-server:
+    environment:
+      AGENTICMIND_PROFILE: strict
+      DATABASE_URL: postgresql://agenticmind_server:${AGENTICMIND_APP_DB_PASSWORD:?run ./gen-secrets.sh first}@agenticmind-db:5432/postgres
+    depends_on:
+      agenticmind-app-role:
+        condition: service_completed_successfully

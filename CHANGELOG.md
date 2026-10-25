@@ -14,6 +14,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   worker print the active profile at boot, and an unknown value refuses to start
   instead of silently running as `standard`. See
   [security model → strict profile](docs/security-model.md#strict-profile).
+- **Strict: database role check at boot.** Superusers and `BYPASSRLS` roles skip
+  row-level security, so a server logged in as the bootstrap superuser had tenant
+  isolation silently off. In `strict` the server refuses to start unless the
+  login role (and `DATABASE_APP_ROLE`, if set) is subject to RLS, and also when
+  the check cannot run. `standard` runs no new query at boot.
+- **`deploy/docker-compose.strict.yml`.** An overlay that keeps migrations on the
+  owner role, provisions a least-privilege `agenticmind_server` LOGIN role and
+  runs the server as it in `strict`. `gen-secrets.sh` now also writes
+  `AGENTICMIND_APP_DB_PASSWORD`. The base compose file is unchanged.
 
 ## [0.14.0] — 2026-08-03
 
