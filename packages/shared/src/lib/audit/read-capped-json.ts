@@ -9,47 +9,61 @@
  * real guard, since Content-Length can be absent or understated.
  */
 
+export type CappedBytesResult =
+  | { ok: true; bytes: Uint8Array<ArrayBuffer> }
+  | { ok: false; reason: "too_large" }
+
 export type CappedJsonResult =
   | { ok: true; value: unknown }
   | { ok: false; reason: "too_large" | "invalid_json" }
 
-export const readCappedJson = async (req: Request, maxBytes: number): Promise<CappedJsonResult> => {
+/** Reads the raw body bytes, materializing at most `maxBytes`. */
+export const readCappedBytes = async (
+  req: Request,
+  maxBytes: number,
+): Promise<CappedBytesResult> => {
   const declared = Number(req.headers.get("content-length"))
   if (Number.isFinite(declared) && declared > maxBytes) {
     return { ok: false, reason: "too_large" }
   }
 
   const body = req.body
-  let text = ""
-  if (body !== null) {
-    const reader = body.getReader()
-    const chunks: Uint8Array[] = []
-    let total = 0
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) {
-        break
-      }
-      if (value !== undefined) {
-        total += value.byteLength
-        if (total > maxBytes) {
-          await reader.cancel()
-          return { ok: false, reason: "too_large" }
-        }
-        chunks.push(value)
-      }
-    }
-    const buffer = new Uint8Array(total)
-    let offset = 0
-    for (const chunk of chunks) {
-      buffer.set(chunk, offset)
-      offset += chunk.byteLength
-    }
-    text = new TextDecoder().decode(buffer)
+  if (body === null) {
+    return { ok: true, bytes: new Uint8Array(0) }
   }
+  const reader = body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) {
+      break
+    }
+    if (value !== undefined) {
+      total += value.byteLength
+      if (total > maxBytes) {
+        await reader.cancel()
+        return { ok: false, reason: "too_large" }
+      }
+      chunks.push(value)
+    }
+  }
+  const buffer = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    buffer.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return { ok: true, bytes: buffer }
+}
 
+export const readCappedJson = async (req: Request, maxBytes: number): Promise<CappedJsonResult> => {
+  const read = await readCappedBytes(req, maxBytes)
+  if (!read.ok) {
+    return read
+  }
   try {
-    return { ok: true, value: JSON.parse(text) as unknown }
+    return { ok: true, value: JSON.parse(new TextDecoder().decode(read.bytes)) as unknown }
   } catch {
     return { ok: false, reason: "invalid_json" }
   }

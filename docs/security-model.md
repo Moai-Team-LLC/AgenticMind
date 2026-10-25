@@ -99,12 +99,17 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
 | Check | `standard` | `strict` |
 | --- | --- | --- |
 | `AGENTICMIND_PROFILE` value | unset ⇒ `standard` | unknown value ⇒ refuses to start (both profiles) |
+| MCP request body | no limit unless `MCP_MAX_REQUEST_BODY_BYTES` | 2 MiB, `413` before auth and parsing |
+| MCP tool input elements | no limit unless `MCP_MAX_TOOL_INPUT_ELEMENTS` | 10 000 array elements + object keys per call, checked before schema validation |
 | Database login role | not checked | refuses to start if the role in `DATABASE_URL` (or `DATABASE_APP_ROLE`) is a superuser or `BYPASSRLS`, or if the check cannot run |
 
 ## Input & output guardrails
 
 - **Input:** every tool `safeParse`s its arguments against a Zod schema before the handler
-  runs. Invalid arguments return an error and never reach the engine.
+  runs. Invalid arguments return an error and never reach the engine. Ahead of that, the
+  request body and the number of elements in a call's arguments are bounded
+  (`MCP_MAX_REQUEST_BODY_BYTES`, `MCP_MAX_TOOL_INPUT_ELEMENTS`; on by default in `strict`),
+  so one request cannot exhaust memory during validation (GHSA-46jr-4wx8-v453).
 - **Output:** `kl_ask_global` is citation-enforced (no source, no claim), refuses the
   unsupported parts of a question, and runs a faithfulness check; guard events are logged
   (`packages/shared/src/lib/knowledge/guard.ts`, `faithfulness.ts`). See the

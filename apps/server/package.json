@@ -15,7 +15,7 @@
   "dependencies": {
     "@agenticmind/shared": "*",
     "@hono/node-server": "^1.13.7",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
     "@opentelemetry/resources": "^2.7.1",
     "@opentelemetry/sdk-trace-node": "^2.7.1",
