@@ -114,4 +114,13 @@ export {
   triageFindings,
   type TransitionError,
 } from "./remediate"
-export * from "./notify"
+export {
+  type AssuranceNotification,
+  type AssuranceNotifier,
+  consoleNotifier,
+  formatApprovalRequest,
+  formatDriftAlert,
+  makeTelegramNotifier,
+  renderTelegramText,
+  type TelegramConfig,
+} from "./notify"

@@ -38,6 +38,7 @@ import {
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { decayedConfidence, summarizeContested } from "@agenticmind/shared/lib/knowledge/belief"
+import { boundedJsonRecord } from "@agenticmind/shared/lib/knowledge/bounded-json"
 import { approxTokens } from "@agenticmind/shared/lib/knowledge/chunker"
 import { packByTokenBudget } from "@agenticmind/shared/lib/knowledge/context-budget"
 import {
@@ -732,8 +733,9 @@ export const hitlRequestInput = z.object({
   /** Idempotency key (e.g. the originating tool-call id): a retry with the same key returns the
    * existing pending request instead of creating a duplicate. Generated if omitted. */
   requestId: z.string().min(1).max(200).optional(),
-  /** Structured context stored with the question (e.g. the proposed action to approve). */
-  context: z.record(z.string(), z.unknown()).optional(),
+  /** Structured context stored with the question (e.g. the proposed action to approve).
+   * Free-form JSON, bounded as a whole: ≤ 100 top-level keys, ≤ 64 KiB serialized. */
+  context: boundedJsonRecord({ maxKeys: 100, maxKeyLength: 200, maxJsonBytes: 65_536 }).optional(),
   /** Optional deadline in seconds; a pending request past it is expired and escalated. */
   expiresInSeconds: z.number().int().positive().max(2_592_000).optional(),
 })
