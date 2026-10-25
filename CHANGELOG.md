@@ -54,6 +54,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   and URL TLS parameters next to `DATABASE_SSL=true`. `standard` keeps
   `DATABASE_SSL=true` = encrypted but unverified, now with a boot warning;
   verification becomes the default in 0.15.
+- **Answer policy: invalid vs unset, and missing signals.** A malformed
+  `KNOWLEDGE_ANSWER_POLICY` refuses to start in `strict` (it is still ignored
+  in `standard`, as before). New policy fields: `requireSemanticVerification`
+  (`review` | `block`) decides what happens when the Tier-B signal is absent —
+  until now `minSemanticGroundedness` was silently skipped then — and
+  `missingGroundedness` (`pass` | `block`) does the same for Tier-A against
+  `minGroundedness`, where a missing value used to count as 1.0. `strict`
+  defaults `missingGroundedness` to `block`. A boot warning flags
+  `requireSemanticVerification` with Tier-B off.
 - **`deploy/docker-compose.strict.yml`.** An overlay that keeps migrations on the
   owner role, provisions a least-privilege `agenticmind_server` LOGIN role and
   runs the server as it in `strict`. `gen-secrets.sh` now also writes

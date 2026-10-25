@@ -10,6 +10,7 @@
  * (endpoint-level), kl_signal needs knowledge:signal (enforced in the tool).
  */
 
+import type { AnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import type { McpToolDeps } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
@@ -19,7 +20,10 @@ import { withTenant } from "@agenticmind/shared/database/client"
 import { checkMcpToken } from "@agenticmind/shared/database/query/knowledge/mcp-tokens"
 import { DEFAULT_TENANT_ID } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { AUDIT_WRITE_SCOPE } from "@agenticmind/shared/lib/audit/hook-event"
-import { parseAnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
+import {
+  parseAnswerPolicy,
+  withProfileDefaults,
+} from "@agenticmind/shared/lib/knowledge/answer-policy"
 import {
   klAskGlobal,
   klAskGlobalInput,
@@ -52,6 +56,7 @@ import {
   MCP_CONTRACT_VERSION,
 } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import { resolveRetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
+import { activeProfile } from "@agenticmind/shared/lib/profile"
 import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 import { mcpSettings } from "@agenticmind/shared/settings/mcp-settings"
 import { createMcpHandler, withMcpAuth } from "mcp-handler"
@@ -93,9 +98,20 @@ type ToolExtra = {
 // The active corpus-adaptive retrieval profile (Lever 3.2), resolved once at
 // boot from RETRIEVAL_PARAMS. Unset / malformed ⇒ undefined ⇒ engine defaults.
 const ACTIVE_RETRIEVAL_PARAMS = resolveRetrievalParams(knowledgeFeatureSettings.RETRIEVAL_PARAMS)
-// The active answer policy (KNOWLEDGE_ANSWER_POLICY), parsed once at boot.
-// Unset / malformed ⇒ undefined ⇒ no enforcement.
-const ACTIVE_ANSWER_POLICY = parseAnswerPolicy(knowledgeFeatureSettings.KNOWLEDGE_ANSWER_POLICY)
+// The active answer policy (KNOWLEDGE_ANSWER_POLICY) with the profile's defaults,
+// resolved on first use (after index.ts validated the profile and, in strict,
+// refused a malformed policy). Unset ⇒ undefined ⇒ no enforcement; malformed in
+// standard ⇒ undefined, as before.
+let activeAnswerPolicy: { value: AnswerPolicy | undefined } | undefined
+const answerPolicy = (): AnswerPolicy | undefined => {
+  activeAnswerPolicy ??= {
+    value: withProfileDefaults(
+      parseAnswerPolicy(knowledgeFeatureSettings.KNOWLEDGE_ANSWER_POLICY),
+      activeProfile(),
+    ),
+  }
+  return activeAnswerPolicy.value
+}
 
 const toolDeps = (extra?: ToolExtra): McpToolDeps => {
   const flags = knowledgeFeatureFlags()
@@ -111,7 +127,7 @@ const toolDeps = (extra?: ToolExtra): McpToolDeps => {
     faithfulnessTierB: flags.faithfulnessTierBEnabled,
     contestedSources: flags.contestedSourcesEnabled,
     evalHarvest: flags.evalHarvestEnabled,
-    answerPolicy: ACTIVE_ANSWER_POLICY,
+    answerPolicy: answerPolicy(),
     acceptanceEvaluator: flags.acceptanceEvaluatorEnabled,
     piiRedaction: flags.piiRedactionEnabled,
   }
