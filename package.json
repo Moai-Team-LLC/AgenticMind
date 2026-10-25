@@ -58,6 +58,9 @@
   "engines": {
     "node": ">=22.18.0"
   },
+  "overrides": {
+    "@modelcontextprotocol/sdk": "^1.32.1"
+  },
   "trustedDependencies": [
     "@tailwindcss/oxide",
     "better-sqlite3",

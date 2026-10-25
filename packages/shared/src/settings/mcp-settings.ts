@@ -16,15 +16,26 @@ import * as z from "zod"
  *
  * Both are optional; with neither set the MCP endpoint is unreachable
  * (fail-closed).
+ *
+ * Input limits (GHSA-46jr-4wx8-v453), parsed by apps/server/src/mcp-limits.ts:
+ * - `MCP_MAX_REQUEST_BODY_BYTES` caps the /mcp request body before it is read
+ *   into memory or parsed.
+ * - `MCP_MAX_TOOL_INPUT_ELEMENTS` caps the array elements + object keys in one
+ *   tool call's arguments, checked before schema validation.
+ * Unset in `standard` ⇒ no limit (today's behaviour); `strict` applies defaults.
  */
 export const mcpSettings = createEnv({
   server: {
     AUTH_SECRET: z.string().optional(),
     MCP_API_KEY: z.string().min(24).optional(),
+    MCP_MAX_REQUEST_BODY_BYTES: z.string().optional(),
+    MCP_MAX_TOOL_INPUT_ELEMENTS: z.string().optional(),
   },
   runtimeEnv: {
     AUTH_SECRET: process.env.AUTH_SECRET,
     MCP_API_KEY: process.env.MCP_API_KEY,
+    MCP_MAX_REQUEST_BODY_BYTES: process.env.MCP_MAX_REQUEST_BODY_BYTES,
+    MCP_MAX_TOOL_INPUT_ELEMENTS: process.env.MCP_MAX_TOOL_INPUT_ELEMENTS,
   },
   isServer: typeof window === "undefined",
   skipValidation: process.env.SKIP_VALIDATION?.toLowerCase() === "true",

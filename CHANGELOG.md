@@ -6,6 +6,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- **MCP SDK 1.29.0 → 1.32.1** (GHSA-46jr-4wx8-v453: one request within the
+  default size limit could exhaust server memory during validation). A root
+  `overrides` entry keeps a single SDK copy: `mcp-handler@1.1.0` pins its peer to
+  `1.26.0`, and without the override the package manager installs a second,
+  vulnerable copy under `mcp-handler`, which is the one that builds the server.
+  Upgrading alone changes nothing: set the limits below (on by default in
+  `strict`).
+
 ### Added
 
 - **Strict profile switch (`AGENTICMIND_PROFILE`).** `standard` (the default)
@@ -19,6 +29,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   isolation silently off. In `strict` the server refuses to start unless the
   login role (and `DATABASE_APP_ROLE`, if set) is subject to RLS, and also when
   the check cannot run. `standard` runs no new query at boot.
+- **MCP input limits.** `MCP_MAX_REQUEST_BODY_BYTES` caps the `/mcp` body
+  (read with a byte counter, `413` before auth and parsing) and
+  `MCP_MAX_TOOL_INPUT_ELEMENTS` caps array elements + object keys per tool call
+  (checked before schema validation). Defaults in `strict`: 2 MiB and 10 000;
+  `standard` applies them only when set.
 - **`deploy/docker-compose.strict.yml`.** An overlay that keeps migrations on the
   owner role, provisions a least-privilege `agenticmind_server` LOGIN role and
   runs the server as it in `strict`. `gen-secrets.sh` now also writes
