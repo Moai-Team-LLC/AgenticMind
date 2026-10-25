@@ -20,12 +20,17 @@ export const databaseSettings = createEnv({
       .enum(["true", "false"])
       .default("false")
       .transform((v) => v === "true"),
+    // CA bundle (PEM text, or a path to a PEM file) to verify the database
+    // server certificate against. Setting it turns verification on in every
+    // profile; the strict profile verifies even without it (system CAs).
+    DATABASE_SSL_CA: z.string().optional(),
   },
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     DATABASE_POOL_MAX: process.env.DATABASE_POOL_MAX,
     DATABASE_APP_ROLE: process.env.DATABASE_APP_ROLE,
     DATABASE_SSL: process.env.DATABASE_SSL,
+    DATABASE_SSL_CA: process.env.DATABASE_SSL_CA,
   },
   isServer: typeof window === "undefined",
   skipValidation: process.env.SKIP_VALIDATION?.toLowerCase() === "true",

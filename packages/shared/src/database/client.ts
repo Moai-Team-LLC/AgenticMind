@@ -1,6 +1,9 @@
+import type { Profile } from "@agenticmind/shared/lib/profile"
 import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 
 import { schema } from "@agenticmind/shared/database/schema"
+import { resolveDatabaseTls } from "@agenticmind/shared/database/tls"
+import { activeProfile } from "@agenticmind/shared/lib/profile"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 import { sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/node-postgres"
@@ -13,15 +16,33 @@ type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0] | Datab
 /** Valid unquoted SQL role identifier — defence-in-depth before `SET ROLE`. */
 const APP_ROLE_PATTERN = /^[A-Za-z_][A-Za-z0-9_$]*$/
 
-const createClient = (databaseUrl: string): NodePgDatabase<typeof schema> => {
+/** Overrides for tests; production reads the profile and DATABASE_SSL* settings. */
+type ClientOptions = { profile?: Profile; ssl?: string | boolean; ca?: string }
+
+const createClient = (
+  databaseUrl: string,
+  options: ClientOptions = {},
+): NodePgDatabase<typeof schema> => {
+  // TLS is resolved against what node-postgres will actually do (the URL's
+  // sslmode overrides `ssl`); the strict profile refuses unverified TLS.
+  const tls = resolveDatabaseTls({
+    profile: options.profile ?? activeProfile(),
+    ssl: options.ssl ?? databaseSettings.DATABASE_SSL,
+    ca: options.ca ?? databaseSettings.DATABASE_SSL_CA,
+    databaseUrl,
+  })
+  if (tls.isErr()) {
+    throw new Error(`database TLS: ${tls.error}`)
+  }
+  if (tls.value.warning !== undefined) {
+    console.warn(`[DATABASE] ${tls.value.warning}`)
+  }
   const pool = new Pool({
     connectionString: databaseUrl,
     max: databaseSettings.DATABASE_POOL_MAX,
     idleTimeoutMillis: 60_000,
     connectionTimeoutMillis: 5000,
-    // String() guards the SKIP_VALIDATION path, where the Zod transform is
-    // Bypassed and DATABASE_SSL arrives as a raw string ("false" is truthy).
-    ssl: String(databaseSettings.DATABASE_SSL) === "true" ? { rejectUnauthorized: false } : false,
+    ssl: tls.value.ssl,
   })
 
   return drizzle({

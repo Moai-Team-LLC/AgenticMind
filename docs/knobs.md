@@ -27,6 +27,16 @@ checks it adds pass.
 Both must be positive integers; any other value refuses to start, in both profiles.
 Behind a reverse proxy, set its body limit too.
 
+## Database TLS
+
+| Env var | Default | What it does |
+| --- | --- | --- |
+| `DATABASE_SSL` | `false` | `true` connects over TLS. In `standard` the server certificate is **not** verified unless `DATABASE_SSL_CA` is set (a warning is logged at boot); in `strict` it is always verified. |
+| `DATABASE_SSL_CA` | unset | CA bundle — PEM text or a path to a PEM file — to verify the server certificate against (e.g. your managed Postgres provider's CA). Setting it turns verification on in every profile; an unreadable or non-PEM value refuses to start. |
+
+`sslmode` / `ssl` parameters in `DATABASE_URL` override both (node-postgres behaviour);
+`strict` refuses `sslmode=no-verify` and URL TLS parameters next to `DATABASE_SSL=true`.
+
 ## Answer quality & trust
 
 | Env var | Default | What it does |

@@ -112,6 +112,7 @@
         "onnxruntime-node": "1.24.3",
         "p-retry": "^8.0.0",
         "pg": "^8.21.0",
+        "pg-connection-string": "^2.13.0",
         "unpdf": "^1.6.2",
         "xlsx": "^0.18.5",
         "zod": "^4.6.7",
