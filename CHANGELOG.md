@@ -6,6 +6,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Strict profile switch (`AGENTICMIND_PROFILE`).** `standard` (the default)
+  keeps today's behaviour for every existing deployment; `strict` is the
+  hardened profile the security fixes in this release hang off. The server and
+  worker print the active profile at boot, and an unknown value refuses to start
+  instead of silently running as `standard`. See
+  [security model → strict profile](docs/security-model.md#strict-profile).
+
 ## [0.14.0] — 2026-08-03
 
 The **evidence** release: what an agent did stops being a log line and becomes a

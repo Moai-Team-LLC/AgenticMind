@@ -80,6 +80,18 @@ tenant's data. Single-tenant deployments carry the default tenant and configure 
 > credential or login role to manage. Verified by
 > `packages/shared/src/lib/knowledge/tenant-app-role.test.ts`.
 
+## Strict profile
+
+`AGENTICMIND_PROFILE=strict` is the hardened profile. The default, `standard`, keeps
+the behaviour existing deployments rely on; `strict` turns checks that `standard`
+only reports (or skips) into refusals. Both the server and the worker print the
+active profile at boot, and an unknown value refuses to start — a typo in the switch
+that is meant to harden a deployment must not quietly fall back to `standard`.
+
+| Check | `standard` | `strict` |
+| --- | --- | --- |
+| `AGENTICMIND_PROFILE` value | unset ⇒ `standard` | unknown value ⇒ refuses to start (both profiles) |
+
 ## Input & output guardrails
 
 - **Input:** every tool `safeParse`s its arguments against a Zod schema before the handler

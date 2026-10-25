@@ -10,6 +10,7 @@
  */
 
 import { isClientDisconnectError } from "@agenticmind/shared/lib/client-disconnect"
+import { resolveActiveProfile } from "@agenticmind/shared/lib/profile"
 
 import { hooksAuditFetch } from "@/hooks-audit"
 import { mcpFetch } from "@/mcp"
@@ -41,6 +42,15 @@ process.on("uncaughtException", (err: Error) => {
   console.error("[SERVER] uncaughtException — exiting:", err)
   process.exit(1)
 })
+
+// Resolve the deployment profile before serving. An unknown AGENTICMIND_PROFILE
+// refuses to start rather than silently running as `standard`.
+const profile = resolveActiveProfile()
+if (profile.isErr()) {
+  console.error(`[SERVER] ${profile.error.message} — refusing to start`)
+  process.exit(1)
+}
+console.log(`[SERVER] profile: ${profile.value}`)
 
 const PORT = Number(process.env.PORT ?? 3000)
 
