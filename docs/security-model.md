@@ -109,7 +109,11 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
   runs. Invalid arguments return an error and never reach the engine. Ahead of that, the
   request body and the number of elements in a call's arguments are bounded
   (`MCP_MAX_REQUEST_BODY_BYTES`, `MCP_MAX_TOOL_INPUT_ELEMENTS`; on by default in `strict`),
-  so one request cannot exhaust memory during validation (GHSA-46jr-4wx8-v453).
+  so one request cannot exhaust memory during validation (GHSA-46jr-4wx8-v453). Every
+  array and map inside a tool's input schema also carries an explicit maximum, and
+  free-form JSON (`hitl_request.context`) is capped as a whole; a test walks every tool
+  schema from the registry and fails on any collection without a bound
+  (`packages/shared/src/lib/knowledge/mcp-input-bounds.test.ts`).
 - **Output:** `kl_ask_global` is citation-enforced (no source, no claim), refuses the
   unsupported parts of a question, and runs a faithfulness check; guard events are logged
   (`packages/shared/src/lib/knowledge/guard.ts`, `faithfulness.ts`). See the

@@ -15,6 +15,17 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   vulnerable copy under `mcp-handler`, which is the one that builds the server.
   Upgrading alone changes nothing: set the limits below (on by default in
   `strict`).
+- **Zod 4.4.3 → 4.6.7** (GHSA-mrhx-c7xc-m3w5: an array schema accumulated one
+  issue object per failing element with no cap). The MCP SDK carried its own
+  nested Zod 4.4.3, which parses every incoming JSON-RPC message; the root
+  `overrides` entry now pins one Zod copy as well.
+- **Every collection in every MCP tool input is bounded.** The one unbounded
+  field, `hitl_request.context` (free-form JSON), is now capped at 100
+  top-level keys and 64 KiB serialized, advertised to clients as
+  `maxProperties`. This applies in both profiles — the only `standard`-visible
+  tightening in this release, far above any legitimate context. A test walks
+  every tool schema from the registry and fails on any array, map or free-form
+  value without a bound.
 
 ### Added
 
