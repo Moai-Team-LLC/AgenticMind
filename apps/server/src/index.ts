@@ -10,8 +10,9 @@
  */
 
 import { isClientDisconnectError } from "@agenticmind/shared/lib/client-disconnect"
-import { resolveActiveProfile } from "@agenticmind/shared/lib/profile"
+import { isStrict, resolveActiveProfile } from "@agenticmind/shared/lib/profile"
 
+import { strictBootRefusals } from "@/boot"
 import { hooksAuditFetch } from "@/hooks-audit"
 import { mcpFetch } from "@/mcp"
 import { initTracing } from "@/tracing"
@@ -51,6 +52,16 @@ if (profile.isErr()) {
   process.exit(1)
 }
 console.log(`[SERVER] profile: ${profile.value}`)
+if (isStrict(profile.value)) {
+  const refusals = await strictBootRefusals()
+  if (refusals.length > 0) {
+    for (const reason of refusals) {
+      console.error(`[SERVER] strict: ${reason}`)
+    }
+    console.error("[SERVER] strict profile checks failed — refusing to start")
+    process.exit(1)
+  }
+}
 
 const PORT = Number(process.env.PORT ?? 3000)
 

@@ -34,6 +34,8 @@ command -v openssl >/dev/null 2>&1 || { echo "ERROR: openssl is required to gene
 
 ensure AGENTICMIND_DB_PASSWORD "openssl rand -hex 24"
 ensure MCP_API_KEY "openssl rand -hex 32"
+# Used only by docker-compose.strict.yml (the least-privilege server login role).
+ensure AGENTICMIND_APP_DB_PASSWORD "openssl rand -hex 24"
 
 echo
 if ! grep -qE "^OPENAI_API_KEY=.+" "$ENV_FILE"; then

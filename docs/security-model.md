@@ -79,6 +79,14 @@ tenant's data. Single-tenant deployments carry the default tenant and configure 
 > per transaction, downgrading the connection so the policy applies — no extra
 > credential or login role to manage. Verified by
 > `packages/shared/src/lib/knowledge/tenant-app-role.test.ts`.
+>
+> `SET LOCAL ROLE` covers only queries inside `withTenant`; token lookups and other
+> direct queries still run as the login role. The strict profile therefore requires
+> the **login** role itself to be a non-superuser without `BYPASSRLS` (for example a
+> LOGIN role granted `agenticmind_app`, as `deploy/docker-compose.strict.yml`
+> provisions) and refuses to start otherwise. Verified by
+> `packages/shared/src/database/role-check.test.ts`, which also boots the real
+> server against a superuser connection and expects the refusal.
 
 ## Strict profile
 
@@ -91,6 +99,7 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
 | Check | `standard` | `strict` |
 | --- | --- | --- |
 | `AGENTICMIND_PROFILE` value | unset ⇒ `standard` | unknown value ⇒ refuses to start (both profiles) |
+| Database login role | not checked | refuses to start if the role in `DATABASE_URL` (or `DATABASE_APP_ROLE`) is a superuser or `BYPASSRLS`, or if the check cannot run |
 
 ## Input & output guardrails
 

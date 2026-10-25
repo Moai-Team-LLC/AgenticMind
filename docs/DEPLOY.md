@@ -31,6 +31,22 @@ POST http://localhost:3000/mcp
 Authorization: Bearer <MCP_API_KEY>
 ```
 
+### Strict profile (least-privilege database role)
+
+The base stack connects the server as the `postgres` superuser, which row-level
+security does not apply to. For multi-tenant use, add the strict overlay:
+
+```bash
+./gen-secrets.sh            # also writes AGENTICMIND_APP_DB_PASSWORD
+docker compose -f docker-compose.yml -f docker-compose.strict.yml up -d
+```
+
+Migrations still run as the owner; a one-shot `agenticmind-app-role` service
+provisions the `agenticmind_server` LOGIN role (a member of `agenticmind_app`),
+and the server connects as it with `AGENTICMIND_PROFILE=strict` — it refuses to
+start if pointed at a superuser or a `BYPASSRLS` role. See the
+[security model](security-model.md#strict-profile).
+
 ## B. Embed in your own compose
 
 Copy the `agenticmind-*` services plus the `configs:` and `volumes:` blocks from
