@@ -45,6 +45,15 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `MCP_MAX_TOOL_INPUT_ELEMENTS` caps array elements + object keys per tool call
   (checked before schema validation). Defaults in `strict`: 2 MiB and 10 000;
   `standard` applies them only when set.
+- **Database TLS verification (`DATABASE_SSL_CA`).** A CA bundle (PEM text or a
+  path) to verify the database server certificate; setting it turns
+  verification on in every profile. `strict` verifies even without it (system
+  CAs) and refuses to start on unverified TLS. node-postgres lets `sslmode`/`ssl`
+  in `DATABASE_URL` override the pool's options, so the effective setting is
+  computed with node-postgres' own parser: `strict` refuses `sslmode=no-verify`
+  and URL TLS parameters next to `DATABASE_SSL=true`. `standard` keeps
+  `DATABASE_SSL=true` = encrypted but unverified, now with a boot warning;
+  verification becomes the default in 0.15.
 - **`deploy/docker-compose.strict.yml`.** An overlay that keeps migrations on the
   owner role, provisions a least-privilege `agenticmind_server` LOGIN role and
   runs the server as it in `strict`. `gen-secrets.sh` now also writes

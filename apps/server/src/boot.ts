@@ -12,6 +12,7 @@ import {
   evaluateDatabaseRole,
   readDatabaseRoleFacts,
 } from "@agenticmind/shared/database/role-check"
+import { resolveDatabaseTls } from "@agenticmind/shared/database/tls"
 import { isStrict } from "@agenticmind/shared/lib/profile"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 
@@ -50,9 +51,32 @@ const checkMcpLimits = (profile: Profile): string[] => {
   return []
 }
 
+/** Database TLS must resolve; strict additionally requires a verified certificate. */
+const checkDatabaseTls = (profile: Profile): string[] => {
+  const tls = resolveDatabaseTls({
+    profile,
+    ssl: databaseSettings.DATABASE_SSL,
+    ca: databaseSettings.DATABASE_SSL_CA,
+    databaseUrl: databaseSettings.DATABASE_URL,
+  })
+  if (tls.isErr()) {
+    return [`database TLS: ${tls.error}`]
+  }
+  if (isStrict(profile)) {
+    console.log(
+      `[SERVER] strict: database TLS ${tls.value.verified ? "verifies the server certificate" : "is off"}`,
+    )
+  }
+  return []
+}
+
 /** Runs every boot check for the profile; returns all refusals (empty = start). */
 export const bootRefusals = async (profile: Profile): Promise<string[]> => {
-  const refusals = checkMcpLimits(profile)
+  const refusals = [...checkMcpLimits(profile), ...checkDatabaseTls(profile)]
+  if (refusals.length > 0) {
+    // The role check opens a connection, which an invalid TLS setting forbids.
+    return refusals
+  }
   if (isStrict(profile)) {
     const roleRefusals = await checkDatabaseRole()
     refusals.push(...roleRefusals.map((reason) => `strict: ${reason}`))

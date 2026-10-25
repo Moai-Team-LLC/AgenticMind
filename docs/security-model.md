@@ -101,6 +101,7 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
 | `AGENTICMIND_PROFILE` value | unset ⇒ `standard` | unknown value ⇒ refuses to start (both profiles) |
 | MCP request body | no limit unless `MCP_MAX_REQUEST_BODY_BYTES` | 2 MiB, `413` before auth and parsing |
 | MCP tool input elements | no limit unless `MCP_MAX_TOOL_INPUT_ELEMENTS` | 10 000 array elements + object keys per call, checked before schema validation |
+| Database TLS (`DATABASE_SSL=true`) | encrypted, certificate **not** verified — logs a warning; `DATABASE_SSL_CA` turns verification on | certificate verified (system CAs or `DATABASE_SSL_CA`); unverified TLS — including `sslmode=no-verify` in `DATABASE_URL` — refuses to start |
 | Database login role | not checked | refuses to start if the role in `DATABASE_URL` (or `DATABASE_APP_ROLE`) is a superuser or `BYPASSRLS`, or if the check cannot run |
 
 ## Input & output guardrails
@@ -134,7 +135,14 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
   so ingested text is not shipped to an embedding provider. Only the optional *synthesis*
   step calls your configured chat model.
 - **Managed Postgres / TLS.** For managed Postgres that requires SSL, set
-  `DATABASE_SSL=true`.
+  `DATABASE_SSL=true`, and `DATABASE_SSL_CA` (PEM text or a path) to the provider's CA
+  bundle so the server certificate is verified. Without a CA, `standard` encrypts but
+  does not verify the certificate and logs a warning at boot; `strict` verifies against
+  the system CAs and refuses to start on an unverified setting. node-postgres lets
+  `sslmode`/`ssl` in `DATABASE_URL` override these options, so the effective setting is
+  computed with node-postgres' own parser, and `strict` refuses `sslmode=no-verify` and
+  URL TLS parameters alongside `DATABASE_SSL=true`. Verification becomes the default in
+  every profile in 0.15.
 
 ## Supply chain
 
