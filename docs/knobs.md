@@ -109,7 +109,7 @@ sources is flagged (`staleSourcesOnly`, status → `needs_review`).
 
 | Env var | Default | What it does |
 | --- | --- | --- |
-| `KNOWLEDGE_ACCEPTANCE_EVALUATOR` | off | A second-stage LLM gate over extracted cards at ingest (accept / reject / merge / human_review). One extra LLM call. |
+| `KNOWLEDGE_ACCEPTANCE_EVALUATOR` | off | A second-stage LLM gate over extracted cards at ingest (accept / reject / merge / human_review). One extra LLM call. In `standard` a card the judge returns no verdict for, and every card when the judge call fails, is admitted as `approved` (fail-open, today's behaviour). In `strict` both stay `candidate` with the reason recorded in `confidence_reason`. |
 | `KNOWLEDGE_DEMOTION_ENABLED` | off | **Anti-entrenchment brake.** The worker sweep demotes a *promoted* resolution card to `deprecated` once its cluster's aggregate feedback score falls to/below a negative floor over enough signals — so a once-popular answer the community later rejects stops surfacing. The card is kept (audit trail intact), not deleted. Off by default; only meaningful once the promoter has run. |
 
 ## Multi-tenant

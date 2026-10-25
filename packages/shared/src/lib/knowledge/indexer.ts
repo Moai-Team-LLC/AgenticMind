@@ -17,7 +17,10 @@ import type { Table } from "@agenticmind/shared/lib/knowledge/extract-tabular"
 import { upsertCards } from "@agenticmind/shared/database/query/knowledge/cards"
 import { upsertChunks } from "@agenticmind/shared/database/query/knowledge/chunks"
 import { updateMaterialStatus } from "@agenticmind/shared/database/query/knowledge/materials"
-import { evaluateAcceptance } from "@agenticmind/shared/lib/knowledge/acceptance-evaluator"
+import {
+  admitCards,
+  evaluateAcceptance,
+} from "@agenticmind/shared/lib/knowledge/acceptance-evaluator"
 import {
   dropUngroundedCards,
   extractCards,
@@ -29,6 +32,7 @@ import {
   KNOWLEDGE_EMBEDDING_MODEL,
 } from "@agenticmind/shared/lib/knowledge/llm"
 import { sanitizeForText } from "@agenticmind/shared/lib/knowledge/sanitize"
+import { activeProfile, isStrict } from "@agenticmind/shared/lib/profile"
 import { ResultAsync } from "neverthrow"
 
 export type IndexError = { readonly type: "index_error"; readonly message: string }
@@ -44,6 +48,10 @@ export type IndexMaterialProps = {
   /** Run the acceptance evaluator on extracted cards before storage
    * (KNOWLEDGE_ACCEPTANCE_EVALUATOR). One extra LLM call; default off. */
   acceptanceEvaluator?: boolean
+  /** Fail-closed acceptance: a missing verdict or a failed evaluator leaves cards
+   * as `candidate` instead of approved. Defaults to the active profile (on in
+   * `strict`), so no caller can forget to pass it. */
+  acceptanceFailClosed?: boolean
 }
 
 const indexError = (message: string): IndexError => {
@@ -88,17 +96,18 @@ const runCardExtraction = async (props: IndexMaterialProps, body: string): Promi
     }
 
     // Acceptance gate (KU contract, 2nd stage): drop rejected noise + status-tag
-    // the rest before embedding/storage. Best-effort: a judge failure keeps the
-    // extracted items as-is (born approved at the DB).
+    // the rest before embedding/storage. A judge failure keeps the extracted
+    // items as-is (born approved at the DB) — or, fail-closed (strict), keeps
+    // them as candidates with the failure recorded.
     if (props.acceptanceEvaluator === true) {
-      const judged = await evaluateAcceptance(items)
-      if (judged.isOk()) {
-        items = judged.value
-      } else {
+      const failClosed = props.acceptanceFailClosed ?? isStrict(activeProfile())
+      const judged = await evaluateAcceptance(items, { failClosed })
+      if (judged.isErr()) {
         console.warn(
-          `index: acceptance evaluator failed for ${material.id}: ${judged.error.message}`,
+          `index: acceptance evaluator failed for ${material.id}: ${judged.error.message}${failClosed ? " (cards kept as candidates)" : ""}`,
         )
       }
+      items = admitCards(items, judged, { failClosed })
       if (items.length === 0) {
         return
       }

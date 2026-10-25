@@ -104,6 +104,7 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
 | Database TLS (`DATABASE_SSL=true`) | encrypted, certificate **not** verified — logs a warning; `DATABASE_SSL_CA` turns verification on | certificate verified (system CAs or `DATABASE_SSL_CA`); unverified TLS — including `sslmode=no-verify` in `DATABASE_URL` — refuses to start |
 | `KNOWLEDGE_ANSWER_POLICY` malformed | ignored (no policy) | refuses to start |
 | Missing Tier-A groundedness vs `minGroundedness` | passes (`missingGroundedness: pass`) | blocks (`missingGroundedness: block` unless the policy says otherwise) |
+| Acceptance evaluator: missing verdict / judge failure | card admitted `approved` | card stays `candidate`, reason recorded |
 | Database login role | not checked | refuses to start if the role in `DATABASE_URL` (or `DATABASE_APP_ROLE`) is a superuser or `BYPASSRLS`, or if the check cannot run |
 
 ## Input & output guardrails
