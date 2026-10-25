@@ -1,0 +1,17 @@
+[
+  {
+    "id": "GHSA-f88m-g3jw-g9cj",
+    "package": "sharp",
+    "reason": "Pulled in by @huggingface/transformers for its image pipelines. The services only embed text (bge-m3); no code path hands an image to sharp/libvips. Fixed upstream by transformers 4.3 (sharp ^0.35.4) — take it with the next embedding re-validation."
+  },
+  {
+    "id": "GHSA-rgj7-g3m4-5g8c",
+    "package": "sharp",
+    "reason": "Same as GHSA-f88m-g3jw-g9cj: libheif is only reached by decoding an image, which no service does."
+  },
+  {
+    "id": "GHSA-wq5f-xc86-pv6w",
+    "package": "sharp",
+    "reason": "Same as GHSA-f88m-g3jw-g9cj: librsvg is only reached by rendering an SVG, which no service does."
+  }
+]

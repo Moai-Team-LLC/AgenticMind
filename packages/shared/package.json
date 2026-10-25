@@ -21,12 +21,12 @@
     "lint": "oxlint --type-aware --fix"
   },
   "dependencies": {
-    "@ai-sdk/openai-compatible": "^2.0.48",
+    "@ai-sdk/openai-compatible": "^2.0.87",
     "@aws-sdk/client-s3": "^3.1048.0",
     "@huggingface/transformers": "^4.2.0",
     "@opentelemetry/api": "^1.9.1",
     "@t3-oss/env-core": "^0.13.11",
-    "ai": "^6.0.190",
+    "ai": "^6.0.299",
     "drizzle-orm": "^0.45.2",
     "htmlparser2": "^12.0.0",
     "mammoth": "^1.12.0",
@@ -36,7 +36,7 @@
     "pg": "^8.21.0",
     "pg-connection-string": "^2.13.0",
     "unpdf": "^1.6.2",
-    "xlsx": "^0.18.5",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^4.6.7"
   },
   "devDependencies": {

@@ -31,6 +31,10 @@ jobs:
         with:
           bun-version: 1.3.12
       - run: bun install --frozen-lockfile
+      # Fails on an advisory in a package the server or worker actually imports
+      # (bun audit alone is red on dev tooling and stops meaning anything).
+      - name: Reachable-advisory gate
+        run: bun run audit:reachable
       - name: Run migrations
         run: bun run db:migrate
         env:
