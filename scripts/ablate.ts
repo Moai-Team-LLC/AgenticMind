@@ -30,7 +30,7 @@ import { join } from "node:path"
 import * as z from "zod"
 
 const cases = JSON.parse(
-  readFileSync(join(import.meta.dir, "..", "eval", "cases.json"), "utf8"),
+  readFileSync(join(import.meta.dirname, "..", "eval", "cases.json"), "utf8"),
 ) as EvalCase[]
 
 const db = createClient(databaseSettings.DATABASE_URL)

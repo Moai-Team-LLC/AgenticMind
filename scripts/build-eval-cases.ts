@@ -19,7 +19,7 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 const TARGET = 50
-const root = join(import.meta.dir, "..")
+const root = join(import.meta.dirname, "..")
 const corpus = readFileSync(join(root, "eval/corpus/agentic-product-standard.md"), "utf8").toLowerCase()
 const inCorpus = (term: string): boolean => corpus.includes(term.toLowerCase())
 

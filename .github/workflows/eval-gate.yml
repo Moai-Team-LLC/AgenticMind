@@ -26,6 +26,9 @@ permissions:
 jobs:
   eval:
     runs-on: ubuntu-latest
+    # A real run is ~360 model calls (minutes). Without a bound, a provider that
+    # hangs or keeps failing keeps the job "running" for GitHub's 6-hour limit.
+    timeout-minutes: 90
     services:
       postgres:
         image: timescale/timescaledb-ha:pg17
@@ -63,6 +66,37 @@ jobs:
             echo "::error::eval-gate SKIPPED — CHAT_API_KEY is not set, nothing was evaluated (a skip is not a pass)."
             exit 1
           fi
+
+      # A key the provider rejects would make every model call retry for up to a
+      # minute (packages/shared/src/lib/retry.ts): ~360 calls, hours of "running"
+      # with nothing measured. GET /models spends no tokens, so check the key first
+      # and report "could not measure" apart from a quality regression. (Providers
+      # whose /models is public cannot be checked this way; the job timeout still
+      # bounds the run.)
+      - name: Preflight the chat key (free — no tokens)
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          CHAT_API_KEY: ${{ secrets.CHAT_API_KEY }}
+          CHAT_BASE_URL: ${{ vars.CHAT_BASE_URL || 'https://api.openai.com/v1' }}
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 \
+            -H "Authorization: Bearer $CHAT_API_KEY" "${CHAT_BASE_URL%/}/models") || true
+          code=${code:-000}
+          case "$code" in
+            200)
+              echo "eval-gate: the provider accepts CHAT_API_KEY (HTTP 200)"
+              ;;
+            401|403)
+              echo "### eval-gate: NOT RUN — the provider rejected CHAT_API_KEY (HTTP $code)" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::eval-gate NOT RUN — the provider rejected CHAT_API_KEY (HTTP $code); nothing was evaluated."
+              exit 1
+              ;;
+            *)
+              echo "### eval-gate: NOT RUN — could not reach the provider (HTTP $code)" >> "$GITHUB_STEP_SUMMARY"
+              echo "::error::eval-gate NOT RUN — could not reach $CHAT_BASE_URL (HTTP $code); nothing was evaluated."
+              exit 1
+              ;;
+          esac
 
       - name: Initialize DB extensions
         if: steps.gate.outputs.enabled == 'true'

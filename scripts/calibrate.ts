@@ -18,7 +18,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 const labels = JSON.parse(
-  readFileSync(join(import.meta.dir, "..", "eval", "judge-labels.json"), "utf8"),
+  readFileSync(join(import.meta.dirname, "..", "eval", "judge-labels.json"), "utf8"),
 ) as LabeledExample[]
 
 const judge = async (ex: LabeledExample): Promise<boolean> => {

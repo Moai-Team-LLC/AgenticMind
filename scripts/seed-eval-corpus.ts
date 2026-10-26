@@ -52,7 +52,7 @@ const splitSections = (markdown: string): Section[] => {
   return sections
 }
 
-const corpusDir = join(import.meta.dir, "..", "eval", "corpus")
+const corpusDir = join(import.meta.dirname, "..", "eval", "corpus")
 // The standard provides factual_retrieval / citation_grounding ground truth; the
 // red-team fixture carries an embedded indirect injection for the
 // indirect_injection cases (Layer 8 / DoD 13).
