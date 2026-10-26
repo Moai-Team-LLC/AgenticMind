@@ -74,3 +74,23 @@ describe("server boot — answer policy (A6)", () => {
     expect(r.output).not.toContain("KNOWLEDGE_ANSWER_POLICY")
   }, 60_000)
 })
+
+describe("server boot — database TLS warning (standard)", () => {
+  it("reports unverified TLS at boot, before serving — not on the first query", async () => {
+    const r = await boot({ AGENTICMIND_PROFILE: "standard", DATABASE_SSL: "true" })
+    expect(r.served, r.output).toBe(true)
+    const warning =
+      "[DATABASE] database TLS is on but the server certificate is NOT verified — set DATABASE_SSL_CA (or AGENTICMIND_PROFILE=strict) to verify it"
+    const at = r.output.indexOf(warning)
+    expect(at, r.output).toBeGreaterThan(-1)
+    expect(at, "the warning comes before the listening line").toBeLessThan(
+      r.output.indexOf("listening on"),
+    )
+  }, 60_000)
+
+  it("control: no warning when TLS is off", async () => {
+    const r = await boot({ AGENTICMIND_PROFILE: "standard", DATABASE_SSL: "false" })
+    expect(r.served, r.output).toBe(true)
+    expect(r.output).not.toContain("NOT verified")
+  }, 60_000)
+})

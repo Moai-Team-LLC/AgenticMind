@@ -35,8 +35,8 @@ forms are accepted:
 
 1. **Static `MCP_API_KEY`** — one shared key for simple single-tenant deployments. No
    minting, no DB row. Compared in **constant time** (`node:crypto` `timingSafeEqual`).
-   It is the trusted key, so it grants all scopes — use minted tokens when you want
-   least-privilege.
+   It grants `knowledge:read`/`write`/`admin`, `memory:read`/`write`/`admin` and `audit:write` — not `knowledge:signal`, `hitl:request` or `hitl:respond` (mint a JWT for the
+   feedback loop and human-in-the-loop) — use minted tokens when you want least-privilege.
 2. **Per-token `typ="mcp"` JWT** (HS256 over `AUTH_SECRET`) — minted with
    `scripts/issue-mcp-token.ts`. The JWT is verified **and** its `jti` is checked in the
    `mcp_tokens` registry. The check **fails closed**: an unknown, revoked, or expired
@@ -105,7 +105,7 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
 | `AGENTICMIND_PROFILE` value | unset ⇒ `standard` | unknown value ⇒ refuses to start (both profiles) |
 | MCP request body | no limit unless `MCP_MAX_REQUEST_BODY_BYTES` | 2 MiB, `413` before auth and parsing |
 | MCP tool input elements | no limit unless `MCP_MAX_TOOL_INPUT_ELEMENTS` | 10 000 array elements + object keys per call, checked before schema validation |
-| Database TLS (`DATABASE_SSL=true`) | encrypted, certificate **not** verified — logs a warning; `DATABASE_SSL_CA` turns verification on | certificate verified (system CAs or `DATABASE_SSL_CA`); unverified TLS — including `sslmode=no-verify` in `DATABASE_URL` — refuses to start |
+| Database TLS (`DATABASE_SSL=true`) | encrypted, certificate **not** verified — logs a warning; `DATABASE_SSL_CA` turns verification on | certificate verified (system CAs or `DATABASE_SSL_CA`); unverified TLS — including `sslmode=no-verify` or `ssl=no-verify` in `DATABASE_URL` — refuses to start |
 | `KNOWLEDGE_ANSWER_POLICY` malformed | ignored (no policy) | refuses to start |
 | Missing Tier-A groundedness vs `minGroundedness` | passes (`missingGroundedness: pass`) | blocks (`missingGroundedness: block` unless the policy says otherwise) |
 | Acceptance evaluator: missing verdict / judge failure | card admitted `approved` | card stays `candidate`, reason recorded |
@@ -147,7 +147,7 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
   does not verify the certificate and logs a warning at boot; `strict` verifies against
   the system CAs and refuses to start on an unverified setting. node-postgres lets
   `sslmode`/`ssl` in `DATABASE_URL` override these options, so the effective setting is
-  computed with node-postgres' own parser, and `strict` refuses `sslmode=no-verify` and
+  computed with node-postgres' own parser, and `strict` refuses `sslmode=no-verify` / `ssl=no-verify` and
   URL TLS parameters alongside `DATABASE_SSL=true`. Verification becomes the default in
   every profile in 0.15.
 
@@ -199,8 +199,8 @@ Identity and tenant are derived from the **verified token, never the model**, an
 security enforces isolation below the application (see *Tenant isolation* above). Tokens are
 scoped, short-lived (JWT `exp`), and revocable. Full **OAuth 2.1 + external IdP**
 (audience-bound, no over-scoping) is an enterprise-edition item; the static `MCP_API_KEY` is
-an all-scope key for trusted single-tenant use, so prefer minted scoped tokens for least
-privilege.
+a broad key (every read/write/admin scope, not `knowledge:signal` or `hitl:*`) for trusted
+single-tenant use, so prefer minted scoped tokens for least privilege.
 
 ## Honest limits (not yet in the open core)
 

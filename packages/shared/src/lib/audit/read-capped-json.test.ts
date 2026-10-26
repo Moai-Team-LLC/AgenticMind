@@ -12,8 +12,14 @@ describe("readCappedJson", () => {
   })
 
   it("rejects when Content-Length exceeds the cap (fast path, no read)", async () => {
-    const big = JSON.stringify({ x: "y".repeat(5000) })
-    const result = await readCappedJson(postString(big), 1024)
+    // A tiny body that DECLARES 5000 bytes: only the fast path can refuse it.
+    const req = new Request("http://localhost/hooks/audit", {
+      method: "POST",
+      body: "{}",
+      headers: { "content-length": "5000" },
+    })
+    expect(req.headers.get("content-length"), "control: the header survives Request").toBe("5000")
+    const result = await readCappedJson(req, 1024)
     expect(result).toEqual({ ok: false, reason: "too_large" })
   })
 

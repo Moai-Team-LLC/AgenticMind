@@ -68,7 +68,10 @@ describe("withRequestBodyLimit", () => {
       ran = true
       return echo(req)
     }
-    const res = await withRequestBodyLimit(inner, 1024)(post("x".repeat(5000)))
+    // A 1-byte body that DECLARES 5000: only the Content-Length fast path can refuse it.
+    const req = post("x", { "content-length": "5000" })
+    expect(req.headers.get("content-length"), "control: the header survives Request").toBe("5000")
+    const res = await withRequestBodyLimit(inner, 1024)(req)
     expect(res.status).toBe(413)
     expect(ran).toBe(false)
     expect(await res.json()).toEqual({

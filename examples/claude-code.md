@@ -40,7 +40,8 @@ In a session, the `kl_*` and `mem_*` tools are now available. Try the end-to-end
 
 ## Least privilege
 
-The static `MCP_API_KEY` grants all scopes. For a read-only assistant, mint a scoped token
+The static `MCP_API_KEY` grants every read/write/admin scope (not `knowledge:signal`,
+`hitl:request` or `hitl:respond`). For a read-only assistant, mint a scoped token
 instead and use it as the bearer:
 
 ```bash

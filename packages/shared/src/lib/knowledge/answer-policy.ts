@@ -98,6 +98,32 @@ export const withProfileDefaults = (
 ): AnswerPolicy | undefined =>
   policy === undefined || !isStrict(profile) ? policy : { missingGroundedness: "block", ...policy }
 
+/** Statuses that already say more than `needs_review` and must not be overwritten. */
+const STRONGER_THAN_REVIEW: ReadonlySet<AnswerStatus> = new Set(["unsupported", "conflicted"])
+
+/**
+ * The status an answer carries after a non-blocking decision. A
+ * required-but-missing semantic signal under "review" marks a `supported` /
+ * `partial` answer `needs_review`, so a caller gating on `status` sees it
+ * without reading the policy trace — but never overwrites `unsupported` or
+ * `conflicted`, which a caller may gate on separately. Pure.
+ */
+export const policyReviewStatus = (
+  policy: AnswerPolicy,
+  decision: PolicyDecision,
+  answer: { status?: AnswerStatus; semanticGroundedness?: number },
+): AnswerStatus | undefined => {
+  const { status, semanticGroundedness } = answer
+  const semanticReview =
+    decision.action === "review" &&
+    policy.requireSemanticVerification === "review" &&
+    semanticGroundedness === undefined
+  if (!semanticReview || (status !== undefined && STRONGER_THAN_REVIEW.has(status))) {
+    return status
+  }
+  return "needs_review"
+}
+
 /** Why a policy marked an answer whose Tier-B signal is absent. */
 export const SEMANTIC_MISSING_REASON =
   "semantic verification required but the signal is missing (requireSemanticVerification)"

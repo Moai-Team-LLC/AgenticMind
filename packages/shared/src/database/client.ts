@@ -2,7 +2,7 @@ import type { Profile } from "@agenticmind/shared/lib/profile"
 import type { NodePgDatabase } from "drizzle-orm/node-postgres"
 
 import { schema } from "@agenticmind/shared/database/schema"
-import { resolveDatabaseTls } from "@agenticmind/shared/database/tls"
+import { resolveDatabaseTls, warnDatabaseTlsOnce } from "@agenticmind/shared/database/tls"
 import { activeProfile } from "@agenticmind/shared/lib/profile"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
 import { sql } from "drizzle-orm"
@@ -35,7 +35,7 @@ const createClient = (
     throw new Error(`database TLS: ${tls.error}`)
   }
   if (tls.value.warning !== undefined) {
-    console.warn(`[DATABASE] ${tls.value.warning}`)
+    warnDatabaseTlsOnce(tls.value.warning)
   }
   const pool = new Pool({
     connectionString: databaseUrl,

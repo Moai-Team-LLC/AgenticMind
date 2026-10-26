@@ -409,8 +409,9 @@ const buildHandler = (limits: McpLimits) =>
   )
 
 // Static-key principal (a fixed UUID so memory writes have a stable owner) and
-// the scopes a static key grants — everything, since it is the trusted
-// single-tenant key. For least-privilege, use minted JWTs instead.
+// the scopes a static key grants: knowledge + memory read/write/admin and
+// audit:write. Not knowledge:signal or the hitl:* scopes — mint a JWT for the
+// feedback loop and human-in-the-loop. Documented in docs/security-model.md.
 const API_KEY_PRINCIPAL = "00000000-0000-0000-0000-000000000001"
 const API_KEY_SCOPES = [
   "knowledge:read",

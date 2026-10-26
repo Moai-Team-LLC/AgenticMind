@@ -4,6 +4,7 @@ import {
   evaluatePolicy,
   parseAnswerPolicy,
   parseAnswerPolicyResult,
+  policyReviewStatus,
   SEMANTIC_MISSING_REASON,
   withProfileDefaults,
 } from "./answer-policy"
@@ -158,5 +159,30 @@ describe("missing signals (A6)", () => {
       missingGroundedness: "pass",
     })
     expect(withProfileDefaults(undefined, "strict")).toBeUndefined()
+  })
+})
+
+describe("policyReviewStatus (missing semantic signal under review)", () => {
+  const policy = { requireSemanticVerification: "review" } as const
+  const review = { action: "review" as const, reasons: [SEMANTIC_MISSING_REASON] }
+
+  it("marks supported / partial answers needs_review", () => {
+    expect(policyReviewStatus(policy, review, { status: "supported" })).toBe("needs_review")
+    expect(policyReviewStatus(policy, review, { status: "partial" })).toBe("needs_review")
+    expect(policyReviewStatus(policy, review, {})).toBe("needs_review")
+  })
+
+  it("never overwrites the stronger unsupported / conflicted statuses", () => {
+    expect(policyReviewStatus(policy, review, { status: "unsupported" })).toBe("unsupported")
+    expect(policyReviewStatus(policy, review, { status: "conflicted" })).toBe("conflicted")
+  })
+
+  it("control: leaves the status alone when the signal is present or the decision is allow", () => {
+    expect(
+      policyReviewStatus(policy, review, { status: "supported", semanticGroundedness: 0.9 }),
+    ).toBe("supported")
+    expect(
+      policyReviewStatus(policy, { action: "allow", reasons: [] }, { status: "supported" }),
+    ).toBe("supported")
   })
 })

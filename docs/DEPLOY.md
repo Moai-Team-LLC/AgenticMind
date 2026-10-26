@@ -57,7 +57,7 @@ own `.env`. Your app's container then reaches the server at
 ## Auth — one shared key, no minting
 
 `MCP_API_KEY` is the simple single-tenant auth: one long random bearer your app
-sends. No `issue-token`, no `AUTH_SECRET`, no DB token row. It grants all scopes.
+sends. No `issue-token`, no `AUTH_SECRET`, no DB token row. It grants `knowledge:read`/`write`/`admin`, `memory:read`/`write`/`admin` and `audit:write` — not `knowledge:signal`, `hitl:request` or `hitl:respond`.
 For least-privilege or multiple distinct clients, set `AUTH_SECRET` instead and
 mint scoped JWTs with `issue-token` (see the README).
 

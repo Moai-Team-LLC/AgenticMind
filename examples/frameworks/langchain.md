@@ -38,6 +38,6 @@ asyncio.run(main())
 
 The agent now grounds answers in your corpus via `kl_ask_global` (citation-enforced) and can
 `kl_ingest` new knowledge. For a read-only agent, mint a `knowledge:read,memory:read` token
-instead of the all-scope static key (see [`docs/security-model.md`](../../docs/security-model.md)).
+instead of the broad static key (see [`docs/security-model.md`](../../docs/security-model.md)).
 
 Docs: [LangChain MCP](https://docs.langchain.com/oss/python/langchain/mcp).

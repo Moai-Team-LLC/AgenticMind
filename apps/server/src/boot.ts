@@ -12,7 +12,7 @@ import {
   evaluateDatabaseRole,
   readDatabaseRoleFacts,
 } from "@agenticmind/shared/database/role-check"
-import { resolveDatabaseTls } from "@agenticmind/shared/database/tls"
+import { resolveDatabaseTls, warnDatabaseTlsOnce } from "@agenticmind/shared/database/tls"
 import { parseAnswerPolicyResult } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import { isStrict } from "@agenticmind/shared/lib/profile"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
@@ -63,6 +63,10 @@ const checkDatabaseTls = (profile: Profile): string[] => {
   })
   if (tls.isErr()) {
     return [`database TLS: ${tls.error}`]
+  }
+  if (tls.value.warning !== undefined) {
+    // Report an unverified certificate at boot, not on the first query.
+    warnDatabaseTlsOnce(tls.value.warning)
   }
   if (isStrict(profile)) {
     console.log(

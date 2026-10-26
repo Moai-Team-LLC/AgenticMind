@@ -20,13 +20,13 @@
 configs:
   agenticmind-app-role-sql:
     content: |
-      DO $$
+      DO $$$$
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'agenticmind_server') THEN
           CREATE ROLE agenticmind_server LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;
         END IF;
       END
-      $$;
+      $$$$;
       ALTER ROLE agenticmind_server LOGIN NOSUPERUSER NOBYPASSRLS PASSWORD :'app_password';
       GRANT agenticmind_app TO agenticmind_server;
 

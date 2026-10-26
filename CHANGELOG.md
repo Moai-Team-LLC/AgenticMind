@@ -48,6 +48,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The worker refuses cleanly.** An unknown profile or unverified TLS in
+  `strict` used to crash the worker with a stack trace from an import (its job
+  modules open the database pool when they load); it now prints
+  `[WORKER] … — refusing to start` and exits 1, like the server.
+- **Static `MCP_API_KEY` scopes documented correctly.** The key grants
+  `knowledge:*` and `memory:*` read/write/admin and `audit:write`, not
+  `knowledge:signal`, `hitl:request` or `hitl:respond` — the docs said "all
+  scopes". Behaviour is unchanged; mint a JWT for the feedback loop and HITL.
 - **One Bun version everywhere.** `packageManager`, both Docker base images and
   CI now pin Bun 1.3.12 (0.14.0 images ran 1.3.11 while CI tested 1.3.12); a
   test fails when any of them drifts.
@@ -88,7 +96,11 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   computed with node-postgres' own parser: `strict` refuses `sslmode=no-verify`
   and URL TLS parameters next to `DATABASE_SSL=true`. `standard` keeps
   `DATABASE_SSL=true` = encrypted but unverified, now with a boot warning;
-  verification becomes the default in 0.15.
+  verification becomes the default in 0.15. Both `sslmode=no-verify` and the
+  `ssl=no-verify` URL forms are recognised (and any `ssl` value node-postgres does
+  not know fails closed); `DATABASE_SSL_CA` must contain at least one certificate
+  that parses as X.509 (literal `\n` escapes from env dashboards are unescaped);
+  the `standard` warning is printed at boot.
 - **Answer policy: invalid vs unset, and missing signals.** A malformed
   `KNOWLEDGE_ANSWER_POLICY` refuses to start in `strict` (it is still ignored
   in `standard`, as before). New policy fields: `requireSemanticVerification`
@@ -97,7 +109,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `missingGroundedness` (`pass` | `block`) does the same for Tier-A against
   `minGroundedness`, where a missing value used to count as 1.0. `strict`
   defaults `missingGroundedness` to `block`. A boot warning flags
-  `requireSemanticVerification` with Tier-B off.
+  `requireSemanticVerification` with Tier-B off. `review` marks a `supported` /
+  `partial` answer `needs_review` but never overwrites `unsupported` or
+  `conflicted`.
 - **Strict: the acceptance gate fails closed.** With
   `KNOWLEDGE_ACCEPTANCE_EVALUATOR` on, a card the judge returned no verdict for,
   and every card of a batch whose judge call failed, used to be admitted as
@@ -108,7 +122,9 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`deploy/docker-compose.strict.yml`.** An overlay that keeps migrations on the
   owner role, provisions a least-privilege `agenticmind_server` LOGIN role and
   runs the server as it in `strict`. `gen-secrets.sh` now also writes
-  `AGENTICMIND_APP_DB_PASSWORD`. The base compose file is unchanged.
+  `AGENTICMIND_APP_DB_PASSWORD`. The base compose file is unchanged. CI renders
+  the overlay's provisioning SQL through Compose itself and runs it against the
+  migrated database, so a broken overlay fails the build.
 
 ## [0.14.0] — 2026-08-03
 

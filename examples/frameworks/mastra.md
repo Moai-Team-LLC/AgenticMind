@@ -31,7 +31,7 @@ const tools = await mcp.getTools() // kl_search, kl_ask_global, kl_ingest, mem_r
 ```
 
 For long-lived agents, prefer `mcp.getToolsets()` per request; for a static set, `getTools()`
-as above. Use a least-privilege minted token rather than the all-scope static key outside
+as above. Use a least-privilege minted token rather than the broad static key outside
 local dev (see [`docs/security-model.md`](../../docs/security-model.md)).
 
 Docs: [Mastra — MCPClient](https://mastra.ai/reference/tools/mcp-client).
