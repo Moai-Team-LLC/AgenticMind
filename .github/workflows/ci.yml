@@ -39,6 +39,30 @@ jobs:
         run: bun run db:migrate
         env:
           DATABASE_URL: postgres://postgres:mysecretpassword@localhost:5432/agenticmind
+      # The strict compose overlay's provisioning SQL, exactly as Compose hands it
+      # to the container (Compose interpolates `$`, so `DO $$` is written `$$$$`),
+      # run against the migrated database: the role must come out as a LOGIN,
+      # non-superuser, non-BYPASSRLS member of agenticmind_app.
+      - name: Strict compose overlay provisions the app role
+        run: |
+          set -euo pipefail
+          cat > /tmp/probe.yml <<'YAML'
+          services:
+            probe:
+              image: timescale/timescaledb-ha:pg17
+              entrypoint: ["cat", "/provision.sql"]
+              configs:
+                - source: agenticmind-app-role-sql
+                  target: /provision.sql
+          YAML
+          AGENTICMIND_DB_PASSWORD=ci AGENTICMIND_APP_DB_PASSWORD=ci MCP_API_KEY=ci_dummy_key_0123456789abcdef OPENAI_API_KEY=ci \
+            docker compose -p amprobe -f deploy/docker-compose.yml -f deploy/docker-compose.strict.yml -f /tmp/probe.yml \
+            run --rm --no-deps -T probe < /dev/null > /tmp/provision.sql
+          test -s /tmp/provision.sql
+          docker exec -i ${{ job.services.postgres.id }} psql -U postgres -d agenticmind -v ON_ERROR_STOP=1 -v app_password=ci_probe < /tmp/provision.sql
+          role=$(docker exec ${{ job.services.postgres.id }} psql -U postgres -d agenticmind -Atc "select rolcanlogin::text || rolsuper::text || rolbypassrls::text || pg_has_role('agenticmind_server', 'agenticmind_app', 'member')::text from pg_roles where rolname = 'agenticmind_server'")
+          echo "agenticmind_server (login, super, bypassrls, member): $role"
+          test "$role" = "truefalsefalsetrue"
       - name: Typecheck
         run: bun run tsc
       - name: Lint (check-only, no autofix)

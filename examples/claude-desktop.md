@@ -38,7 +38,7 @@ appear under the connect/tools menu.
 
 ## Least privilege
 
-Prefer a minted scoped token over the all-scope static key:
+Prefer a minted scoped token over the broad static key:
 
 ```bash
 bun run issue-token -- --label "claude-desktop-readonly" --scopes knowledge:read,memory:read

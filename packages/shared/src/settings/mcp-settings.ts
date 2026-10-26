@@ -10,8 +10,9 @@ import * as z from "zod"
  * - `AUTH_SECRET` signs/verifies per-token MCP bearer JWTs (typ="mcp"), the
  *   least-privilege, revocable path (mint with `issue-token`).
  * - `MCP_API_KEY` is the simple single-tenant alternative: one shared static
- *   bearer. When set, a request whose bearer equals it is granted full scopes
- *   with no JWT and no DB token row — no minting dance. Use a long random value
+ *   bearer. When set, a request whose bearer equals it is granted the
+ *   knowledge/memory read-write-admin scopes and audit:write (not
+ *   knowledge:signal or hitl:*) with no JWT and no DB token row. Use a long random value
  *   (>=24 chars); for least-privilege or multi-client setups, use minted JWTs.
  *
  * Both are optional; with neither set the MCP endpoint is unreachable

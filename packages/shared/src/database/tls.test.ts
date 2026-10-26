@@ -20,7 +20,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
  */
 
 const URL_PLAIN = "postgres://u:p@db.internal:5432/app"
-const PEM = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
+// A real, public, self-signed certificate (no key) — the resolver parses CA bundles.
+const CA_FIXTURE = fileURLToPath(new URL("test-ca.fixture.crt", import.meta.url))
+const PEM = readFileSync(CA_FIXTURE, "utf8")
+const FAKE_PEM = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n"
 
 describe("resolveDatabaseTls", () => {
   const resolve = (over: Partial<Parameters<typeof resolveDatabaseTls>[0]>) =>
@@ -48,9 +51,11 @@ describe("resolveDatabaseTls", () => {
   })
 
   it("standard warns when the URL turns verification off", () => {
-    const r = resolve({ databaseUrl: `${URL_PLAIN}?sslmode=no-verify` })._unsafeUnwrap()
-    expect(r.verified).toBe(false)
-    expect(r.warning).toBeDefined()
+    for (const q of ["?sslmode=no-verify", "?ssl=no-verify"]) {
+      const r = resolve({ databaseUrl: `${URL_PLAIN}${q}` })._unsafeUnwrap()
+      expect(r.verified, q).toBe(false)
+      expect(r.warning, q).toBeDefined()
+    }
   })
 
   it("strict verifies the certificate, with system CAs or DATABASE_SSL_CA", () => {
@@ -72,10 +77,15 @@ describe("resolveDatabaseTls", () => {
   })
 
   it("strict refuses unverified TLS, including when the URL turns it off", () => {
-    for (const q of ["?sslmode=no-verify", "?uselibpqcompat=true&sslmode=require"]) {
+    for (const q of [
+      "?sslmode=no-verify",
+      "?ssl=no-verify",
+      "?ssl=prefer",
+      "?uselibpqcompat=true&sslmode=require",
+    ]) {
       const r = resolve({ profile: "strict", databaseUrl: `${URL_PLAIN}${q}` })
       expect(r._unsafeUnwrapErr(), q).toBe(
-        "the database connection uses TLS without verifying the server certificate (sslmode=no-verify or equivalent)",
+        "the database connection uses TLS without verifying the server certificate (sslmode=no-verify, ssl=no-verify or equivalent)",
       )
     }
   })
@@ -89,17 +99,36 @@ describe("resolveDatabaseTls", () => {
     expect(r.isErr()).toBe(true)
   })
 
-  it("an unreadable or non-PEM DATABASE_SSL_CA is an error in both profiles", () => {
+  it("an unreadable, non-PEM or unparseable DATABASE_SSL_CA is an error in both profiles", () => {
     const dir = mkdtempSync(join(tmpdir(), "am-ca-"))
     const notPem = join(dir, "not.pem")
+    const fakePem = join(dir, "fake.pem")
     writeFileSync(notPem, "hello")
+    writeFileSync(fakePem, FAKE_PEM)
     try {
       for (const profile of ["standard", "strict"] as const) {
-        expect(resolve({ profile, ssl: "true", ca: join(dir, "missing.pem") }).isErr()).toBe(true)
-        expect(resolve({ profile, ssl: "true", ca: notPem }).isErr()).toBe(true)
+        const cases = {
+          missing: join(dir, "missing.pem"),
+          notPem,
+          fakePemFile: fakePem,
+          fakePemInline: FAKE_PEM,
+          markerOnly: "-----BEGIN CERTIFICATE----- not really",
+        }
+        for (const [name, ca] of Object.entries(cases)) {
+          expect(resolve({ profile, ssl: "true", ca }).isErr(), `${profile} ${name}`).toBe(true)
+        }
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("a real CA bundle is accepted inline, with escaped newlines, and as a file", () => {
+    const escaped = PEM.trimEnd().replaceAll("\n", String.raw`\n`)
+    for (const ca of [PEM, escaped, CA_FIXTURE]) {
+      const r = resolve({ profile: "strict", ssl: "true", ca })._unsafeUnwrap()
+      expect(r.verified).toBe(true)
+      expect((r.ssl as { ca?: string }).ca).toContain("-----END CERTIFICATE-----")
     }
   })
 })
@@ -248,7 +277,7 @@ describe.skipIf(!hasOpenssl)("database TLS handshake against a self-signed serve
         ssl: "false",
       }),
     ).toThrow(
-      "database TLS: the database connection uses TLS without verifying the server certificate (sslmode=no-verify or equivalent)",
+      "database TLS: the database connection uses TLS without verifying the server certificate (sslmode=no-verify, ssl=no-verify or equivalent)",
     )
   })
 })

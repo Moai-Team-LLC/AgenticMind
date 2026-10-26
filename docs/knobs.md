@@ -35,7 +35,7 @@ Behind a reverse proxy, set its body limit too.
 | `DATABASE_SSL_CA` | unset | CA bundle — PEM text or a path to a PEM file — to verify the server certificate against (e.g. your managed Postgres provider's CA). Setting it turns verification on in every profile; an unreadable or non-PEM value refuses to start. |
 
 `sslmode` / `ssl` parameters in `DATABASE_URL` override both (node-postgres behaviour);
-`strict` refuses `sslmode=no-verify` and URL TLS parameters next to `DATABASE_SSL=true`.
+`strict` refuses `sslmode=no-verify` / `ssl=no-verify` and URL TLS parameters next to `DATABASE_SSL=true`.
 
 ## Answer quality & trust
 

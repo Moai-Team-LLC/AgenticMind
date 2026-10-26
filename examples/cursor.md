@@ -24,7 +24,7 @@ Replace `YOUR_MCP_API_KEY` with your static `MCP_API_KEY` or a minted token. Res
 ## Least privilege
 
 For a retrieval-only setup, mint a `knowledge:read,memory:read` token rather than using the
-all-scope static key:
+broad static key:
 
 ```bash
 bun run issue-token -- --label "cursor-readonly" --scopes knowledge:read,memory:read

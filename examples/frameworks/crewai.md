@@ -31,7 +31,7 @@ with MCPServerAdapter(server_params) as tools:
 ```
 
 `MCPServerAdapter` is a context manager — the connection closes when the `with` block exits.
-Prefer a least-privilege minted token over the all-scope static key for anything but local
+Prefer a least-privilege minted token over the broad static key for anything but local
 dev (see [`docs/security-model.md`](../../docs/security-model.md)).
 
 Docs: [CrewAI — MCP servers as tools](https://docs.crewai.com/en/mcp/overview).

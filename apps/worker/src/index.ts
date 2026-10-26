@@ -7,10 +7,6 @@
 
 import { resolveActiveProfile } from "@agenticmind/shared/lib/profile"
 
-import { startAssuranceDriftScheduler } from "@/jobs/assurance-drift/worker"
-import { startHitlExpiryScheduler } from "@/jobs/hitl-expiry/worker"
-import { startHitlResumeScheduler } from "@/jobs/hitl-resume/worker"
-import { startKnowledgeFeedbackScheduler } from "@/jobs/knowledge-feedback/worker"
 import { initTracing } from "@/tracing"
 
 // Register the OTLP trace exporter before scheduling, if configured (no-op otherwise).
@@ -23,6 +19,32 @@ if (profile.isErr()) {
   process.exit(1)
 }
 console.log(`[WORKER] profile: ${profile.value}`)
+
+// The job modules open the database pool when they load (lib/database.ts), and
+// the pool refuses unverified TLS in strict. Load them only after the profile
+// check, and turn a refusal at load into the same clean message as above.
+const loadJobs = async () =>
+  Promise.all([
+    import("@/jobs/knowledge-feedback/worker"),
+    import("@/jobs/assurance-drift/worker"),
+    import("@/jobs/hitl-expiry/worker"),
+    import("@/jobs/hitl-resume/worker"),
+  ])
+let jobs: Awaited<ReturnType<typeof loadJobs>>
+try {
+  jobs = await loadJobs()
+} catch (error) {
+  console.error(
+    `[WORKER] ${error instanceof Error ? error.message : String(error)} — refusing to start`,
+  )
+  process.exit(1)
+}
+const [
+  { startKnowledgeFeedbackScheduler },
+  { startAssuranceDriftScheduler },
+  { startHitlExpiryScheduler },
+  { startHitlResumeScheduler },
+] = jobs
 
 const scheduler = startKnowledgeFeedbackScheduler()
 const driftScheduler = startAssuranceDriftScheduler()
