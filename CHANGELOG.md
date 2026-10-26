@@ -6,6 +6,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **The eval-gate can actually run.** Its seed and eval steps (and `bun run
+  eval` / `seed-eval`) run the scripts with `tsx`, i.e. on Node, but the scripts
+  used Bun's `import.meta.dir`, which is undefined there — both steps would have
+  crashed on the first run with a key. Scripts now use `import.meta.dirname`
+  (Node ≥ 20.11 and Bun), and a test fails when any script launched with `tsx`
+  uses a Bun-only API.
+- **eval-gate reports a bad key instead of hanging.** A free preflight
+  (`GET /models`, no tokens) fails the run with `NOT RUN — the provider rejected
+  CHAT_API_KEY` or `could not reach the provider`; before, every model call
+  would retry for up to a minute and the job sat "running" for hours. The job is
+  also bounded to 90 minutes.
+
 ## [0.14.1] — 2026-10-26
 
 The **hardening** patch: security fixes for v0.14.0 and a `strict` profile that

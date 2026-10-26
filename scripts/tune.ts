@@ -38,7 +38,7 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 const curatedCases = JSON.parse(
-  readFileSync(join(import.meta.dir, "..", "eval", "cases.json"), "utf8"),
+  readFileSync(join(import.meta.dirname, "..", "eval", "cases.json"), "utf8"),
 ) as EvalCase[]
 
 const db = createClient(databaseSettings.DATABASE_URL)
@@ -132,7 +132,7 @@ console.log(`\nWinner (+${delta} pts): ${JSON.stringify(winner.params)}`)
 console.log(`Activate with: RETRIEVAL_PARAMS='${JSON.stringify(winner.params)}'`)
 
 if (process.argv.includes("--apply")) {
-  const out = join(import.meta.dir, "..", "eval", "retrieval-params.json")
+  const out = join(import.meta.dirname, "..", "eval", "retrieval-params.json")
   writeFileSync(out, `${JSON.stringify(winner.params, null, 2)}\n`)
   console.log(`Wrote ${out}`)
 }

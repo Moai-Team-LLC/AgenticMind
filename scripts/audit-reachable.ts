@@ -25,7 +25,7 @@ import { join, resolve } from "node:path"
 type Advisory = { id: string; severity: string; title: string; url: string }
 type AllowEntry = { id: string; package: string; reason: string }
 
-const ROOT = resolve(import.meta.dir, "..")
+const ROOT = resolve(import.meta.dirname, "..")
 const SERVICES = [
   { name: "server", dir: "apps/server" },
   { name: "worker", dir: "apps/worker" },

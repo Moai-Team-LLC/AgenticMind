@@ -19,7 +19,7 @@ import { join } from "node:path"
 import * as z from "zod"
 
 const allCases = JSON.parse(
-  readFileSync(join(import.meta.dir, "..", "eval", "cases.json"), "utf8"),
+  readFileSync(join(import.meta.dirname, "..", "eval", "cases.json"), "utf8"),
 ) as EvalCase[]
 // EVAL_ONLY=mode1,mode2 restricts the run to those failure modes (dev iteration).
 const only = process.env.EVAL_ONLY?.split(",")

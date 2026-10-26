@@ -31,7 +31,7 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
 const cases = JSON.parse(
-  readFileSync(join(import.meta.dir, "..", "eval", "cases.json"), "utf8"),
+  readFileSync(join(import.meta.dirname, "..", "eval", "cases.json"), "utf8"),
 ) as EvalCase[]
 
 const db = createClient(databaseSettings.DATABASE_URL)
