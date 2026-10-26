@@ -6,6 +6,25 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.14.1] — 2026-10-26
+
+The **hardening** patch: security fixes for v0.14.0 and a `strict` profile that
+turns them into refusals. Every new refusal is opt-in under
+`AGENTICMIND_PROFILE=strict`; `standard` (the default) keeps 0.14.0's behaviour,
+with three visible exceptions: the boot log names the active profile, unverified
+database TLS prints a warning at boot, and `hitl_request.context` is capped at
+100 keys / 64 KiB. No migrations, no new required environment variables, MCP
+contract unchanged (`1.10.0`).
+
+Upgrading: images are published as `:0.14.1` and `:latest`, so deployments on
+`AGENTICMIND_TAG=latest` (the `deploy/` default) pick this up on their next pull.
+To harden a deployment, set `AGENTICMIND_PROFILE=strict`, connect as a LOGIN role
+without `BYPASSRLS` (`deploy/docker-compose.strict.yml` provisions one), and set
+`DATABASE_SSL_CA` for managed Postgres — see
+[security model → strict profile](docs/security-model.md#strict-profile). The
+weekly `eval-gate` now fails while the `CHAT_API_KEY` secret is unset, instead of
+passing without running.
+
 ### Security
 
 - **MCP SDK 1.29.0 → 1.32.1** (GHSA-46jr-4wx8-v453: one request within the
