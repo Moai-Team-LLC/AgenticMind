@@ -13,6 +13,7 @@ import type { IngestionStatus } from "@agenticmind/shared/lib/knowledge/source-c
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { ingestionJobs } from "@agenticmind/shared/database/schema"
+import { currentTenantId } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { and, eq, isNotNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
@@ -65,7 +66,12 @@ export const findIngestionJobByDedupeKey = (props: { tx: Transaction; dedupeKey:
       const [row] = await props.tx
         .select()
         .from(ingestionJobs)
-        .where(eq(ingestionJobs.dedupeKey, props.dedupeKey))
+        .where(
+          and(
+            eq(ingestionJobs.tenantId, currentTenantId),
+            eq(ingestionJobs.dedupeKey, props.dedupeKey),
+          ),
+        )
         .limit(1)
       return row ?? null
     })(),

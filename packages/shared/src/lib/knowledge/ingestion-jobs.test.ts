@@ -201,6 +201,27 @@ describe.skipIf(DB_URL === "")("background ingestion (real Postgres)", () => {
     expect((await count("chunks", first.materialId)).n).toBe(0)
   })
 
+  it("the same async ingest in another tenant is that tenant's own job", async () => {
+    const title = `b1-cross-${randomUUID()}`
+    const mine = (await ingest({ title, async: true }))._unsafeUnwrap()
+    track(mine.materialId)
+    const theirs = (
+      await withTenant(db, randomUUID(), async (tx) =>
+        ingestText({
+          tx,
+          blobStore: nopBlobStore,
+          title,
+          text: TEXT,
+          createdBy: ACTOR,
+          async: true,
+        }),
+      )
+    )._unsafeUnwrap()
+    track(theirs.materialId)
+    expect(theirs.jobId).not.toBe(mine.jobId)
+    expect(theirs.materialId).not.toBe(mine.materialId)
+  })
+
   it("a job whose worker died is resumed by another once the lease expires", async () => {
     const out = (await ingest({ async: true }))._unsafeUnwrap()
     track(out.materialId)
