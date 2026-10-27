@@ -40,6 +40,7 @@ import {
   updateMaterialStatus,
 } from "@agenticmind/shared/database/query/knowledge/materials"
 import {
+  bumpCorpusRevision,
   getRevision,
   switchCurrentRevision,
 } from "@agenticmind/shared/database/query/knowledge/sources"
@@ -224,6 +225,13 @@ const runStage = async (
       })
       if (res.isErr()) {
         throw new StageError("internal", true, res.error.message)
+      }
+      if (res.value) {
+        // What answers changed: the corpus revision moves with the pointer, atomically.
+        const bumped = await bumpCorpusRevision({ tx })
+        if (bumped.isErr()) {
+          throw new StageError("internal", true, bumped.error.message)
+        }
       }
       return res.value
     })

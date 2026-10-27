@@ -18,6 +18,7 @@ import {
   buildFtsWhereClause,
   dedupeVariants,
 } from "@agenticmind/shared/database/query/knowledge/chunks"
+import { retrievableMaterial } from "@agenticmind/shared/database/query/knowledge/retrievable"
 import { knowledgeCards, materials } from "@agenticmind/shared/database/schema"
 import { NON_RETRIEVABLE_CARD_STATUSES } from "@agenticmind/shared/lib/knowledge/card"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
@@ -248,6 +249,8 @@ type RetrievalFilters = {
 const retrievalConditions = (f: RetrievalFilters) => [
   // Admission gate: rejected / deprecated / archived knowledge never surfaces.
   notInArray(knowledgeCards.status, [...NON_RETRIEVABLE_CARD_STATUSES]),
+  // Only the current revision of a source answers (retrievable.ts).
+  retrievableMaterial(knowledgeCards.materialId),
   gte(knowledgeCards.confidence, f.minConfidence ?? 0),
   f.kinds !== undefined && f.kinds.length > 0 ? inArray(knowledgeCards.kind, f.kinds) : undefined,
   f.subjectTypes !== undefined && f.subjectTypes.length > 0
@@ -359,6 +362,7 @@ export const filterCards = (props: { tx: Transaction } & CardFilter) => {
     props.materialId !== undefined && props.materialId !== ""
       ? eq(knowledgeCards.materialId, props.materialId)
       : undefined,
+    retrievableMaterial(knowledgeCards.materialId),
   ]
   const whereClause = and(...conditions)
 

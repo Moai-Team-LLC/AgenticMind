@@ -7,8 +7,8 @@
  *   stale     — `externalVersion` is older than one already received
  *   accepted  — a new revision + its material + a background indexing job
  *
- * (`conflict` on `expectedRevisionId` and `retracted` arrive with the
- * revision-switch and retraction changes.) The content hash is computed here,
+ * `conflict` comes first when `expectedRevisionId` does not match the current
+ * revision (`retracted` arrives with the retraction change). The content hash is computed here,
  * never taken from the caller. Visibility other than `workspace` is refused
  * until per-document access control ships, and is fixed at creation. The
  * principal that creates a source owns it; another writer needs
@@ -356,8 +356,35 @@ export const upsertSource = async (
 ): Promise<UpsertSourceResult> => {
   checkVisibility(args.source)
   const content = revisionContent(args.revision)
+  const expected = args.expectedRevisionId
+  if (typeof expected === "string") {
+    // Expecting a revision of a source that does not exist yet: nothing to create.
+    const existing = unwrap(
+      await lockSourceByIdentity({
+        tx: deps.tx,
+        identity: {
+          connectionId: args.source.connectionId ?? DEFAULT_CONNECTION,
+          sourceType: args.source.sourceType,
+          externalId: args.source.externalId,
+        },
+      }),
+    )
+    if (existing === null) {
+      return { outcome: "conflict", sourceId: null, currentRevisionId: null, materialId: null }
+    }
+  }
   const { source, created } = await resolveSource(deps, args)
   const ev = args.revision.externalVersion
+
+  // Optimistic lock: `null` expects no current revision, an id expects that one.
+  if (expected !== undefined && source.currentRevisionId !== expected) {
+    return {
+      outcome: "conflict",
+      sourceId: source.id,
+      currentRevisionId: source.currentRevisionId,
+      materialId: null,
+    }
+  }
 
   const unchanged = await findUnchanged(deps.tx, source, content.contentHash, ev)
   if (unchanged !== null) {

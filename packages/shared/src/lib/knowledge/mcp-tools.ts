@@ -18,6 +18,7 @@ import type {
   klGetIngestionStatusOutput,
   klUpsertSourceOutput,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
+import type { SourceRef } from "@agenticmind/shared/lib/knowledge/source-refs"
 import type { UpsertSourceDeps } from "@agenticmind/shared/lib/knowledge/source-upsert"
 import type { CallerContext } from "@agenticmind/shared/lib/knowledge/synth"
 import type { CorpusChunk } from "@agenticmind/shared/lib/skill/compile-live"
@@ -42,7 +43,7 @@ import {
   insertSkillVersion,
   upsertSkill,
 } from "@agenticmind/shared/database/query/knowledge/skills"
-import { getSource } from "@agenticmind/shared/database/query/knowledge/sources"
+import { getCorpusRevision, getSource } from "@agenticmind/shared/database/query/knowledge/sources"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { decayedConfidence, summarizeContested } from "@agenticmind/shared/lib/knowledge/belief"
@@ -70,6 +71,7 @@ import {
   klUpsertSourceInput,
   retrievalScopeFields,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
+import { sourceRefsFor } from "@agenticmind/shared/lib/knowledge/source-refs"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { SourceInputError, upsertSource } from "@agenticmind/shared/lib/knowledge/source-upsert"
 import { compileSkillLive } from "@agenticmind/shared/lib/skill/compile-live"
@@ -217,7 +219,7 @@ export const klSearch = async (
   args: z.infer<typeof klSearchInput>,
 ): Promise<{
   query: string
-  hits: { materialId: string; title: string; snippet: string; score: number }[]
+  hits: ({ materialId: string; title: string; snippet: string; score: number } & SourceRef)[]
 }> => {
   const queries = [...new Set([args.q, ...(args.queries ?? [])].map((s) => s.trim()))].filter(
     (s) => s.length > 0,
@@ -234,6 +236,10 @@ export const klSearch = async (
       : ranked.slice(0, limit)
 
   const titles = new Map<string, string>()
+  const refOf = await sourceRefsFor(
+    deps.tx,
+    selected.map((h) => h.materialId),
+  )
   const out = []
   for (const h of selected) {
     out.push({
@@ -241,6 +247,7 @@ export const klSearch = async (
       title: await resolveTitle(deps.tx, h.materialId, titles),
       snippet: snippet(h.body),
       score: h.score,
+      ...refOf(h.materialId),
     })
   }
   return { query: args.q, hits: out }
@@ -297,7 +304,20 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
   if (answer.isErr()) {
     throw new Error(`kl_ask_global: ${answer.error.message}`)
   }
-  return answer.value
+  // Each citation says which source and revision it came from; the corpus revision
+  // says which state of the corpus the answer was built on.
+  const refOf = await sourceRefsFor(
+    deps.tx,
+    answer.value.citations.map((c) => c.materialId),
+  )
+  const corpus = await getCorpusRevision({ tx: deps.tx })
+  return {
+    ...answer.value,
+    citations: answer.value.citations.map((c) => {
+      return { ...c, ...refOf(c.materialId) }
+    }),
+    corpusRevision: corpus.isOk() ? corpus.value : 0,
+  }
 }
 
 export const klGetMaterialInput = z.object({ id: z.string().min(1) })

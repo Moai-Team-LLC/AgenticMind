@@ -20,7 +20,7 @@ export const PENDING_TOOLS: readonly string[] = ["kl_read_source", "kl_set_sourc
 export const PENDING_FIELDS: Readonly<Record<string, readonly string[]>> = {
   kl_search: ["mode", "sourceTypes", "period"],
   kl_ask_global: ["mode", "sourceTypes", "period"],
-  kl_upsert_source: ["expectedRevisionId", "allowResurrect"],
+  kl_upsert_source: ["allowResurrect"],
   kl_forget: ["sourceType", "connectionId", "reason"],
 }
 
