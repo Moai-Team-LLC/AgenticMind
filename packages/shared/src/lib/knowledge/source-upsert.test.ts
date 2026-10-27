@@ -185,6 +185,22 @@ describe.skipIf(DB_URL === "")("source registry and upsert (real Postgres)", () 
     expect(late.status).toBe("superseded")
   })
 
+  it("the same identity in another tenant is that tenant's own source", async () => {
+    const id = identity()
+    const mine = await upsert({ source: id, revision: { text: "Ours." } })
+    const theirs = await withTenant(db, randomUUID(), async (tx) =>
+      upsertSource(
+        { tx, actorUuid: OTHER, scopes: WRITE },
+        { source: id, revision: { text: "Theirs." } },
+      ),
+    )
+    if (theirs.sourceId !== null) {
+      sources.push(theirs.sourceId)
+    }
+    expect(theirs).toMatchObject({ outcome: "accepted", created: true })
+    expect(theirs.sourceId).not.toBe(mine.sourceId)
+  })
+
   it("concurrent first deliveries create one source", async () => {
     const id = identity()
     const delivery = { source: id, revision: { text: "Same content, twice at once." } }

@@ -10,6 +10,7 @@ import type { Transaction } from "@agenticmind/shared/database/client"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { knowledgeSources, sourceRevisions } from "@agenticmind/shared/database/schema"
+import { currentTenantId } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { and, desc, eq, gte, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
@@ -24,6 +25,8 @@ export const lockSourceByIdentity = (props: { tx: Transaction; identity: SourceI
         .from(knowledgeSources)
         .where(
           and(
+            // Identity is unique per tenant: name it, RLS alone is bypassed by an owner.
+            eq(knowledgeSources.tenantId, currentTenantId),
             eq(knowledgeSources.connectionId, props.identity.connectionId),
             eq(knowledgeSources.sourceType, props.identity.sourceType),
             eq(knowledgeSources.externalId, props.identity.externalId),
