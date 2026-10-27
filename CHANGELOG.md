@@ -8,6 +8,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **MCP contract 1.11.0: sources and revisions (shape only).** The contract now
+  declares `kl_upsert_source`, `kl_get_ingestion_status`, `kl_read_source` and
+  `kl_set_source_availability`, plus optional `mode` / `sourceTypes` / `period` on
+  `kl_search` and `kl_ask_global`, `source` / `async` on `kl_ingest` and
+  `sourceType` / `connectionId` / `reason` on `kl_forget` — semantics in
+  CONTRACT.md, full input and output shapes frozen as a JSON Schema snapshot.
+  Additive: no new field has a default, so 1.10 calls behave as before. Until each
+  part is implemented the server does not list the new tools and refuses a call
+  that sets a new field, naming it; a release cannot ship with any pending.
+
 - **The eval gate reports what a run cost.** Token usage is now also totalled
   per process and per model, fed from the same point as the per-call usage span;
   `bun run eval` (and the weekly eval-gate log and job summary) ends with one

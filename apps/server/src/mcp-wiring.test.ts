@@ -1,6 +1,8 @@
 // oxlint-disable node/no-process-env -- builds the child process environment
 import type { ChildProcess } from "node:child_process"
 
+import { PENDING_TOOLS } from "@agenticmind/shared/lib/knowledge/contract-pending"
+import { KNOWLEDGE_MCP_TOOLS } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import { spawn } from "node:child_process"
 import { once } from "node:events"
 import { fileURLToPath } from "node:url"
@@ -126,5 +128,29 @@ describe("MCP input limits, as the server wires them", () => {
     expect(res.status).toBe(200)
     const names = ((await resultOf(res)).tools ?? []).map((t) => t.name)
     expect(names, `tools: ${names.join(", ")}`).toContain("kl_search")
+  })
+})
+
+describe("the served tool set follows the contract", () => {
+  it("lists every contract tool except the pending ones (and the graph tool, off here)", async () => {
+    const res = await rpc(call(5, "tools/list", {}), true)
+    const served = ((await resultOf(res)).tools ?? []).map((t) => t.name).toSorted()
+    const expected = KNOWLEDGE_MCP_TOOLS.map((t) => t.name)
+      .filter((n) => n !== "kl_graph_neighbors" && !PENDING_TOOLS.includes(n))
+      .toSorted()
+    expect(expected.length).toBeGreaterThan(0)
+    expect(served).toEqual(expected)
+  })
+
+  it("refuses a pending field instead of ignoring it", async () => {
+    const res = await rpc(
+      call(6, "tools/call", { name: "kl_search", arguments: { q: "x", mode: "history" } }),
+      true,
+    )
+    const result = await resultOf(res)
+    expect(result.isError).toBe(true)
+    expect(result.content?.[0]?.text).toBe(
+      "kl_search: 'mode' is in contract 1.11.0 but not supported by this server yet",
+    )
   })
 })
