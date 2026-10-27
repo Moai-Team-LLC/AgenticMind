@@ -52,6 +52,7 @@ import {
   klForget,
   klForgetInput,
   klGetIngestionStatus,
+  klUpsertSource,
   hitlGet,
   hitlGetInput,
   hitlRequest,
@@ -61,7 +62,10 @@ import {
   MCP_CONTRACT_VERSION,
 } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import { resolveRetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
-import { klGetIngestionStatusInput } from "@agenticmind/shared/lib/knowledge/source-contract"
+import {
+  klGetIngestionStatusInput,
+  klUpsertSourceInput,
+} from "@agenticmind/shared/lib/knowledge/source-contract"
 import { activeProfile } from "@agenticmind/shared/lib/profile"
 import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 import { mcpSettings } from "@agenticmind/shared/settings/mcp-settings"
@@ -345,13 +349,28 @@ const buildHandler = (limits: McpLimits) =>
         server,
         "kl_ingest",
         "Ingest knowledge",
-        "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Optional `lifecycle` (active | deprecated | superseded | archived) and `trustTier` tag the source's trust so retrieval prefers current, higher-trust material. Later kl_ask_global / kl_search can cite it. The result carries `status` and `jobId`: work that does not fit in the request (long card extraction) continues in a background job — poll kl_get_ingestion_status. Pass `async: true` to return at once.",
+        "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Optional `lifecycle` (active | deprecated | superseded | archived) and `trustTier` tag the source's trust so retrieval prefers current, higher-trust material. Later kl_ask_global / kl_search can cite it. The result carries `status` and `jobId`: work that does not fit in the request (long card extraction) continues in a background job — poll kl_get_ingestion_status. Pass `async: true` to return at once, or `source` (sourceType + externalId) to make it idempotent through the kl_upsert_source path.",
         klIngestInput,
         async (args, extra) => {
           try {
             return jsonContent(await runTenantScoped(extra, async (d) => klIngest(d, args)))
           } catch (error) {
             return errorContent(error instanceof Error ? error.message : "kl_ingest failed")
+          }
+        },
+      )
+
+      registerKlTool(
+        server,
+        "kl_upsert_source",
+        "Upsert a source",
+        "Create or update a source by its external identity (sourceType + externalId within a connection) with a new revision — plain text or dialogue segments with speaker and timecodes. Idempotent: the same content answers 'unchanged', an older externalVersion 'stale'. An accepted revision is indexed in the background (poll kl_get_ingestion_status with the returned jobId) and becomes current once its passages are searchable. Only 'workspace' visibility is supported yet. Requires knowledge:write; the source's owner or knowledge:admin may update it.",
+        klUpsertSourceInput,
+        async (args, extra) => {
+          try {
+            return jsonContent(await runTenantScoped(extra, async (d) => klUpsertSource(d, args)))
+          } catch (error) {
+            return errorContent(error instanceof Error ? error.message : "kl_upsert_source failed")
           }
         },
       )

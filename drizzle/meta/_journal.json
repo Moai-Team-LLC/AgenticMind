@@ -134,6 +134,13 @@
       "when": 1793112133575,
       "tag": "0018_ingestion_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793114170792,
+      "tag": "0019_source_registry",
+      "breakpoints": true
     }
   ]
 }

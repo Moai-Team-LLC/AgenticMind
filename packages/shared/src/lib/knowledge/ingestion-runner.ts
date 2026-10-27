@@ -39,6 +39,10 @@ import {
   getMaterial,
   updateMaterialStatus,
 } from "@agenticmind/shared/database/query/knowledge/materials"
+import {
+  getRevision,
+  switchCurrentRevision,
+} from "@agenticmind/shared/database/query/knowledge/sources"
 import { CARDS_MAX_BODY_CHARS } from "@agenticmind/shared/lib/knowledge/card"
 import { extractGraph } from "@agenticmind/shared/lib/knowledge/graphrag-extractor"
 import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
@@ -153,14 +157,39 @@ const loadMaterial = async (deps: IngestionRunnerDeps, job: IngestionJobSelect) 
   return { id: m.id, title: m.title, ftsConfig: m.ftsConfig } satisfies LoadedMaterial
 }
 
-/** Runs one stage. Returns coverage when the stage measures it. */
+/** A source revision's stored text; a plain ingest carries its text in the payload. */
+const loadText = async (
+  deps: IngestionRunnerDeps,
+  job: IngestionJobSelect,
+  payload: IngestionPayload,
+): Promise<{ text: string; revisionNo: number | null }> => {
+  if (job.revisionId === null) {
+    return { text: payload.text, revisionNo: null }
+  }
+  const revisionId = job.revisionId
+  const found = await withTenant(deps.db, job.tenantId, async (tx) =>
+    getRevision({ tx, id: revisionId }),
+  )
+  if (found.isErr()) {
+    throw new StageError("internal", true, found.error.message)
+  }
+  if (found.value === null) {
+    throw new StageError("material_missing", false, `revision ${revisionId} not found`)
+  }
+  return { text: found.value.contentText, revisionNo: found.value.revisionNo }
+}
+
+type StageOutcome = { coverage?: IngestionCoverage; superseded?: boolean }
+
+/** Runs one stage. */
 const runStage = async (
   deps: IngestionRunnerDeps,
   job: IngestionJobSelect,
   stage: IngestionStage,
   payload: IngestionPayload,
   material: LoadedMaterial,
-): Promise<IngestionCoverage | undefined> => {
+  revisionNo: number | null,
+): Promise<StageOutcome> => {
   if (stage === "index") {
     let prepared: Awaited<ReturnType<typeof prepareChunkItems>>
     try {
@@ -180,10 +209,25 @@ const runStage = async (
       }
       throw new StageError("embedding_failed", true, message)
     }
-    await withTenant(deps.db, job.tenantId, async (tx) =>
-      persistChunkItems(tx, material, prepared.items),
-    )
-    return undefined
+    // Passages and the current-revision pointer move together: a source never
+    // points at a revision whose passages are not searchable yet.
+    const switched = await withTenant(deps.db, job.tenantId, async (tx) => {
+      await persistChunkItems(tx, material, prepared.items)
+      if (job.sourceId === null || job.revisionId === null || revisionNo === null) {
+        return true
+      }
+      const res = await switchCurrentRevision({
+        tx,
+        sourceId: job.sourceId,
+        revisionId: job.revisionId,
+        revisionNo,
+      })
+      if (res.isErr()) {
+        throw new StageError("internal", true, res.error.message)
+      }
+      return res.value
+    })
+    return { superseded: !switched }
   }
 
   if (stage === "cards") {
@@ -206,10 +250,12 @@ const runStage = async (
     // The extractor reads the first CARDS_MAX_BODY_CHARS characters; coverage
     // says so instead of implying the whole text was read.
     return {
-      processedChars: Math.min(totalChars, CARDS_MAX_BODY_CHARS),
-      totalChars,
-      windows: 1,
-      failedWindows: 0,
+      coverage: {
+        processedChars: Math.min(totalChars, CARDS_MAX_BODY_CHARS),
+        totalChars,
+        windows: 1,
+        failedWindows: 0,
+      },
     }
   }
 
@@ -230,9 +276,9 @@ const runStage = async (
         throw new StageError("graph_failed", true, up.error.message)
       }
     })
-    return undefined
+    return {}
   }
-  return undefined
+  return {}
 }
 
 const settleFailure = async (
@@ -243,7 +289,11 @@ const settleFailure = async (
   const stageError =
     error instanceof StageError
       ? error
-      : new StageError("internal", true, error instanceof Error ? error.message : String(error))
+      : new StageError(
+          "internal",
+          true,
+          String((error as { message?: unknown } | null)?.message ?? error),
+        )
   console.warn(`[INGEST] job ${job.id} ${stageError.code}: ${stageError.message}`)
   const message = INGESTION_ERROR_MESSAGES[stageError.code] ?? INGESTION_ERROR_MESSAGES.internal
   if (stageError.retryable && job.attempts < job.maxAttempts) {
@@ -299,22 +349,25 @@ export const runClaimedJob = async (
     void keepLease()
   }, deps.heartbeatMs ?? DEFAULT_HEARTBEAT_MS)
   try {
-    const payload = readPayload(job)
+    const stored = readPayload(job)
     const material = await loadMaterial(deps, job)
+    const { text, revisionNo } = await loadText(deps, job, stored)
+    const payload = { ...stored, text }
     let stage = job.stage as IngestionStage
     while (stage !== "done") {
-      const coverage = await runStage(deps, job, stage, payload, material)
+      const outcome = await runStage(deps, job, stage, payload, material, revisionNo)
       if (leaseLost) {
         return
       }
-      const next = nextStage(stage, payload)
+      // A revision older than the source's current one is history: indexed, not current, no cards.
+      const next = outcome.superseded === true ? "done" : nextStage(stage, payload)
       const advanced = await advanceIngestionJob({
         tx: deps.db,
         id: job.id,
         owner: deps.workerId,
         stage: next,
-        status: statusAfter(next),
-        coverage,
+        status: outcome.superseded === true ? "superseded" : statusAfter(next),
+        coverage: outcome.coverage,
       })
       if (advanced.isErr() || advanced.value === null) {
         return

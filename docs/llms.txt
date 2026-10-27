@@ -18,7 +18,7 @@
 ## Agent surface (MCP tools)
 
 - kl_search, kl_ask_global, kl_get_material, kl_graph_neighbors (knowledge:read)
-- kl_ingest, kl_get_ingestion_status (knowledge:write), kl_signal (knowledge:signal), kl_forget (knowledge:admin)
+- kl_ingest, kl_upsert_source, kl_get_ingestion_status (knowledge:write), kl_signal (knowledge:signal), kl_forget (knowledge:admin)
 - mem_recall (memory:read), mem_write (memory:write), mem_forget (memory:admin)
 
 ## Source

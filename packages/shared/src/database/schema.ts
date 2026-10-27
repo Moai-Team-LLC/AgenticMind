@@ -19,6 +19,7 @@ import * as KnowledgeMaterials from "@agenticmind/shared/database/schema/knowled
 import * as KnowledgeMcpTokens from "@agenticmind/shared/database/schema/knowledge/mcp-tokens"
 import * as KnowledgeRateLimits from "@agenticmind/shared/database/schema/knowledge/rate-limits"
 import * as KnowledgeSkills from "@agenticmind/shared/database/schema/knowledge/skills"
+import * as KnowledgeSources from "@agenticmind/shared/database/schema/knowledge/sources"
 import * as KnowledgeToolAuditEvents from "@agenticmind/shared/database/schema/knowledge/tool-audit-events"
 import * as Users from "@agenticmind/shared/database/schema/users"
 
@@ -39,6 +40,7 @@ export * from "@agenticmind/shared/database/schema/knowledge/graph"
 export * from "@agenticmind/shared/database/schema/knowledge/materials"
 export * from "@agenticmind/shared/database/schema/knowledge/mcp-tokens"
 export * from "@agenticmind/shared/database/schema/knowledge/skills"
+export * from "@agenticmind/shared/database/schema/knowledge/sources"
 export * from "@agenticmind/shared/database/schema/knowledge/tool-audit-events"
 export * from "@agenticmind/shared/database/schema/assurance/runs"
 export * from "@agenticmind/shared/database/schema/hitl/requests"
@@ -61,6 +63,7 @@ export const schema = {
   ...KnowledgeSkills,
   ...KnowledgeToolAuditEvents,
   ...KnowledgeIngestionJobs,
+  ...KnowledgeSources,
   ...AssuranceRuns,
   ...HitlRequests,
 }
