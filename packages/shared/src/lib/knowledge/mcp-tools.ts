@@ -13,6 +13,10 @@ import type { AnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-poli
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 import type { RetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
+import type {
+  IngestionStatus,
+  klGetIngestionStatusOutput,
+} from "@agenticmind/shared/lib/knowledge/source-contract"
 import type { CallerContext } from "@agenticmind/shared/lib/knowledge/synth"
 import type { CorpusChunk } from "@agenticmind/shared/lib/skill/compile-live"
 
@@ -29,6 +33,7 @@ import {
 } from "@agenticmind/shared/database/query/knowledge/beliefs"
 import { searchChunks } from "@agenticmind/shared/database/query/knowledge/chunks"
 import { recordGuardEvent } from "@agenticmind/shared/database/query/knowledge/guard-events"
+import { getIngestionJob } from "@agenticmind/shared/database/query/knowledge/ingestion-jobs"
 import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materials"
 import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
 import {
@@ -47,7 +52,7 @@ import {
   isValidSignal,
 } from "@agenticmind/shared/lib/knowledge/feedback"
 import { guardInput, redactPii } from "@agenticmind/shared/lib/knowledge/guard"
-import { ingestText } from "@agenticmind/shared/lib/knowledge/ingest"
+import { ingestText, SYNC_INGEST_BUDGET_MS } from "@agenticmind/shared/lib/knowledge/ingest"
 import { removeMaterial } from "@agenticmind/shared/lib/knowledge/ingestion"
 import { resolveJudgeModel } from "@agenticmind/shared/lib/knowledge/judge-model"
 import { embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
@@ -600,11 +605,54 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
     language: args.language,
     lifecycle: args.lifecycle,
     trustTier: args.trustTier,
+    createdBy: deps.actorUuid ?? null,
+    // Async returns at once; otherwise the request stays inside its time cap and a
+    // background job finishes whatever does not fit (never an empty response).
+    ...(args.async === true ? { async: true } : { budgetMs: SYNC_INGEST_BUDGET_MS }),
   })
   if (res.isErr()) {
     throw new Error(`kl_ingest: ${res.error.message}`)
   }
   return res.value
+}
+
+/**
+ * Kl_get_ingestion_status -- read a background indexing job by id. A job is
+ * visible to the principal that created it, or with knowledge:admin; anything
+ * else — another writer's job, an unknown id — reads as not found.
+ */
+export const klGetIngestionStatus = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klGetIngestionStatusInput>,
+): Promise<z.infer<typeof klGetIngestionStatusOutput>> => {
+  if (!hasScope(deps.scopes, "knowledge:write")) {
+    throw new Error("kl_get_ingestion_status: missing required scope 'knowledge:write'")
+  }
+  const res = await getIngestionJob({ tx: deps.tx, id: args.jobId })
+  if (res.isErr()) {
+    throw new Error(`kl_get_ingestion_status: ${res.error.message}`)
+  }
+  const job = res.value
+  const own = job !== null && job.createdBy !== null && job.createdBy === (deps.actorUuid ?? null)
+  if (job === null || !(own || hasScope(deps.scopes, "knowledge:admin"))) {
+    return { found: false }
+  }
+  type Found = Extract<z.infer<typeof klGetIngestionStatusOutput>, { found: true }>
+  const coverage = job.coverage as Found["coverage"]
+  return {
+    found: true,
+    jobId: job.id,
+    status: job.status as IngestionStatus,
+    sourceId: null,
+    revisionId: null,
+    materialId: job.materialId,
+    // A material ingested without a source is always current.
+    isCurrent: true,
+    attempts: job.attempts,
+    coverage: coverage ?? null,
+    error: job.errorCode !== null ? { code: job.errorCode, message: job.errorMessage ?? "" } : null,
+    updatedAt: job.updatedAt.toISOString(),
+  }
 }
 
 export const klCompileSkillInput = z.object({

@@ -22,7 +22,7 @@ import {
 import { providerFamily } from "@agenticmind/shared/lib/knowledge/judge-model"
 import { addLlmUsage } from "@agenticmind/shared/lib/observability/llm-usage"
 import { Attr, recordChildSpan, SpanKind } from "@agenticmind/shared/lib/observability/trace"
-import { buildRetryOptions } from "@agenticmind/shared/lib/retry"
+import { buildRetryOptions, withAbort } from "@agenticmind/shared/lib/retry"
 import { parseZodSchema } from "@agenticmind/shared/lib/zod/parse"
 import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
 import { generateText, Output } from "ai"
@@ -181,6 +181,8 @@ export const completeKnowledgeJson = <T>(props: {
   /** Sampling temperature; defaults to 0 (deterministic) — see completeKnowledge. */
   temperature?: number
   purpose?: string
+  /** Cancels the call and any pending retry. */
+  abortSignal?: AbortSignal
 }) => {
   const purpose = props.purpose ?? "knowledge complete json"
   const model = props.model ?? KNOWLEDGE_CHAT_MODEL
@@ -188,30 +190,35 @@ export const completeKnowledgeJson = <T>(props: {
   const maxOutputTokens = aiSettings.CHAT_MAX_OUTPUT_TOKENS ?? DEFAULT_MAX_OUTPUT_TOKENS
   const nativeStructured = providerFamily(model) === "openai"
   return ResultAsync.fromPromise(
-    pRetry(async (): Promise<unknown> => {
-      const start = Date.now()
-      if (nativeStructured) {
-        const { output, usage } = await generateText({
+    pRetry(
+      async (): Promise<unknown> => {
+        const start = Date.now()
+        if (nativeStructured) {
+          const { output, usage } = await generateText({
+            model: chatModel(model),
+            system: props.system,
+            prompt: props.user,
+            temperature,
+            output: Output.object({ schema: props.schema }),
+            maxOutputTokens,
+            abortSignal: props.abortSignal,
+          })
+          recordLlmUsage("llm.complete.json", model, usage, start)
+          return output
+        }
+        const { text, usage } = await generateText({
           model: chatModel(model),
-          system: props.system,
+          system: `${props.system}\n\nReturn a single valid JSON object only — no prose, no markdown fences.`,
           prompt: props.user,
           temperature,
-          output: Output.object({ schema: props.schema }),
           maxOutputTokens,
+          abortSignal: props.abortSignal,
         })
         recordLlmUsage("llm.complete.json", model, usage, start)
-        return output
-      }
-      const { text, usage } = await generateText({
-        model: chatModel(model),
-        system: `${props.system}\n\nReturn a single valid JSON object only — no prose, no markdown fences.`,
-        prompt: props.user,
-        temperature,
-        maxOutputTokens,
-      })
-      recordLlmUsage("llm.complete.json", model, usage, start)
-      return parseJsonObjectLoose(text)
-    }, buildRetryOptions(purpose)),
+        return parseJsonObjectLoose(text)
+      },
+      withAbort(buildRetryOptions(purpose), props.abortSignal),
+    ),
     (error) => aiError(`Failed to complete json for ${purpose}`, error),
   ).andThen((output) => parseZodSchema(props.schema, output))
 }

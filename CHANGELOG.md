@@ -8,6 +8,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Background indexing; `kl_ingest` never answers empty.** A synchronous
+  `kl_ingest` now stays inside the MCP request cap: a step that would run past
+  40 s — typically card extraction of a long text, which could take up to 90 s
+  while the handler ends the request at 60 s — is handed to a durable job in
+  Postgres (`ingestion_jobs`, migration 0018) and the result says `text_ready`
+  with a `jobId`. `async: true` returns at once; a repeated identical async
+  delivery answers the same job. The worker runs jobs with a lease and heartbeat
+  (a crashed worker's job is resumed elsewhere), model calls outside
+  transactions, each stage under the job's tenant, retries with backoff up to 5
+  attempts and a safe error description. `kl_get_ingestion_status` reads a job
+  (its creator, or `knowledge:admin`). Without the worker, async ingests stay
+  queued. A short ingest is unchanged: `status: "ready"`, `jobId: null`.
+
 - **MCP contract 1.11.0: sources and revisions (shape only).** The contract now
   declares `kl_upsert_source`, `kl_get_ingestion_status`, `kl_read_source` and
   `kl_set_source_availability`, plus optional `mode` / `sourceTypes` / `period` on

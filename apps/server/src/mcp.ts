@@ -51,6 +51,7 @@ import {
   klCompileSkillInput,
   klForget,
   klForgetInput,
+  klGetIngestionStatus,
   hitlGet,
   hitlGetInput,
   hitlRequest,
@@ -60,6 +61,7 @@ import {
   MCP_CONTRACT_VERSION,
 } from "@agenticmind/shared/lib/knowledge/mcp-tools"
 import { resolveRetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
+import { klGetIngestionStatusInput } from "@agenticmind/shared/lib/knowledge/source-contract"
 import { activeProfile } from "@agenticmind/shared/lib/profile"
 import { knowledgeFeatureSettings } from "@agenticmind/shared/settings/knowledge-feature-settings"
 import { mcpSettings } from "@agenticmind/shared/settings/mcp-settings"
@@ -68,7 +70,12 @@ import { timingSafeEqual } from "node:crypto"
 
 import type { McpLimits } from "@/mcp-limits"
 
-import { activeMcpLimits, mcpServerLimitOptions, withRequestBodyLimit } from "@/mcp-limits"
+import {
+  activeMcpLimits,
+  MCP_MAX_DURATION_SECONDS,
+  mcpServerLimitOptions,
+  withRequestBodyLimit,
+} from "@/mcp-limits"
 import { getDb } from "@/server/lib/database"
 import {
   getKnowledgeBlobStore,
@@ -338,13 +345,32 @@ const buildHandler = (limits: McpLimits) =>
         server,
         "kl_ingest",
         "Ingest knowledge",
-        "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Optional `lifecycle` (active | deprecated | superseded | archived) and `trustTier` tag the source's trust so retrieval prefers current, higher-trust material. Later kl_ask_global / kl_search can cite it.",
+        "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Optional `lifecycle` (active | deprecated | superseded | archived) and `trustTier` tag the source's trust so retrieval prefers current, higher-trust material. Later kl_ask_global / kl_search can cite it. The result carries `status` and `jobId`: work that does not fit in the request (long card extraction) continues in a background job — poll kl_get_ingestion_status. Pass `async: true` to return at once.",
         klIngestInput,
         async (args, extra) => {
           try {
             return jsonContent(await runTenantScoped(extra, async (d) => klIngest(d, args)))
           } catch (error) {
             return errorContent(error instanceof Error ? error.message : "kl_ingest failed")
+          }
+        },
+      )
+
+      registerKlTool(
+        server,
+        "kl_get_ingestion_status",
+        "Ingestion status",
+        "Read a background indexing job by the jobId kl_ingest returned: status (queued, indexing, text_ready, ready, retry_wait, failed, superseded, retracted), attempts, card-extraction coverage and a safe error description. text_ready means the passages are searchable while cards are still being built. Another writer's job reads as not found. Requires knowledge:write.",
+        klGetIngestionStatusInput,
+        async (args, extra) => {
+          try {
+            return jsonContent(
+              await runTenantScoped(extra, async (d) => klGetIngestionStatus(d, args)),
+            )
+          } catch (error) {
+            return errorContent(
+              error instanceof Error ? error.message : "kl_get_ingestion_status failed",
+            )
           }
         },
       )
@@ -412,7 +438,7 @@ const buildHandler = (limits: McpLimits) =>
       // Empty basePath serves it at /mcp — the URL the README documents. (index.ts
       // Already routes /mcp here.)
       basePath: "",
-      maxDuration: 60,
+      maxDuration: MCP_MAX_DURATION_SECONDS,
     },
   )
 

@@ -244,6 +244,8 @@ export type CardsExtractError = { readonly type: string; readonly message: strin
 export const extractCards = (props: {
   materialTitle: string
   body: string
+  /** Cancels the model call (and its retries), e.g. at a request deadline. */
+  abortSignal?: AbortSignal
 }): ResultAsync<CardInput[], CardsExtractError> => {
   const body = props.body.trim()
   if (body === "") {
@@ -261,6 +263,7 @@ export const extractCards = (props: {
         user: buildUserPrompt(props.materialTitle, body),
         schema: rawExtractionSchema,
         purpose: "knowledge cards extraction",
+        abortSignal: props.abortSignal,
       })
       .map((raw) => validateExtraction(raw))
       .mapErr((e): CardsExtractError => {

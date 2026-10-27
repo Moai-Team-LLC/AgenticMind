@@ -89,4 +89,4 @@ const withTenant = async <T>(
   })
 }
 
-export { type Transaction, createClient, withTenant }
+export { type Database, type Transaction, createClient, withTenant }
