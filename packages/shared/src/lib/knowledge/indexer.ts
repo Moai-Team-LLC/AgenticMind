@@ -14,6 +14,7 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { CardInput } from "@agenticmind/shared/database/query/knowledge/cards"
 import type { TabularSchema } from "@agenticmind/shared/lib/knowledge/cards-tabular"
+import type { DialogueSegment } from "@agenticmind/shared/lib/knowledge/chunker"
 import type { Table } from "@agenticmind/shared/lib/knowledge/extract-tabular"
 
 import { upsertCards } from "@agenticmind/shared/database/query/knowledge/cards"
@@ -28,7 +29,7 @@ import {
   extractCards,
 } from "@agenticmind/shared/lib/knowledge/cards-extractor"
 import { extractFromTables } from "@agenticmind/shared/lib/knowledge/cards-tabular"
-import { approxTokens, splitText } from "@agenticmind/shared/lib/knowledge/chunker"
+import { approxTokens, splitSegments, splitText } from "@agenticmind/shared/lib/knowledge/chunker"
 import {
   embedKnowledgeBatch,
   KNOWLEDGE_EMBEDDING_MODEL,
@@ -197,6 +198,11 @@ export type ChunkItem = {
   tokenCount: number
   embedding: number[] | null
   embeddingModel: string
+  segmentFrom?: number | null
+  segmentTo?: number | null
+  startMs?: number | null
+  endMs?: number | null
+  speaker?: string | null
 }
 
 /** Thrown when there is nothing to index; permanent, never worth a retry. */
@@ -241,6 +247,50 @@ export const prepareChunkItems = async (
         tokenCount: approxTokens(piece),
         embedding: vectors[k] ?? null,
         embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
+      }
+    }),
+  }
+}
+
+/**
+ * A dialogue's passages along utterance boundaries (splitSegments), embedded.
+ * Each passage records the utterances and time span it covers, so a citation
+ * can name the utterance and the moment.
+ */
+export const prepareDialogueChunkItems = async (
+  segments: readonly DialogueSegment[],
+  embed: typeof embedKnowledgeBatch = embedKnowledgeBatch,
+): Promise<{ body: string; items: ChunkItem[] }> => {
+  const pieces = splitSegments(
+    segments.map((s) => {
+      return { ...s, text: sanitizeForText(s.text).trim() }
+    }),
+  ).filter((p) => p.body.trim() !== "")
+  if (pieces.length === 0) {
+    throw indexError(`${EMPTY_BODY_PREFIX} dialogue has no text`)
+  }
+  const embedded = await embed(pieces.map((p) => p.body))
+  if (embedded.isErr()) {
+    throw indexError(`embed: ${embedded.error.message}`)
+  }
+  const vectors = embedded.value
+  if (vectors.length !== pieces.length) {
+    throw indexError(`embedder returned ${vectors.length} vectors for ${pieces.length} pieces`)
+  }
+  return {
+    body: pieces.map((p) => p.body).join("\n"),
+    items: pieces.map((p, k) => {
+      return {
+        ordinal: k,
+        body: p.body,
+        tokenCount: approxTokens(p.body),
+        embedding: vectors[k] ?? null,
+        embeddingModel: KNOWLEDGE_EMBEDDING_MODEL,
+        segmentFrom: p.segmentFrom,
+        segmentTo: p.segmentTo,
+        startMs: p.startMs,
+        endMs: p.endMs,
+        speaker: p.speaker,
       }
     }),
   }

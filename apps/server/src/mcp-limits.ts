@@ -30,9 +30,10 @@ import { err, ok } from "neverthrow"
  */
 export const STRICT_MAX_REQUEST_BODY_BYTES = 2 * 1024 * 1024
 
-/** Strict default element cap — far above any legitimate call (the largest
- * bounded collections are 20 facts and 8 queries). */
-export const STRICT_MAX_TOOL_INPUT_ELEMENTS = 10_000
+/** Strict default element cap. The largest legitimate call is a kl_upsert_source
+ * dialogue: 5 000 segments × (1 element + 5 keys) ≈ 30 000, plus the source,
+ * revision and provenance keys; mcp-limits.test.ts proves a maximal one fits. */
+export const STRICT_MAX_TOOL_INPUT_ELEMENTS = 40_000
 
 /**
  * How long mcp-handler lets one request run before it ends the response. A

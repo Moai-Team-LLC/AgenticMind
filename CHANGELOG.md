@@ -8,6 +8,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Dialogue passages along utterances; citations name the utterance.** A
+  dialogue revision is cut into passages at utterance boundaries (consecutive
+  "speaker: text" lines up to the passage size, the last utterance repeated in
+  the next passage; an overlong utterance is split on its own). Each passage
+  stores the utterances it covers, their time span and the speaker when it has
+  only one (migration 0022: nullable columns on `chunks`), and search hits and
+  citations now fill `segmentRange`, `speaker`, `startMs`, `endMs`. Text
+  passages are unchanged.
+
+### Changed
+
+- **Strict MCP element cap 10 000 → 40 000.** A `kl_upsert_source` dialogue
+  with the maximum 5 000 utterances is ~30 000 elements; a test sends the
+  largest legitimate call through the real handler at the strict default.
+  `MCP_MAX_TOOL_INPUT_ELEMENTS` still overrides it.
+
 - **`kl_read_source`: read back any cited revision.** The current revision of
   a source, or the exact revision an old citation names while it is stored,
   whole or in pages — by character offset for text, by segment range for a

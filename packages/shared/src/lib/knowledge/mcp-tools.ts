@@ -81,7 +81,7 @@ import {
   setSourceAvailability,
 } from "@agenticmind/shared/lib/knowledge/source-lifecycle"
 import { ReadSourceError, readSource } from "@agenticmind/shared/lib/knowledge/source-read"
-import { sourceRefsFor } from "@agenticmind/shared/lib/knowledge/source-refs"
+import { chunkSegmentsFor, sourceRefsFor } from "@agenticmind/shared/lib/knowledge/source-refs"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { SourceInputError, upsertSource } from "@agenticmind/shared/lib/knowledge/source-upsert"
 import { compileSkillLive } from "@agenticmind/shared/lib/skill/compile-live"
@@ -250,6 +250,10 @@ export const klSearch = async (
     deps.tx,
     selected.map((h) => h.materialId),
   )
+  const segOf = await chunkSegmentsFor(
+    deps.tx,
+    selected.map((h) => h.chunkId),
+  )
   const out = []
   for (const h of selected) {
     out.push({
@@ -258,6 +262,7 @@ export const klSearch = async (
       snippet: snippet(h.body),
       score: h.score,
       ...refOf(h.materialId),
+      ...segOf(h.chunkId),
     })
   }
   return { query: args.q, hits: out }
@@ -320,11 +325,15 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     deps.tx,
     answer.value.citations.map((c) => c.materialId),
   )
+  const segOf = await chunkSegmentsFor(
+    deps.tx,
+    answer.value.citations.map((c) => c.chunkId),
+  )
   const corpus = await getCorpusRevision({ tx: deps.tx })
   return {
     ...answer.value,
     citations: answer.value.citations.map((c) => {
-      return { ...c, ...refOf(c.materialId) }
+      return { ...c, ...refOf(c.materialId), ...segOf(c.chunkId) }
     }),
     corpusRevision: corpus.isOk() ? corpus.value : 0,
   }

@@ -22,7 +22,7 @@ checks it adds pass.
 | Env var | Default | What it does |
 | --- | --- | --- |
 | `MCP_MAX_REQUEST_BODY_BYTES` | `standard`: no limit · `strict`: 2 MiB | Caps the `/mcp` request body. It is read with a byte counter and answered `413` once the cap is crossed — before auth, parsing, schema validation or any model call. 2 MiB leaves room for a 200 000-character `kl_ingest.text` even from clients that escape non-ASCII as `\uXXXX`. |
-| `MCP_MAX_TOOL_INPUT_ELEMENTS` | `standard`: no limit · `strict`: 10 000 | Caps array elements + object keys in one tool call's arguments (MCP SDK `maxToolInputElements`, GHSA-46jr-4wx8-v453). Over the cap the call gets an `isError` result and the schema never runs. |
+| `MCP_MAX_TOOL_INPUT_ELEMENTS` | `standard`: no limit · `strict`: 40 000 | Caps array elements + object keys in one tool call's arguments (MCP SDK `maxToolInputElements`, GHSA-46jr-4wx8-v453). Over the cap the call gets an `isError` result and the schema never runs. |
 
 Both must be positive integers; any other value refuses to start, in both profiles.
 Behind a reverse proxy, set its body limit too.

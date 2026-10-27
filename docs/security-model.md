@@ -104,7 +104,7 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
 | --- | --- | --- |
 | `AGENTICMIND_PROFILE` value | unset ⇒ `standard` | unknown value ⇒ refuses to start (both profiles) |
 | MCP request body | no limit unless `MCP_MAX_REQUEST_BODY_BYTES` | 2 MiB, `413` before auth and parsing |
-| MCP tool input elements | no limit unless `MCP_MAX_TOOL_INPUT_ELEMENTS` | 10 000 array elements + object keys per call, checked before schema validation |
+| MCP tool input elements | no limit unless `MCP_MAX_TOOL_INPUT_ELEMENTS` | 40 000 array elements + object keys per call (a 5 000-utterance `kl_upsert_source` fits), checked before schema validation |
 | Database TLS (`DATABASE_SSL=true`) | encrypted, certificate **not** verified — logs a warning; `DATABASE_SSL_CA` turns verification on | certificate verified (system CAs or `DATABASE_SSL_CA`); unverified TLS — including `sslmode=no-verify` or `ssl=no-verify` in `DATABASE_URL` — refuses to start |
 | `KNOWLEDGE_ANSWER_POLICY` malformed | ignored (no policy) | refuses to start |
 | Blob store (`S3_BUCKET`) | unset ⇒ no-op store, ingested originals are dropped | unset ⇒ refuses to start |

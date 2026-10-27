@@ -14,7 +14,7 @@ import { retrievableMaterial } from "@agenticmind/shared/database/query/knowledg
 import { chunks } from "@agenticmind/shared/database/schema"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
-import { and, asc, eq, isNotNull, sql } from "drizzle-orm"
+import { and, asc, eq, inArray, isNotNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 /** A chunk to persist. embedding is null until the embedder fills it in. */
@@ -24,6 +24,11 @@ export type ChunkInput = {
   tokenCount?: number | null
   embedding?: number[] | null
   embeddingModel?: string | null
+  segmentFrom?: number | null
+  segmentTo?: number | null
+  startMs?: number | null
+  endMs?: number | null
+  speaker?: string | null
 }
 
 /** A search result. Score is cosine similarity (vector) or ts_rank_cd (BM25). */
@@ -54,6 +59,11 @@ export const upsertChunks = (props: {
               tokenCount: c.tokenCount ?? null,
               embedding: c.embedding ?? null,
               embeddingModel: c.embeddingModel ?? null,
+              segmentFrom: c.segmentFrom ?? null,
+              segmentTo: c.segmentTo ?? null,
+              startMs: c.startMs ?? null,
+              endMs: c.endMs ?? null,
+              speaker: c.speaker ?? null,
               ftsConfig: config,
               bodyTsv: sql`to_tsvector(${config}::regconfig, coalesce(${c.body}, ''))`,
             }
@@ -218,3 +228,44 @@ export const searchChunksBm25 = (props: {
     mapDatabaseError,
   )
 }
+
+export type ChunkSegments = {
+  segmentRange: { from: number; to: number }
+  speaker: string | null
+  startMs: number | null
+  endMs: number | null
+}
+
+/** The utterance range of each given passage that covers part of a dialogue. */
+export const segmentsForChunks = (props: { tx: Transaction; chunkIds: readonly string[] }) =>
+  ResultAsync.fromPromise(
+    (async (): Promise<Map<string, ChunkSegments>> => {
+      const out = new Map<string, ChunkSegments>()
+      if (props.chunkIds.length === 0) {
+        return out
+      }
+      const rows = await props.tx
+        .select({
+          id: chunks.id,
+          segmentFrom: chunks.segmentFrom,
+          segmentTo: chunks.segmentTo,
+          startMs: chunks.startMs,
+          endMs: chunks.endMs,
+          speaker: chunks.speaker,
+        })
+        .from(chunks)
+        .where(and(inArray(chunks.id, [...props.chunkIds]), isNotNull(chunks.segmentFrom)))
+      for (const r of rows) {
+        if (r.segmentFrom !== null && r.segmentTo !== null) {
+          out.set(r.id, {
+            segmentRange: { from: r.segmentFrom, to: r.segmentTo },
+            speaker: r.speaker,
+            startMs: r.startMs,
+            endMs: r.endMs,
+          })
+        }
+      }
+      return out
+    })(),
+    mapDatabaseError,
+  )
