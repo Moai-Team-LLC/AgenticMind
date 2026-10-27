@@ -143,7 +143,8 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `kl_ingest`          | `knowledge:write`  | add text (chunked, embedded, distilled into cards, graph-extracted) |
 | `kl_upsert_source`   | `knowledge:write`  | create/update a source by external ID with a new revision (idempotent: `unchanged`, `stale`) |
 | `kl_get_ingestion_status` | `knowledge:write` | status of a background indexing job (`text_ready`, coverage, safe error) |
-| `kl_forget`          | `knowledge:admin`  | delete a material + all derived chunks/cards/graph (inverse of ingest) |
+| `kl_forget`          | `knowledge:admin`  | delete a material + all derived chunks/cards/graph (inverse of ingest); or retract a source by id / external ID (out of answers at once, purged in the background, not resurrected by a re-delivery) |
+| `kl_set_source_availability` | `knowledge:write` | keep a source whose content left the provider but leave it out of answers (owner or admin) |
 | `kl_signal`          | `knowledge:signal` | emit a programmatic compounding signal on a prior answer            |
 | `mem_recall`         | `memory:read`      | recall beliefs (private ∪ shared); semantic or `asOf` time-travel   |
 | `mem_write`          | `memory:write`     | record a belief into private memory (bitemporal, revision-aware)    |

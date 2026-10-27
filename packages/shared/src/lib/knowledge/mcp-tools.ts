@@ -43,7 +43,11 @@ import {
   insertSkillVersion,
   upsertSkill,
 } from "@agenticmind/shared/database/query/knowledge/skills"
-import { getCorpusRevision, getSource } from "@agenticmind/shared/database/query/knowledge/sources"
+import {
+  getCorpusRevision,
+  getSource,
+  revisionOfMaterial,
+} from "@agenticmind/shared/database/query/knowledge/sources"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { decayedConfidence, summarizeContested } from "@agenticmind/shared/lib/knowledge/belief"
@@ -71,6 +75,10 @@ import {
   klUpsertSourceInput,
   retrievalScopeFields,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
+import {
+  retractSource,
+  setSourceAvailability,
+} from "@agenticmind/shared/lib/knowledge/source-lifecycle"
 import { sourceRefsFor } from "@agenticmind/shared/lib/knowledge/source-refs"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { SourceInputError, upsertSource } from "@agenticmind/shared/lib/knowledge/source-upsert"
@@ -870,14 +878,74 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
   if (!hasScope(deps.scopes, "knowledge:admin")) {
     throw new Error("kl_forget: missing required scope 'knowledge:admin'")
   }
+  const lifecycle = { tx: deps.tx, actorUuid: deps.actorUuid ?? null, scopes: deps.scopes }
+  const reason = args.reason ?? null
+  // A source by its external identity: `id` is the external ID.
+  if (args.sourceType !== undefined) {
+    const retracted = await retractSource(
+      lifecycle,
+      {
+        identity: {
+          connectionId: args.connectionId ?? "default",
+          sourceType: args.sourceType,
+          externalId: args.id,
+        },
+      },
+      reason,
+    )
+    return retracted.found
+      ? { id: args.id, retracted: true, ...omitFound(retracted) }
+      : { id: args.id, retracted: false }
+  }
+  // A source by its id.
+  const bySourceId = await retractSource(lifecycle, { sourceId: args.id }, reason)
+  if (bySourceId.found) {
+    return { id: args.id, retracted: true, ...omitFound(bySourceId) }
+  }
   if (deps.blobStore === undefined) {
     throw new Error("kl_forget: blob store not configured")
+  }
+  // A material: as before, unless it belongs to a source revision.
+  const owned = await revisionOfMaterial({ tx: deps.tx, materialId: args.id })
+  if (owned.isOk() && owned.value !== null) {
+    throw new Error(
+      `kl_forget: material ${args.id} belongs to source ${owned.value.sourceId}; retract the source instead`,
+    )
   }
   const res = await removeMaterial({ tx: deps.tx, blobStore: deps.blobStore, id: args.id })
   if (res.isErr()) {
     throw new Error(`kl_forget: ${res.error.message}`)
   }
   return { id: args.id, ...res.value }
+}
+
+const omitFound = <T extends { found: true }>(r: T): Omit<T, "found"> => {
+  const { found: _found, ...rest } = r
+  return rest
+}
+
+/**
+ * Kl_set_source_availability -- keep a source whose content left the provider
+ * but leave it out of answers, or bring it back. The owner with knowledge:write,
+ * or knowledge:admin; anything else reads as not_found.
+ */
+export const klSetSourceAvailability = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klSetSourceAvailabilityInput>,
+): Promise<{ outcome: "updated" | "unchanged" | "not_found" }> => {
+  if (!hasScope(deps.scopes, "knowledge:write")) {
+    throw new Error("kl_set_source_availability: missing required scope 'knowledge:write'")
+  }
+  return setSourceAvailability(
+    { tx: deps.tx, actorUuid: deps.actorUuid ?? null, scopes: deps.scopes },
+    {
+      connectionId: args.connectionId ?? "default",
+      sourceType: args.sourceType,
+      externalId: args.externalId,
+    },
+    args.available,
+    args.reason,
+  )
 }
 
 export const hitlRequestInput = z.object({

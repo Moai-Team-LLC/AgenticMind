@@ -42,6 +42,10 @@ import {
 import {
   bumpCorpusRevision,
   getRevision,
+  getSource,
+  purgeRetractedSource,
+  recordSourceEvent,
+  scrubRetractedSource,
   switchCurrentRevision,
 } from "@agenticmind/shared/database/query/knowledge/sources"
 import { CARDS_MAX_BODY_CHARS } from "@agenticmind/shared/lib/knowledge/card"
@@ -180,7 +184,7 @@ const loadText = async (
   return { text: found.value.contentText, revisionNo: found.value.revisionNo }
 }
 
-type StageOutcome = { coverage?: IngestionCoverage; superseded?: boolean }
+type StageOutcome = { coverage?: IngestionCoverage; superseded?: boolean; retracted?: boolean }
 
 /** Runs one stage. */
 const runStage = async (
@@ -232,10 +236,17 @@ const runStage = async (
         if (bumped.isErr()) {
           throw new StageError("internal", true, bumped.error.message)
         }
+        return "switched" as const
       }
-      return res.value
+      const source = await getSource({ tx, id: job.sourceId })
+      return source.isOk() && source.value?.tombstonedAt !== null
+        ? ("retracted" as const)
+        : ("superseded" as const)
     })
-    return { superseded: !switched }
+    if (switched === true || switched === "switched") {
+      return {}
+    }
+    return switched === "retracted" ? { retracted: true } : { superseded: true }
   }
 
   if (stage === "cards") {
@@ -324,6 +335,42 @@ const settleFailure = async (
   })
 }
 
+/** Removes a retracted source's revisions and derived data (source-lifecycle.ts). */
+const runPurge = async (deps: IngestionRunnerDeps, job: IngestionJobSelect): Promise<void> => {
+  const sourceId = job.sourceId
+  const before = (job.payload as { before?: unknown } | null)?.before
+  if (sourceId === null || typeof before !== "string") {
+    throw new StageError("internal", false, "purge job without a source or a cut-off")
+  }
+  await withTenant(deps.db, job.tenantId, async (tx) => {
+    const purged = await purgeRetractedSource({ tx, sourceId, before: new Date(before) })
+    if (purged.isErr()) {
+      throw new StageError("internal", true, purged.error.message)
+    }
+    const scrubbed = await scrubRetractedSource({ tx, id: sourceId })
+    if (scrubbed.isErr()) {
+      throw new StageError("internal", true, scrubbed.error.message)
+    }
+    const logged = await recordSourceEvent({
+      tx,
+      sourceId,
+      kind: "purged",
+      actor: job.createdBy,
+      reason: `${purged.value.materials} revision material(s) removed`,
+    })
+    if (logged.isErr()) {
+      throw new StageError("internal", true, logged.error.message)
+    }
+  })
+  await advanceIngestionJob({
+    tx: deps.db,
+    id: job.id,
+    owner: deps.workerId,
+    stage: "done",
+    status: "ready",
+  })
+}
+
 /** Runs a claimed job from its checkpoint to `done` or to a failure. */
 export const runClaimedJob = async (
   deps: IngestionRunnerDeps,
@@ -357,6 +404,10 @@ export const runClaimedJob = async (
     void keepLease()
   }, deps.heartbeatMs ?? DEFAULT_HEARTBEAT_MS)
   try {
+    if (job.kind === "purge_source") {
+      await runPurge(deps, job)
+      return
+    }
     const stored = readPayload(job)
     const material = await loadMaterial(deps, job)
     const { text, revisionNo } = await loadText(deps, job, stored)
@@ -367,14 +418,17 @@ export const runClaimedJob = async (
       if (leaseLost) {
         return
       }
-      // A revision older than the source's current one is history: indexed, not current, no cards.
-      const next = outcome.superseded === true ? "done" : nextStage(stage, payload)
+      // A revision older than the source's current one is history (indexed, not current,
+      // no cards); one of a retracted source is left for the purge.
+      const final =
+        outcome.retracted === true ? "retracted" : outcome.superseded === true ? "superseded" : null
+      const next = final !== null ? "done" : nextStage(stage, payload)
       const advanced = await advanceIngestionJob({
         tx: deps.db,
         id: job.id,
         owner: deps.workerId,
         stage: next,
-        status: outcome.superseded === true ? "superseded" : statusAfter(next),
+        status: final ?? statusAfter(next),
         coverage: outcome.coverage,
       })
       if (advanced.isErr() || advanced.value === null) {

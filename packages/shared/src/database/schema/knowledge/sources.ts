@@ -5,6 +5,7 @@ import { materials } from "@agenticmind/shared/database/schema/knowledge/materia
 import { sql } from "drizzle-orm"
 import {
   bigint,
+  boolean,
   check,
   index,
   integer,
@@ -47,6 +48,14 @@ const knowledgeSources = pgTable(
       { onDelete: "set null" },
     ),
     latestExternalVersion: bigint("latest_external_version", { mode: "number" }),
+    /** Retracted: out of every answer at once, purged in the background; a later
+     * delivery does not bring it back without an admin's allowResurrect. */
+    tombstonedAt: timestamp("tombstoned_at", { withTimezone: true }),
+    tombstoneReason: text("tombstone_reason"),
+    /** False while the provider no longer has the content; kept, but not answered. */
+    available: boolean("available").notNull().default(true),
+    availabilityReason: text("availability_reason"),
+    availabilityChangedAt: timestamp("availability_changed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .default(sql`now()`)
       .notNull(),
@@ -117,6 +126,37 @@ const sourceRevisions = pgTable(
 )
 
 /**
+ * What happened to a source and who did it — retraction, resurrection, purge,
+ * availability changes — with the caller's reason. The audit trail of the
+ * source lifecycle; it outlives the purged content (no content is stored here).
+ */
+const sourceEvents = pgTable(
+  "source_events",
+  {
+    ...tenantColumn,
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    sourceId: uuid("source_id")
+      .notNull()
+      .references((): AnyPgColumn => knowledgeSources.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    actor: text("actor"),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => [
+    index("source_events_source_idx").on(table.sourceId, table.createdAt),
+    check(
+      "source_events_kind_check",
+      sql`${table.kind} IN ('retracted', 'resurrected', 'purged', 'unavailable', 'available')`,
+    ),
+  ],
+)
+
+/**
  * The tenant's corpus revision: a counter that increases whenever what answers
  * changes — a source switching its current revision (and, later, a retraction).
  * Reported with each answer, so a caller can tell answers over different corpora
@@ -134,7 +174,7 @@ const knowledgeCorpus = pgTable(
   (table) => [uniqueIndex("knowledge_corpus_tenant_uidx").on(table.tenantId)],
 )
 
-export { knowledgeCorpus, knowledgeSources, sourceRevisions }
+export { knowledgeCorpus, knowledgeSources, sourceEvents, sourceRevisions }
 
 export type KnowledgeSourceSelect = typeof knowledgeSources.$inferSelect
 export type SourceRevisionSelect = typeof sourceRevisions.$inferSelect

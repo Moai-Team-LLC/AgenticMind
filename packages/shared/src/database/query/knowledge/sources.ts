@@ -12,6 +12,7 @@ import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import {
   knowledgeCorpus,
   knowledgeSources,
+  sourceEvents,
   sourceRevisions,
 } from "@agenticmind/shared/database/schema"
 import { currentTenantId } from "@agenticmind/shared/database/schema/knowledge/_tenant"
@@ -201,8 +202,10 @@ export const switchCurrentRevision = (props: {
       const res = await props.tx.execute(sql`
         update knowledge_sources s set
           current_revision_id = ${props.revisionId}::uuid,
+          available = true,
           updated_at = now()
         where s.id = ${props.sourceId}::uuid
+          and s.tombstoned_at is null
           and (
             s.current_revision_id is null
             or s.current_revision_id = ${props.revisionId}::uuid
@@ -289,6 +292,156 @@ export const sourceRefsForMaterials = (props: {
       return rows.flatMap((r) =>
         r.materialId === null ? [] : [{ ...r, materialId: r.materialId, isCurrent: r.isCurrent }],
       )
+    })(),
+    mapDatabaseError,
+  )
+
+/** The source with this id, row-locked, or null. */
+export const lockSourceById = (props: { tx: Transaction; id: string }) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const [row] = await props.tx
+        .select()
+        .from(knowledgeSources)
+        .where(eq(knowledgeSources.id, props.id))
+        .limit(1)
+        .for("update")
+      return row ?? null
+    })(),
+    mapDatabaseError,
+  )
+
+/** The revision a material belongs to, or null for a material without a source. */
+export const revisionOfMaterial = (props: { tx: Transaction; materialId: string }) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const [row] = await props.tx
+        .select()
+        .from(sourceRevisions)
+        .where(eq(sourceRevisions.materialId, props.materialId))
+        .limit(1)
+      return row ?? null
+    })(),
+    mapDatabaseError,
+  )
+
+export type SourceEventKind = "retracted" | "resurrected" | "purged" | "unavailable" | "available"
+
+export const recordSourceEvent = (props: {
+  tx: Transaction
+  sourceId: string
+  kind: SourceEventKind
+  actor: string | null
+  reason?: string | null
+}) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      await props.tx.insert(sourceEvents).values({
+        sourceId: props.sourceId,
+        kind: props.kind,
+        actor: props.actor,
+        reason: props.reason ?? null,
+      })
+    })(),
+    mapDatabaseError,
+  )
+
+/** Sets or clears the tombstone. Returns the tombstone time (null when cleared). */
+export const setTombstone = (props: {
+  tx: Transaction
+  id: string
+  tombstoned: boolean
+  reason?: string | null
+}) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const [row] = await props.tx
+        .update(knowledgeSources)
+        .set({
+          tombstonedAt: props.tombstoned ? sql`now()` : null,
+          tombstoneReason: props.tombstoned ? (props.reason ?? null) : null,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(knowledgeSources.id, props.id))
+        .returning({ tombstonedAt: knowledgeSources.tombstonedAt })
+      return row?.tombstonedAt ?? null
+    })(),
+    mapDatabaseError,
+  )
+
+export const setAvailability = (props: {
+  tx: Transaction
+  id: string
+  available: boolean
+  reason: string | null
+}) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      await props.tx
+        .update(knowledgeSources)
+        .set({
+          available: props.available,
+          availabilityReason: props.reason,
+          availabilityChangedAt: sql`now()`,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(knowledgeSources.id, props.id))
+    })(),
+    mapDatabaseError,
+  )
+
+/**
+ * Removes what a retracted source left: its revisions accepted at or before
+ * `before`, their materials (passages, cards, graph mentions and jobs go with
+ * them), cached answers that cited them, and graph entities nothing mentions
+ * any more. A revision accepted after `before` (the source was brought back)
+ * is kept. Run inside the source's tenant.
+ */
+export const purgeRetractedSource = (props: { tx: Transaction; sourceId: string; before: Date }) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const before = props.before.toISOString()
+      const res = await props.tx.execute(sql`
+        select material_id::text as id from source_revisions
+        where source_id = ${props.sourceId}::uuid
+          and created_at <= ${before}::timestamptz
+          and material_id is not null
+      `)
+      const materialIds = (res.rows as { id: string }[]).map((r) => r.id)
+      if (materialIds.length > 0) {
+        const list = sql.join(
+          materialIds.map((id) => sql`${id}::uuid`),
+          sql`, `,
+        )
+        await props.tx.execute(
+          sql`delete from answer_cache where source_material_ids && array[${list}]::uuid[]`,
+        )
+        await props.tx.execute(sql`delete from materials where id in (${list})`)
+      }
+      await props.tx.execute(sql`
+        delete from source_revisions
+        where source_id = ${props.sourceId}::uuid and created_at <= ${before}::timestamptz
+      `)
+      await props.tx.execute(sql`
+        delete from kg_entities e
+        where e.tenant_id = ${currentTenantId}
+          and not exists (select 1 from kg_mentions m where m.entity_id = e.entity_id)
+      `)
+      return { materials: materialIds.length }
+    })(),
+    mapDatabaseError,
+  )
+
+/** Drops a still-retracted source's descriptive fields once its content is purged. */
+export const scrubRetractedSource = (props: { tx: Transaction; id: string }) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      await props.tx
+        .update(knowledgeSources)
+        .set({ title: "[retracted]", sourceUrl: null, updatedAt: sql`now()` })
+        .where(
+          and(eq(knowledgeSources.id, props.id), sql`${knowledgeSources.tombstonedAt} is not null`),
+        )
     })(),
     mapDatabaseError,
   )

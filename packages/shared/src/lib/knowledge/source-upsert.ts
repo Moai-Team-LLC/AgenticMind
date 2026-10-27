@@ -7,8 +7,9 @@
  *   stale     — `externalVersion` is older than one already received
  *   accepted  — a new revision + its material + a background indexing job
  *
- * `conflict` comes first when `expectedRevisionId` does not match the current
- * revision (`retracted` arrives with the retraction change). The content hash is computed here,
+ * Before those: `retracted` when the source was retracted (unless an admin
+ * passes `allowResurrect`), then `conflict` when `expectedRevisionId` does not
+ * match the current revision. The content hash is computed here,
  * never taken from the caller. Visibility other than `workspace` is refused
  * until per-document access control ships, and is fixed at creation. The
  * principal that creates a source owns it; another writer needs
@@ -49,6 +50,7 @@ import {
   MAX_REVISION_CHARS,
   SUPPORTED_VISIBILITIES,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
+import { resurrectSource } from "@agenticmind/shared/lib/knowledge/source-lifecycle"
 import { createHash } from "node:crypto"
 
 export type UpsertSourceArgs = z.infer<typeof klUpsertSourceInput>
@@ -373,8 +375,20 @@ export const upsertSource = async (
       return { outcome: "conflict", sourceId: null, currentRevisionId: null, materialId: null }
     }
   }
+  if (args.allowResurrect === true && !hasScope(deps.scopes, "knowledge:admin")) {
+    throw new SourceInputError("allowResurrect needs the knowledge:admin scope")
+  }
   const { source, created } = await resolveSource(deps, args)
   const ev = args.revision.externalVersion
+
+  // A retracted source stays retracted: a repeated delivery does not bring it back.
+  if (source.tombstonedAt !== null) {
+    if (args.allowResurrect !== true) {
+      return { outcome: "retracted", sourceId: source.id, materialId: null }
+    }
+    await resurrectSource(deps, source.id)
+    source.tombstonedAt = null
+  }
 
   // Optimistic lock: `null` expects no current revision, an id expects that one.
   if (expected !== undefined && source.currentRevisionId !== expected) {
