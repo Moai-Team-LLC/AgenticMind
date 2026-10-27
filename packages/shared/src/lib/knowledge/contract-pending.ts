@@ -17,14 +17,14 @@ export const PENDING_RELEASE = "0.15.0"
 export const PENDING_TOOLS: readonly string[] = []
 
 /** Optional input fields of served tools that the server does not honour yet. */
-export const PENDING_FIELDS: Readonly<Record<string, readonly string[]>> = {
-  kl_search: ["mode", "sourceTypes", "period"],
-  kl_ask_global: ["mode", "sourceTypes", "period"],
-}
+export const PENDING_FIELDS: Readonly<Record<string, readonly string[]>> = {}
 
 /** The pending fields a call actually sets (present and not undefined). */
-export const pendingFieldsIn = (tool: string, args: Record<string, unknown>): string[] =>
-  (PENDING_FIELDS[tool] ?? []).filter((field) => args[field] !== undefined)
+export const pendingFieldsIn = (
+  tool: string,
+  args: Record<string, unknown>,
+  pending: Readonly<Record<string, readonly string[]>> = PENDING_FIELDS,
+): string[] => (pending[tool] ?? []).filter((field) => args[field] !== undefined)
 
 /** The refusal a call with pending fields gets. */
 export const pendingFieldsMessage = (tool: string, fields: readonly string[]): string =>

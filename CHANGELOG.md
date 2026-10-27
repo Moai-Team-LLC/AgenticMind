@@ -8,6 +8,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Retrieval modes and knowledge types.** `kl_search` and `kl_ask_global`
+  take `mode` — `current` (canonical knowledge only, active lifecycle: a
+  question about the rule in force does not get an interview's hypothesis or a
+  model's summary), `research` (every type, labelled), `history` (also
+  superseded revisions) — plus `sourceTypes` and `period` (on a revision's
+  event time, else capture time). The narrowing lives in the one retrieval
+  predicate, so it holds for passages and cards alike. Omitted, retrieval is
+  as before. Citations label a card drawn from evidence without a verbatim
+  span as `inference`; the synthesis prompt says what a non-canonical source
+  stands for. A scoped call bypasses the answer cache, which does not key on
+  the scope yet. Every field of contract 1.11.0 is now served.
+
 - **Cards from the whole document.** Card extraction no longer reads only
   the first 16 000 characters: the text is cut into line-aligned windows
   (14 000 characters, 1 000 shared with the next), every window is extracted,

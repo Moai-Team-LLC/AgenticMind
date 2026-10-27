@@ -8,6 +8,7 @@
 
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/chunks"
+import type { RetrievalScope } from "@agenticmind/shared/database/query/knowledge/retrievable"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type { AnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import type { KnowledgeBlobStore } from "@agenticmind/shared/lib/knowledge/blobstore"
@@ -15,6 +16,7 @@ import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 import type { RetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
 import type {
   IngestionStatus,
+  SearchMode,
   klGetIngestionStatusOutput,
   klReadSourceOutput,
   klUpsertSourceOutput,
@@ -40,6 +42,7 @@ import { recordGuardEvent } from "@agenticmind/shared/database/query/knowledge/g
 import { getIngestionJob } from "@agenticmind/shared/database/query/knowledge/ingestion-jobs"
 import { getMaterial } from "@agenticmind/shared/database/query/knowledge/materials"
 import { checkRateLimit } from "@agenticmind/shared/database/query/knowledge/rate-limits"
+import { isScoped } from "@agenticmind/shared/database/query/knowledge/retrievable"
 import {
   insertSkillVersion,
   upsertSkill,
@@ -81,7 +84,11 @@ import {
   setSourceAvailability,
 } from "@agenticmind/shared/lib/knowledge/source-lifecycle"
 import { ReadSourceError, readSource } from "@agenticmind/shared/lib/knowledge/source-read"
-import { chunkSegmentsFor, sourceRefsFor } from "@agenticmind/shared/lib/knowledge/source-refs"
+import {
+  chunkSegmentsFor,
+  citationKnowledgeType,
+  sourceRefsFor,
+} from "@agenticmind/shared/lib/knowledge/source-refs"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { SourceInputError, upsertSource } from "@agenticmind/shared/lib/knowledge/source-upsert"
 import { compileSkillLive } from "@agenticmind/shared/lib/skill/compile-live"
@@ -178,6 +185,19 @@ const enforceGuards = async (deps: McpToolDeps, tool: string, text: string): Pro
   }
 }
 
+/** The retrieval scope a kl_search / kl_ask_global call asks for. */
+const scopeOf = (args: {
+  mode?: SearchMode
+  sourceTypes?: string[]
+  period?: { from?: string; to?: string }
+}): RetrievalScope => {
+  return {
+    ...(args.mode !== undefined ? { mode: args.mode } : {}),
+    ...(args.sourceTypes !== undefined ? { sourceTypes: args.sourceTypes } : {}),
+    ...(args.period !== undefined ? { period: args.period } : {}),
+  }
+}
+
 export const klSearchInput = z.object({
   q: z.string().min(1),
   /** Extra sub-queries fanned out in one round-trip; results merged + deduped. */
@@ -193,6 +213,7 @@ const searchMerged = async (
   deps: McpToolDeps,
   queries: string[],
   limit: number,
+  scope?: RetrievalScope,
 ): Promise<KnowledgeHit[]> => {
   const perQuery = await Promise.all(
     queries.map(async (query): Promise<KnowledgeHit[]> => {
@@ -200,7 +221,7 @@ const searchMerged = async (
       if (e.isErr()) {
         throw new Error(`kl_search: embed: ${e.error.message}`)
       }
-      const h = await searchChunks({ tx: deps.tx, queryEmbedding: e.value, limit })
+      const h = await searchChunks({ tx: deps.tx, queryEmbedding: e.value, limit, scope })
       if (h.isErr()) {
         throw new Error(`kl_search: ${h.error.message}`)
       }
@@ -229,6 +250,7 @@ export const klSearch = async (
   args: z.infer<typeof klSearchInput>,
 ): Promise<{
   query: string
+  mode?: SearchMode
   hits: ({ materialId: string; title: string; snippet: string; score: number } & SourceRef)[]
 }> => {
   const queries = [...new Set([args.q, ...(args.queries ?? [])].map((s) => s.trim()))].filter(
@@ -239,7 +261,7 @@ export const klSearch = async (
   }
   const limit = args.limit !== undefined && args.limit > 0 && args.limit <= 50 ? args.limit : 10
 
-  const ranked = await searchMerged(deps, queries, limit)
+  const ranked = await searchMerged(deps, queries, limit, scopeOf(args))
   const selected =
     args.tokenBudget !== undefined
       ? packByTokenBudget(ranked, args.tokenBudget, (h) => approxTokens(h.body))
@@ -265,7 +287,7 @@ export const klSearch = async (
       ...segOf(h.chunkId),
     })
   }
-  return { query: args.q, hits: out }
+  return { query: args.q, ...(args.mode !== undefined ? { mode: args.mode } : {}), hits: out }
 }
 
 export const klAskGlobalInput = z.object({
@@ -291,12 +313,16 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
     ...(args.intent !== undefined ? { intent: args.intent } : {}),
     ...(args.facts !== undefined ? { facts: args.facts } : {}),
   }
+  const scope = scopeOf(args)
   const answer = await ask({
     tx: deps.tx,
     question: args.question,
     memberContext: callerContext,
     cardsEnabled: deps.cardsEnabled,
-    cacheEnabled: deps.cacheEnabled,
+    // The answer cache does not key on the scope yet: a scoped question neither
+    // reads nor writes it.
+    cacheEnabled: isScoped(scope) ? false : deps.cacheEnabled,
+    scope,
     chatModel: deps.chatModel,
     // Corpus-adaptive retrieval profile (Lever 3.2); each field falls back to the
     // engine default when the profile is unset or omits it.
@@ -333,8 +359,15 @@ export const klAskGlobal = async (deps: McpToolDeps, args: z.infer<typeof klAskG
   return {
     ...answer.value,
     citations: answer.value.citations.map((c) => {
-      return { ...c, ...refOf(c.materialId), ...segOf(c.chunkId) }
+      const ref = refOf(c.materialId)
+      return {
+        ...c,
+        ...ref,
+        ...segOf(c.chunkId),
+        knowledgeType: citationKnowledgeType(c.origin, ref.knowledgeType, c.spanStart),
+      }
     }),
+    ...(scope.mode !== undefined ? { mode: scope.mode } : {}),
     corpusRevision: corpus.isOk() ? corpus.value : 0,
   }
 }

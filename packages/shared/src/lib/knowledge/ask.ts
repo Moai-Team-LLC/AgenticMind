@@ -9,6 +9,7 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 import type { CardHit } from "@agenticmind/shared/database/query/knowledge/cards"
 import type { KnowledgeHit } from "@agenticmind/shared/database/query/knowledge/chunks"
+import type { RetrievalScope } from "@agenticmind/shared/database/query/knowledge/retrievable"
 import type { LlmModel } from "@agenticmind/shared/lib/ai/model"
 import type { AnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import type { HybridWeights } from "@agenticmind/shared/lib/knowledge/blend"
@@ -126,6 +127,8 @@ export type AskProps = {
   memberContext?: CallerContext | null
   cardsEnabled?: boolean
   cacheEnabled?: boolean
+  /** Narrows retrieval of passages and cards (contract 1.11.0 mode / sourceTypes / period). */
+  scope?: RetrievalScope
   topK?: number
   chatModel?: LlmModel
   /** Hybrid vector/BM25 fusion weights; defaults to the engine default. Tunable per corpus. */
@@ -222,6 +225,7 @@ const fetchCardSources = async (
     queryEmbedding,
     limit: pool,
     minConfidence: RETRIEVAL_MIN_CONFIDENCE,
+    scope: props.scope,
   })
   const bm = await searchCardsBm25({
     tx: props.tx,
@@ -229,6 +233,7 @@ const fetchCardSources = async (
     variants,
     limit: pool,
     minConfidence: RETRIEVAL_MIN_CONFIDENCE,
+    scope: props.scope,
   })
   const byId = new Map<string, { hit: CardHit; score: number }>()
   if (vec.isOk()) {
@@ -400,11 +405,22 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   ts = Date.now()
   const retrieveStartMs = ts
   const pool = Math.max(topK, Math.min(topK * 3, 30))
-  const vectorHits = await searchChunks({ tx: props.tx, queryEmbedding: queryVec, limit: pool })
+  const vectorHits = await searchChunks({
+    tx: props.tx,
+    queryEmbedding: queryVec,
+    limit: pool,
+    scope: props.scope,
+  })
   if (vectorHits.isErr()) {
     throw askError(`search: ${vectorHits.error.message}`)
   }
-  const bm25 = await searchChunksBm25({ tx: props.tx, query: question, variants, limit: pool })
+  const bm25 = await searchChunksBm25({
+    tx: props.tx,
+    query: question,
+    variants,
+    limit: pool,
+    scope: props.scope,
+  })
   const bm25Hits = bm25.isOk() ? bm25.value : []
   const fused = blendHybrid(
     vectorHits.value,

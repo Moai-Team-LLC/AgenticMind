@@ -6,6 +6,7 @@
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
+import type { RetrievalScope } from "@agenticmind/shared/database/query/knowledge/retrievable"
 import type {
   CardAuthority,
   CardConfidenceMethod,
@@ -244,13 +245,14 @@ type RetrievalFilters = {
   minConfidence?: number
   kinds?: string[]
   subjectTypes?: string[]
+  scope?: RetrievalScope
 }
 
 const retrievalConditions = (f: RetrievalFilters) => [
   // Admission gate: rejected / deprecated / archived knowledge never surfaces.
   notInArray(knowledgeCards.status, [...NON_RETRIEVABLE_CARD_STATUSES]),
-  // Only the current revision of a source answers (retrievable.ts).
-  retrievableMaterial(knowledgeCards.materialId),
+  // Only the current revision of a source answers (retrievable.ts), within the scope.
+  retrievableMaterial(knowledgeCards.materialId, f.scope),
   gte(knowledgeCards.confidence, f.minConfidence ?? 0),
   f.kinds !== undefined && f.kinds.length > 0 ? inArray(knowledgeCards.kind, f.kinds) : undefined,
   f.subjectTypes !== undefined && f.subjectTypes.length > 0

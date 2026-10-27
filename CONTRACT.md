@@ -52,11 +52,11 @@ written for 1.10 behaves exactly as before. The full shapes, including outputs,
 are frozen in `packages/shared/src/lib/knowledge/source-contract.ts` and its JSON
 Schema snapshot (`__contract__/source-tools.schema.json`).
 
-> **Being implemented.** Until each part ships, the server does not list the four
-> new tools and refuses a call that sets a new field with
-> `<tool>: '<field>' is in contract 1.11.0 but not supported by this server yet`
-> — it never accepts a field only to ignore it. A release cannot ship with any of
-> them pending (`contract-pending.test.ts`).
+> **Served in full.** Every tool and field of 1.11.0 is implemented; the
+> pending list (`contract-pending.ts`) is empty, and `contract-pending.test.ts`
+> keeps it so for the 0.15.0 release. The answer cache does not key on `mode`,
+> `sourceTypes` or `period` yet, so a call that sets any of them neither reads
+> nor writes it.
 
 ### Identity and revisions
 
