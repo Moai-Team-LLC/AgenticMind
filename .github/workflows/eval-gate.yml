@@ -18,6 +18,9 @@ name: eval-gate
 on:
   workflow_dispatch:
     inputs:
+      only:
+        description: "Run only these failure modes (comma-separated, e.g. faithfulness); empty = full suite"
+        default: ""
       baseline:
         description: "Minimum pass rate (0..1)"
         default: "0.8"
@@ -129,6 +132,9 @@ jobs:
         id: eval
         if: steps.gate.outputs.enabled == 'true'
         env:
+          # A manual run may be restricted to some failure modes (a cents-sized check);
+          # the weekly schedule has no inputs, so it always runs the full suite.
+          EVAL_ONLY: ${{ github.event.inputs.only }}
           CHAT_API_KEY: ${{ secrets.CHAT_API_KEY }}
           CHAT_BASE_URL: ${{ vars.CHAT_BASE_URL || 'https://api.openai.com/v1' }}
           BASELINE_PASS_RATE: ${{ github.event.inputs.baseline || '0.8' }}

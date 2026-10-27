@@ -40,7 +40,7 @@ type AblationConfig = { cards: boolean; cache: boolean; contested: boolean; tier
 /** An AskForEval that runs the engine under a given component configuration. */
 const askWith =
   (cfg: AblationConfig): AskForEval =>
-  async (query) => {
+  async (query, opts) => {
     const guard = guardInput(query)
     if (!guard.ok) {
       return { blocked: true, answer: "", citations: [] }
@@ -52,6 +52,7 @@ const askWith =
       cacheEnabled: cfg.cache,
       contestedSources: cfg.contested,
       faithfulnessTierB: cfg.tierB,
+      answerPolicy: opts?.answerPolicy,
     })
     if (res.isErr()) {
       return { blocked: false, answer: "", citations: [] }

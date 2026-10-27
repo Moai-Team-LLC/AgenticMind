@@ -64,7 +64,7 @@ const db = createClient(databaseSettings.DATABASE_URL)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
 const cacheEnabled = process.env.KNOWLEDGE_CACHE_ENABLED === "true"
 
-const askForEval: AskForEval = async (query) => {
+const askForEval: AskForEval = async (query, opts) => {
   const guard = guardInput(query)
   if (!guard.ok) {
     return { blocked: true, answer: "", citations: [] }
@@ -76,6 +76,8 @@ const askForEval: AskForEval = async (query) => {
     cardsEnabled,
     cacheEnabled,
     contestedSources: true,
+    // A case may run under its own answer policy (the opt-in refusal path).
+    answerPolicy: opts?.answerPolicy,
   })
   if (res.isErr()) {
     return { blocked: false, answer: "", citations: [] }

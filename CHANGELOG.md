@@ -22,6 +22,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **The faithfulness abstain cases test what each configuration promises.**
+  `faith-3/4/5` expected the engine to refuse out-of-corpus questions on a run
+  without an answer policy — behaviour the default deployment deliberately does not
+  have ("surface, don't decide", `docs/evals.md`), so they failed on a healthy
+  engine. They now assert the default signal (0 citations, `status: unsupported`),
+  and new `faith-6/7/8` assert the refusal under a case-level `answerPolicy`
+  (`EvalCase.answerPolicy`, passed to the engine by `eval.ts`, `ablate.ts` and
+  `tune.ts`). Engine behaviour is unchanged.
 - **The eval-gate can actually run.** Its seed and eval steps (and `bun run
   eval` / `seed-eval`) run the scripts with `tsx`, i.e. on Node, but the scripts
   used Bun's `import.meta.dir`, which is undefined there — both steps would have

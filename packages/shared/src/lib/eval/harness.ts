@@ -9,8 +9,10 @@
  * baseline pass rate.
  */
 
+import type { AnswerPolicy } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import type { Result } from "neverthrow"
 
+import { answerPolicySchema } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import { findPii } from "@agenticmind/shared/lib/knowledge/guard"
 import { err, ok } from "neverthrow"
 
@@ -59,6 +61,10 @@ export type EvalCase = {
   /** The named failure bucket this case guards against. */
   failureMode: string
   query: string
+  /** Answer policy (KNOWLEDGE_ANSWER_POLICY semantics) the engine runs this case
+   * under — for cases that measure the opt-in refusal path. Absent = no policy, the
+   * default deployment, whose posture is to surface weakness, not refuse. */
+  answerPolicy?: AnswerPolicy
   assertions: EvalAssertions
 }
 
@@ -81,7 +87,9 @@ export type EvalObservation = {
   servedBy?: string
 }
 
-export type AskForEval = (query: string) => Promise<EvalObservation>
+/** Per-case engine options an AskForEval must apply (they are part of the case). */
+export type AskOptionsForEval = { answerPolicy?: AnswerPolicy }
+export type AskForEval = (query: string, opts?: AskOptionsForEval) => Promise<EvalObservation>
 export type JudgeForEval = (question: string, observation: EvalObservation) => Promise<boolean>
 
 export type CaseResult = {
@@ -290,9 +298,22 @@ export const runEvalSuite = async (
 ): Promise<EvalReport> => {
   const results: CaseResult[] = []
   for (const c of cases) {
+    // Same schema the server parses KNOWLEDGE_ANSWER_POLICY with: a typo must fail the
+    // case here, not run it policy-free and read as an engine failure.
+    const policy =
+      c.answerPolicy === undefined ? undefined : answerPolicySchema.safeParse(c.answerPolicy)
+    if (policy !== undefined && !policy.success) {
+      results.push({
+        id: c.id,
+        failureMode: c.failureMode,
+        passed: false,
+        failures: [`invalid answerPolicy: ${policy.error.message}`],
+      })
+      continue
+    }
     let obs: EvalObservation
     try {
-      obs = await ask(c.query)
+      obs = await ask(c.query, { answerPolicy: policy?.data })
     } catch (error) {
       results.push({
         id: c.id,
