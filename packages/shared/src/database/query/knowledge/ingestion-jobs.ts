@@ -27,7 +27,9 @@ export type IngestionCoverage = {
 }
 
 export type NewIngestionJob = {
-  materialId: string
+  /** `index_material` (default) or `purge_source`. */
+  kind?: "index_material" | "purge_source"
+  materialId: string | null
   /** Set when the job indexes a source revision. */
   sourceId?: string | null
   revisionId?: string | null
@@ -45,6 +47,7 @@ export const insertIngestionJob = (props: { tx: Transaction; job: NewIngestionJo
       const [row] = await props.tx
         .insert(ingestionJobs)
         .values({
+          kind: props.job.kind ?? "index_material",
           materialId: props.job.materialId,
           sourceId: props.job.sourceId ?? null,
           revisionId: props.job.revisionId ?? null,

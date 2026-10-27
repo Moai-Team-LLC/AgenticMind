@@ -14,14 +14,12 @@
 export const PENDING_RELEASE = "0.15.0"
 
 /** Tools in the contract that the server does not register yet. */
-export const PENDING_TOOLS: readonly string[] = ["kl_read_source", "kl_set_source_availability"]
+export const PENDING_TOOLS: readonly string[] = ["kl_read_source"]
 
 /** Optional input fields of served tools that the server does not honour yet. */
 export const PENDING_FIELDS: Readonly<Record<string, readonly string[]>> = {
   kl_search: ["mode", "sourceTypes", "period"],
   kl_ask_global: ["mode", "sourceTypes", "period"],
-  kl_upsert_source: ["allowResurrect"],
-  kl_forget: ["sourceType", "connectionId", "reason"],
 }
 
 /** The pending fields a call actually sets (present and not undefined). */

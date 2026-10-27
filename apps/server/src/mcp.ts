@@ -52,6 +52,7 @@ import {
   klForget,
   klForgetInput,
   klGetIngestionStatus,
+  klSetSourceAvailability,
   klUpsertSource,
   hitlGet,
   hitlGetInput,
@@ -64,6 +65,7 @@ import {
 import { resolveRetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
 import {
   klGetIngestionStatusInput,
+  klSetSourceAvailabilityInput,
   klUpsertSourceInput,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
 import { activeProfile } from "@agenticmind/shared/lib/profile"
@@ -377,6 +379,25 @@ const buildHandler = (limits: McpLimits) =>
 
       registerKlTool(
         server,
+        "kl_set_source_availability",
+        "Set source availability",
+        "Mark a source unavailable when its content disappeared at the provider (e.g. a file removed from a repository) without retracting it: it is kept but left out of search, answers, reads and counts until marked available again (or a changed revision becomes current). The source's owner with knowledge:write, or knowledge:admin; anything else answers not_found.",
+        klSetSourceAvailabilityInput,
+        async (args, extra) => {
+          try {
+            return jsonContent(
+              await runTenantScoped(extra, async (d) => klSetSourceAvailability(d, args)),
+            )
+          } catch (error) {
+            return errorContent(
+              error instanceof Error ? error.message : "kl_set_source_availability failed",
+            )
+          }
+        },
+      )
+
+      registerKlTool(
+        server,
         "kl_get_ingestion_status",
         "Ingestion status",
         "Read a background indexing job by the jobId kl_ingest returned: status (queued, indexing, text_ready, ready, retry_wait, failed, superseded, retracted), attempts, card-extraction coverage and a safe error description. text_ready means the passages are searchable while cards are still being built. Another writer's job reads as not found. Requires knowledge:write.",
@@ -413,7 +434,7 @@ const buildHandler = (limits: McpLimits) =>
         server,
         "kl_forget",
         "Forget knowledge",
-        "Permanently delete a material by its UUID and everything derived from it (chunks, cards, graph). The inverse of kl_ingest, for retraction / right-to-erasure. Requires the knowledge:admin scope.",
+        "Permanently delete a material by its UUID and everything derived from it (chunks, cards, graph). The inverse of kl_ingest, for retraction / right-to-erasure. To retract a source, pass its source UUID as `id`, or `sourceType` (+ `connectionId`) with its external ID as `id`, and a `reason`: it leaves answers at once, its revisions and derived data are purged in the background, and a later delivery does not bring it back. Requires the knowledge:admin scope.",
         klForgetInput,
         async (args, extra) => {
           try {

@@ -8,6 +8,22 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Retracting a source, and hiding an unavailable one.** `kl_forget` retracts
+  a source by its UUID or by `sourceType` (+ `connectionId`) with its external
+  ID as `id`, with a `reason`: the tombstone is set and the source leaves every
+  retrieval path in the same transaction (the shared predicate), the corpus
+  revision moves, and a background purge job removes its revisions, their
+  materials (passages, cards, graph mentions), cached answers that cited them
+  and graph entities nothing mentions any more, then scrubs the source's title
+  and URL. A later delivery of the same source answers `retracted`; an admin's
+  `allowResurrect` brings it back (revisions accepted after the tombstone
+  survive the purge). A plain material is forgotten as before; a material that
+  belongs to a source revision is refused — retract the source.
+  `kl_set_source_availability` keeps a source whose content left the provider
+  but leaves it out of answers (owner or `knowledge:admin`; anything else
+  `not_found`); a new current revision makes it available again. Every change
+  is recorded in `source_events` (migration 0021) with actor and reason.
+
 - **Only a source's current revision answers.** Every retrieval path over
   passages and cards — vector, BM25 and structured, counts included — applies
   one predicate (`retrievable.ts`): a revision that is superseded or still
