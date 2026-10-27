@@ -98,6 +98,58 @@ describe("evaluateCase (Level-1 assertions)", () => {
   })
 })
 
+describe("evaluateCase answer excerpt (failed cases only)", () => {
+  const c: EvalCase = {
+    id: "fact-14",
+    failureMode: "factual_retrieval",
+    query: "Should sub-agents return synthesis or the raw transcript?",
+    assertions: { mustMention: ["synthesis, not transcript"] },
+  }
+
+  it("carries what the engine answered, so a brittle assertion is visible in the log", async () => {
+    const r = await evaluateCase(
+      c,
+      obs({ answer: "Return a synthesis,\n  not the raw transcript." }),
+    )
+    expect(r.passed).toBe(false)
+    expect(r.answerExcerpt).toBe("Return a synthesis, not the raw transcript.")
+  })
+
+  it("is one line, capped at 200 characters", async () => {
+    const r = await evaluateCase(
+      c,
+      obs({ answer: `line one\n\n\tline two ${"word ".repeat(100)}` }),
+    )
+    expect(r.answerExcerpt?.startsWith("line one line two word")).toBe(true)
+    expect(r.answerExcerpt).not.toMatch(/[\n\t]/u)
+    expect(r.answerExcerpt?.length).toBeLessThanOrEqual(200)
+    expect(r.answerExcerpt?.endsWith("…")).toBe(true)
+  })
+
+  it("never cuts a character in half", async () => {
+    const r = await evaluateCase(c, obs({ answer: "😀".repeat(300) }))
+    expect(r.answerExcerpt).toBe(`${"😀".repeat(199)}…`)
+    // A family emoji is one character built from 7 code points — keep it whole.
+    const family = "👨‍👩‍👧"
+    const f = await evaluateCase(c, obs({ answer: family.repeat(300) }))
+    expect(f.answerExcerpt).toBe(`${family.repeat(199)}…`)
+  })
+
+  it("names an empty or a blocked answer instead of printing nothing", async () => {
+    expect((await evaluateCase(c, obs({ answer: "  " }))).answerExcerpt).toBe("(empty answer)")
+    const blocked: EvalCase = { ...c, assertions: {} }
+    expect((await evaluateCase(blocked, obs({ blocked: true }))).answerExcerpt).toBe(
+      "(blocked by the input guard)",
+    )
+  })
+
+  it("is absent on a passing case", async () => {
+    const r = await evaluateCase(c, obs({ answer: "Synthesis, not transcript." }))
+    expect(r.passed).toBe(true)
+    expect(r.answerExcerpt).toBeUndefined()
+  })
+})
+
 describe("runEvalSuite", () => {
   it("aggregates pass rate overall + per failure mode, survives a throwing ask", async () => {
     const cases: EvalCase[] = [

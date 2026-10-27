@@ -23,7 +23,16 @@ cases for any newly documented fact.
 citation `mustMention` terms must be present in the corpus, injection queries
 must be blocked by the real `guardInput`, out-of-scope queries must NOT be
 blocked, ids are unique, and every top-priority failure mode must reach ≥50.
-Edit the candidate arrays there, not the JSON by hand.
+For those four modes (`factual_retrieval`, `citation_grounding`, `out_of_scope`,
+`prompt_injection`) edit the candidate arrays there, not the JSON. Every other
+mode (`faithfulness`, `pii_leak`, `stale_version`, …) is hand-written straight
+into `cases.json`; a regeneration keeps those cases verbatim after the generated
+ones, and refuses to write if any existing case id would be lost — to drop one on
+purpose, name it: `EVAL_CASES_ALLOW_DROP=id1,id2 bun run build-eval`.
+
+A failed case in `bun run eval` prints a one-line excerpt of the answer
+(`answer: "…"`, ≤200 characters) under its failure reason, so a brittle
+assertion can be told from a wrong answer without re-running the case.
 
 ## The three levels
 
