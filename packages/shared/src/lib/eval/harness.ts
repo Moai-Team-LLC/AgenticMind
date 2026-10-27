@@ -426,6 +426,56 @@ export const parseModeFloors = (
 }
 
 /**
+ * Parses EVAL_ONLY — a comma-separated list of failure modes to run. Unset or blank
+ * → null (the full suite). A mode no case has is an error: a typo would run zero
+ * cases, and an empty run has a pass rate of 1 — it must never read as a pass.
+ */
+export const parseEvalOnly = (
+  raw: string | undefined,
+  knownModes: readonly string[],
+): Result<readonly string[] | null, string> => {
+  const modes = (raw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+  if (modes.length === 0) {
+    return ok(null)
+  }
+  const unknown = modes.filter((m) => !knownModes.includes(m))
+  if (unknown.length > 0) {
+    return err(
+      `EVAL_ONLY names ${unknown.map((m) => `"${m}"`).join(", ")}, which no case has (known: ${knownModes.join(", ")})`,
+    )
+  }
+  return ok(modes)
+}
+
+/**
+ * The floors that apply to a run restricted to `selected` modes (EVAL_ONLY), and the
+ * floored modes it leaves out. Restricting a run on purpose is not a lost measurement,
+ * so a floor on a mode the run does not select is skipped (and reported as skipped by
+ * the caller), not counted as a 0/0 breach. `selected` null = the full suite.
+ */
+export const scopeModeFloors = (
+  floors: ModeFloors,
+  selected: readonly string[] | null,
+): { applied: ModeFloors; skipped: string[] } => {
+  if (selected === null) {
+    return { applied: floors, skipped: [] }
+  }
+  const applied: Record<string, number> = {}
+  const skipped: string[] = []
+  for (const [mode, floor] of Object.entries(floors)) {
+    if (selected.includes(mode)) {
+      applied[mode] = floor
+    } else {
+      skipped.push(mode)
+    }
+  }
+  return { applied, skipped }
+}
+
+/**
  * The failure modes whose pass rate fell under their floor. A floor is a hard
  * minimum (no tolerance): with 5 cases a mode moves in 20% steps, so a tolerance
  * would only blur the line. A floored mode with no cases in the run measured

@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: "Run only these failure modes (comma-separated, e.g. faithfulness); empty = full suite"
+        description: "Run only these failure modes (comma-separated, e.g. faithfulness); empty = full suite. Floors of modes not listed are skipped"
         default: ""
       baseline:
         description: "Minimum pass rate (0..1)"

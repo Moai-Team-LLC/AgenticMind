@@ -8,8 +8,10 @@ import {
   isRegression,
   modeFloorBreaches,
   parseBaselinePassRate,
+  parseEvalOnly,
   parseModeFloors,
   runEvalSuite,
+  scopeModeFloors,
 } from "./harness"
 
 const obs = (o: Partial<EvalObservation>): EvalObservation => {
@@ -496,5 +498,55 @@ describe("evaluateCase expectNotCached", () => {
       obs({ answer: "a [1]", servedBy: "synth", citations: [{ title: "t", materialId: "m" }] }),
     )
     expect(r.passed).toBe(true)
+  })
+})
+
+describe("parseEvalOnly", () => {
+  const known = ["faithfulness", "prompt_injection"]
+
+  it("unset or blank means the full suite", () => {
+    expect(parseEvalOnly(undefined, known)._unsafeUnwrap()).toBeNull()
+    expect(parseEvalOnly(" , ", known)._unsafeUnwrap()).toBeNull()
+  })
+
+  it("parses a comma-separated list of modes", () => {
+    expect(parseEvalOnly(" faithfulness ,prompt_injection", known)._unsafeUnwrap()).toEqual([
+      "faithfulness",
+      "prompt_injection",
+    ])
+  })
+
+  it("rejects a mode no case has — a typo would run zero cases and read as a pass", () => {
+    const r = parseEvalOnly("faithfulnes", known)
+    expect(r.isErr()).toBe(true)
+    expect(r._unsafeUnwrapErr()).toContain('"faithfulnes"')
+  })
+})
+
+describe("scopeModeFloors (EVAL_ONLY)", () => {
+  const floors = { faithfulness: 0.8, prompt_injection: 1 }
+
+  it("the full suite applies every floor", () => {
+    expect(scopeModeFloors(floors, null)).toEqual({ applied: floors, skipped: [] })
+  })
+
+  it("a restricted run applies the floors of its modes and lists the skipped ones", () => {
+    expect(scopeModeFloors(floors, ["prompt_injection"])).toEqual({
+      applied: { prompt_injection: 1 },
+      skipped: ["faithfulness"],
+    })
+  })
+
+  it("a skipped floor no longer fails a restricted run that never measured its mode", () => {
+    const onlyInjection = {
+      total: 54,
+      passed: 54,
+      passRate: 1,
+      results: [],
+      byFailureMode: { prompt_injection: { total: 54, passed: 54, passRate: 1 } },
+    } as EvalReport
+    expect(isRegression(onlyInjection, 0.8, 0.02, floors), "unscoped: 0/0 breach").toBe(true)
+    const { applied } = scopeModeFloors(floors, ["prompt_injection"])
+    expect(isRegression(onlyInjection, 0.8, 0.02, applied)).toBe(false)
   })
 })
