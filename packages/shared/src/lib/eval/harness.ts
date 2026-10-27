@@ -92,7 +92,34 @@ export type CaseResult = {
   /** Citation precision/recall, present only when the case declared relevantMaterials. */
   precision?: number
   recall?: number
+  /** What the engine answered, on a failed case only — one line, at most
+   * ANSWER_EXCERPT_CHARS — so a brittle assertion can be told from a wrong answer
+   * without re-running the (paid) case. */
+  answerExcerpt?: string
 }
+
+/** Cap on CaseResult.answerExcerpt, in user-perceived characters (grapheme clusters). */
+export const ANSWER_EXCERPT_CHARS = 200
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" })
+
+const answerExcerpt = (obs: EvalObservation): string => {
+  if (obs.blocked) {
+    return "(blocked by the input guard)"
+  }
+  const oneLine = obs.answer.replaceAll(/\s+/gu, " ").trim()
+  if (oneLine === "") {
+    return "(empty answer)"
+  }
+  const chars = Array.from(graphemes.segment(oneLine), (g) => g.segment)
+  return chars.length <= ANSWER_EXCERPT_CHARS
+    ? oneLine
+    : `${chars.slice(0, ANSWER_EXCERPT_CHARS - 1).join("")}…`
+}
+
+/** The excerpt field for a case result — present only when the case failed. */
+const failedAnswer = (failures: readonly string[], obs: EvalObservation) =>
+  failures.length > 0 ? { answerExcerpt: answerExcerpt(obs) } : {}
 
 export type EvalReport = {
   total: number
@@ -251,6 +278,7 @@ export const evaluateCase = async (
     passed: failures.length === 0,
     failures,
     ...(metrics !== undefined ? { precision: metrics.precision, recall: metrics.recall } : {}),
+    ...failedAnswer(failures, obs),
   }
 }
 

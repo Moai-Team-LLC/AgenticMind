@@ -149,6 +149,9 @@ if (report.citationPrecision !== undefined) {
 }
 for (const r of report.results.filter((x) => !x.passed)) {
   console.log(`  ✗ ${r.id} [${r.failureMode}]: ${r.failures.join("; ")}`)
+  if (r.answerExcerpt !== undefined) {
+    console.log(`      answer: ${JSON.stringify(r.answerExcerpt)}`)
+  }
 }
 
 const regressed = isRegression(report, baseline, undefined, floors)

@@ -33,6 +33,16 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   CHAT_API_KEY` or `could not reach the provider`; before, every model call
   would retry for up to a minute and the job sat "running" for hours. The job is
   also bounded to 90 minutes.
+- **`bun run build-eval` no longer deletes the hand-written eval cases.** It
+  rewrote `eval/cases.json` from its four generated modes alone, so a re-run
+  silently dropped all 15 hand-written cases (every `faithfulness`,
+  `indirect_injection`, `stale_version`, `pii_leak`, … case) and still exited 0.
+  It now keeps them verbatim and refuses to write when any existing case id would
+  be lost, unless that id is named in `EVAL_CASES_ALLOW_DROP`. The file's
+  formatting is normalized once by this change; its content is unchanged.
+- **A failed eval case shows what the engine answered.** `bun run eval` prints a
+  one-line answer excerpt (≤200 characters) under each failure, so a brittle
+  phrase assertion can be told from a wrong answer from the log alone.
 
 ## [0.14.1] — 2026-10-26
 

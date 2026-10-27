@@ -11,11 +11,16 @@
  *     eval/corpus/agentic-product-standard.md (answerable),
  *   - prompt_injection queries are actually blocked by guardInput,
  *   - out_of_scope queries are NOT blocked (no over-blocking),
- *   - all ids are unique.
+ *   - all ids are unique,
+ *   - hand-written cases — every case in a failure mode this script does not emit
+ *     (faithfulness, pii_leak, stale_version, …) — are kept verbatim after the
+ *     generated ones, and the run refuses to write if any existing case id would
+ *     be lost. To drop one on purpose: EVAL_CASES_ALLOW_DROP=id1,id2.
  */
 
+import { mergeGeneratedCases } from "@agenticmind/shared/lib/eval/case-set"
 import { guardInput } from "@agenticmind/shared/lib/knowledge/guard"
-import { readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 const TARGET = 50
@@ -308,8 +313,27 @@ if (below.length > 0) {
   process.exit(1)
 }
 
-writeFileSync(join(root, "eval/cases.json"), `${JSON.stringify(out, null, 2)}\n`)
-console.log(`wrote eval/cases.json (${out.length} cases, all modes >= ${TARGET})`)
+// Hand-written cases live only in the committed file — carry them over, and never
+// lose an existing case without it being named.
+const casesPath = join(root, "eval/cases.json")
+const committed = existsSync(casesPath)
+  ? (JSON.parse(readFileSync(casesPath, "utf8")) as Case[])
+  : []
+const allowDrop = (process.env.EVAL_CASES_ALLOW_DROP ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter((s) => s.length > 0)
+const merged = mergeGeneratedCases(committed, out, allowDrop)
+if (merged.isErr()) {
+  console.error(`NOT WRITTEN: ${merged.error}`)
+  process.exit(1)
+}
+const { cases, kept, dropped: droppedCases } = merged.value
+writeFileSync(casesPath, `${JSON.stringify(cases, null, 2)}\n`)
+console.log(
+  `wrote eval/cases.json (${cases.length} cases: ${out.length} generated, all modes >= ${TARGET}; ` +
+    `${kept.length} hand-written kept${droppedCases.length > 0 ? `; dropped on request: ${droppedCases.join(", ")}` : ""})`,
+)
 
 // ── judge calibration labels ────────────────────────────────────────────
 // Keep the hand-curated labels (ids not prefixed "auto-") and regenerate the

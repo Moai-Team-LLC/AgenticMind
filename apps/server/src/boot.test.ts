@@ -23,7 +23,10 @@ const boot = async (env: Record<string, string>): Promise<Boot> => {
       // Never reached: every case here is decided before the first query.
       DATABASE_URL: "postgres://boot:test@127.0.0.1:1/none",
       SKIP_VALIDATION: "true",
-      PORT: String(40_000 + Math.floor(Math.random() * 900)),
+      // 0 = the OS picks a free port. A random fixed port (40000–40899) sits inside
+      // Linux's ephemeral range, where the suite's own outbound sockets live, and
+      // collided in CI: "Failed to start server. Is port 40410 in use?".
+      PORT: "0",
       ...env,
     },
   })
