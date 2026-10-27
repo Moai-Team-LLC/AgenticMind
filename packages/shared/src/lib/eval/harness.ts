@@ -9,7 +9,10 @@
  * baseline pass rate.
  */
 
+import type { Result } from "neverthrow"
+
 import { findPii } from "@agenticmind/shared/lib/knowledge/guard"
+import { err, ok } from "neverthrow"
 
 /** Level-1 code assertions for one case. All optional; only set ones are checked. */
 export type EvalAssertions = {
@@ -305,9 +308,102 @@ export const runEvalSuite = async (
   }
 }
 
-/** CI gate: true when the run regressed below baseline (minus tolerance). */
+/** Minimum pass rate (0..1) per failure mode, e.g. `{ faithfulness: 0.8 }`. */
+export type ModeFloors = Readonly<Record<string, number>>
+
+export type FloorBreach = {
+  mode: string
+  floor: number
+  passed: number
+  total: number
+  passRate: number
+}
+
+const isRate = (x: unknown): x is number =>
+  typeof x === "number" && Number.isFinite(x) && x >= 0 && x <= 1
+
+/**
+ * Parses BASELINE_PASS_RATE. Unset or blank → 0.8. Anything else must be a rate in
+ * [0, 1]: `Number("80%")` is NaN, and `passRate < NaN` is never true — a gate that
+ * cannot fail.
+ */
+export const parseBaselinePassRate = (raw?: string): Result<number, string> => {
+  if (raw === undefined || raw.trim() === "") {
+    return ok(0.8)
+  }
+  const rate = Number(raw)
+  return isRate(rate)
+    ? ok(rate)
+    : err(`BASELINE_PASS_RATE must be a rate in [0, 1] (e.g. 0.8), got ${JSON.stringify(raw)}`)
+}
+
+/**
+ * Parses BASELINE_MODE_FLOORS — a JSON object of failure mode → minimum pass rate
+ * in [0, 1]. Unset or blank → no floors. Anything that is not exactly that shape,
+ * or names a mode the suite does not have, is an error: a typo must never read as
+ * "no floor".
+ */
+export const parseModeFloors = (
+  raw: string | undefined,
+  knownModes: readonly string[],
+): Result<ModeFloors, string> => {
+  if (raw === undefined || raw.trim() === "") {
+    return ok({})
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return err(`BASELINE_MODE_FLOORS is not JSON: ${JSON.stringify(raw)}`)
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    return err(`BASELINE_MODE_FLOORS must be a JSON object of mode → rate, got ${raw}`)
+  }
+  const floors: Record<string, number> = {}
+  for (const [mode, floor] of Object.entries(parsed)) {
+    if (!knownModes.includes(mode)) {
+      return err(
+        `BASELINE_MODE_FLOORS names "${mode}", which no case has (known: ${knownModes.join(", ")})`,
+      )
+    }
+    if (!isRate(floor)) {
+      return err(
+        `BASELINE_MODE_FLOORS["${mode}"] must be a rate in [0, 1], got ${JSON.stringify(floor)}`,
+      )
+    }
+    floors[mode] = floor
+  }
+  return ok(floors)
+}
+
+/**
+ * The failure modes whose pass rate fell under their floor. A floor is a hard
+ * minimum (no tolerance): with 5 cases a mode moves in 20% steps, so a tolerance
+ * would only blur the line. A floored mode with no cases in the run measured
+ * nothing, and nothing measured is not a pass — it is reported as 0/0.
+ */
+export const modeFloorBreaches = (report: EvalReport, floors: ModeFloors): FloorBreach[] => {
+  const breaches: FloorBreach[] = []
+  for (const [mode, floor] of Object.entries(floors)) {
+    const b = report.byFailureMode[mode]
+    if (b === undefined || b.total === 0) {
+      breaches.push({ mode, floor, passed: 0, total: 0, passRate: 0 })
+    } else if (b.passRate < floor) {
+      breaches.push({ mode, floor, passed: b.passed, total: b.total, passRate: b.passRate })
+    }
+  }
+  return breaches
+}
+
+/**
+ * CI gate: true when the run regressed below baseline (minus tolerance), or any
+ * failure mode fell under its floor — so one weak mode cannot hide behind a high
+ * overall pass rate.
+ */
 export const isRegression = (
   report: EvalReport,
   baselinePassRate: number,
   tolerance = 0.02,
-): boolean => report.passRate < baselinePassRate - tolerance
+  floors: ModeFloors = {},
+): boolean =>
+  report.passRate < baselinePassRate - tolerance || modeFloorBreaches(report, floors).length > 0
