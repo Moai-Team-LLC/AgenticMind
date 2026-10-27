@@ -45,6 +45,17 @@ Run it: `bun run eval` (needs `DATABASE_URL` + `CHAT_API_KEY` + a seeded corpus;
 the full integration run is deliberate, not on every PR — PR CI runs the harness
 unit tests). `EVAL_ONLY=mode1,mode2` restricts to specific buckets.
 
+The gate fails (exit 1) when the overall pass rate drops below
+`BASELINE_PASS_RATE` (default 0.8, minus a 0.02 tolerance) **or** when a failure
+mode falls under its floor in `BASELINE_MODE_FLOORS`, a JSON object of mode →
+minimum pass rate, e.g. `{"faithfulness":0.8}`. Floors are hard minimums and
+exist because the overall rate hides small buckets: the first weekly run was
+229/234 (97.9%) with `faithfulness` at 2/5. An invalid baseline or floor — not
+JSON, a rate outside [0, 1], a mode no case has — stops the run before the first
+model call (exit 2); it never reads as "no gate". Every run ends with its token
+usage per model and a `Usage: … tokens` total; the `≈ $` figure uses OpenAI list
+prices for the default models and is an estimate, not a bill.
+
 ## Measured (not claimed)
 
 From the safety cycle, on a live run:

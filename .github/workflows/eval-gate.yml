@@ -3,7 +3,11 @@ name: eval-gate
 # CI eval-regression gate (Agentic Product Standard v2.0, DoD 12): the live
 # pass-rate run of the integration eval (lib/eval against the real engine).
 # `scripts/eval.ts` exits non-zero when the pass rate drops below
-# BASELINE_PASS_RATE — that non-zero is the gate.
+# BASELINE_PASS_RATE, or when a failure mode falls under its floor in
+# BASELINE_MODE_FLOORS — that non-zero is the gate. Floors exist because the
+# overall rate hides a small mode: the first live run (2026-10-26) was 229/234
+# overall with faithfulness at 2/5, and passed. The log ends with the run's
+# token usage per model and a `Usage: … tokens` total (≈ $ at list prices).
 #
 # Cost-aware: it makes real chat-model calls, so it runs weekly + on demand,
 # not on every PR. Without a CHAT_API_KEY secret it cannot evaluate anything, and
@@ -17,6 +21,9 @@ on:
       baseline:
         description: "Minimum pass rate (0..1)"
         default: "0.8"
+      mode_floors:
+        description: 'Per-failure-mode minimum pass rates, JSON ({} = none)'
+        default: '{"faithfulness":0.8}'
   schedule:
     - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
 
@@ -125,6 +132,7 @@ jobs:
           CHAT_API_KEY: ${{ secrets.CHAT_API_KEY }}
           CHAT_BASE_URL: ${{ vars.CHAT_BASE_URL || 'https://api.openai.com/v1' }}
           BASELINE_PASS_RATE: ${{ github.event.inputs.baseline || '0.8' }}
+          BASELINE_MODE_FLOORS: ${{ github.event.inputs.mode_floors || '{"faithfulness":0.8}' }}
         run: bunx tsx scripts/eval.ts
 
       - name: Report the gate outcome

@@ -20,6 +20,7 @@ import {
   embeddingsProvider,
 } from "@agenticmind/shared/lib/ai/embeddings"
 import { providerFamily } from "@agenticmind/shared/lib/knowledge/judge-model"
+import { addLlmUsage } from "@agenticmind/shared/lib/observability/llm-usage"
 import { Attr, recordChildSpan, SpanKind } from "@agenticmind/shared/lib/observability/trace"
 import { buildRetryOptions } from "@agenticmind/shared/lib/retry"
 import { parseZodSchema } from "@agenticmind/shared/lib/zod/parse"
@@ -57,6 +58,8 @@ const DEFAULT_MAX_OUTPUT_TOKENS = 4096
  * Emits a child LLM span carrying per-call token usage (Cost/FinOps, Layer 9),
  * using OpenInference attribute conventions. A no-op until an exporter is
  * registered, so it is safe on the hot path. Undefined usage fields are omitted.
+ * The same usage also goes to the per-process accumulator (observability/llm-usage),
+ * which a batch run such as the eval gate prints at the end.
  */
 const recordLlmUsage = (
   name: string,
@@ -75,6 +78,7 @@ const recordLlmUsage = (
     attrs[Attr.LLM_TOKEN_TOTAL] = usage.totalTokens
   }
   recordChildSpan(name, SpanKind.LLM, startMs, Date.now(), attrs)
+  addLlmUsage(modelId, usage)
 }
 
 /** Embeds a single text into an EMBEDDING_DIMENSIONS-dim vector. */

@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest"
 
-import type { AskForEval, EvalCase, EvalObservation } from "./harness"
+import type { AskForEval, EvalCase, EvalObservation, EvalReport } from "./harness"
 
-import { citationMetrics, evaluateCase, isRegression, runEvalSuite } from "./harness"
+import {
+  citationMetrics,
+  evaluateCase,
+  isRegression,
+  modeFloorBreaches,
+  parseBaselinePassRate,
+  parseModeFloors,
+  runEvalSuite,
+} from "./harness"
 
 const obs = (o: Partial<EvalObservation>): EvalObservation => {
   return {
@@ -132,6 +140,84 @@ describe("isRegression", () => {
     expect(isRegression({ passRate: 0.9 } as never, 0.95, 0.02)).toBe(true)
     expect(isRegression({ passRate: 0.94 } as never, 0.95, 0.02)).toBe(false)
   })
+})
+
+// The first live eval-gate run (2026-10-26): 229/234 overall, faithfulness 2/5.
+const firstLiveRun = {
+  total: 234,
+  passed: 229,
+  passRate: 229 / 234,
+  results: [],
+  byFailureMode: {
+    factual_retrieval: { total: 55, passed: 54, passRate: 54 / 55 },
+    faithfulness: { total: 5, passed: 2, passRate: 2 / 5 },
+  },
+} as EvalReport
+
+describe("per-failure-mode floors", () => {
+  it("a weak mode no longer hides behind the overall pass rate", () => {
+    expect(isRegression(firstLiveRun, 0.8)).toBe(false)
+    expect(isRegression(firstLiveRun, 0.8, 0.02, { faithfulness: 0.8 })).toBe(true)
+    expect(modeFloorBreaches(firstLiveRun, { faithfulness: 0.8 })).toEqual([
+      { mode: "faithfulness", floor: 0.8, passed: 2, total: 5, passRate: 0.4 },
+    ])
+  })
+
+  it("a floor is a hard minimum: met exactly passes, no tolerance below it", () => {
+    expect(modeFloorBreaches(firstLiveRun, { faithfulness: 0.4 })).toEqual([])
+    expect(modeFloorBreaches(firstLiveRun, { faithfulness: 0.41 })).toHaveLength(1)
+    expect(isRegression(firstLiveRun, 0.8, 0.02, { faithfulness: 0.41 })).toBe(true)
+  })
+
+  it("a floor on a mode with no cases in the run is breached, not skipped", () => {
+    expect(modeFloorBreaches(firstLiveRun, { pii_leak: 0.5 })).toEqual([
+      { mode: "pii_leak", floor: 0.5, passed: 0, total: 0, passRate: 0 },
+    ])
+  })
+})
+
+describe("parseModeFloors", () => {
+  const known = ["faithfulness", "factual_retrieval"]
+
+  it("unset or blank means no floors", () => {
+    expect(parseModeFloors(undefined, known)._unsafeUnwrap()).toEqual({})
+    expect(parseModeFloors("  ", known)._unsafeUnwrap()).toEqual({})
+    expect(parseModeFloors("{}", known)._unsafeUnwrap()).toEqual({})
+  })
+
+  it("parses a JSON object of mode → rate in [0, 1]", () => {
+    expect(
+      parseModeFloors('{"faithfulness":0.8,"factual_retrieval":1}', known)._unsafeUnwrap(),
+    ).toEqual({ faithfulness: 0.8, factual_retrieval: 1 })
+  })
+
+  it.each([
+    ["not JSON", "faithfulness=0.8"],
+    ["a JSON array", "[0.8]"],
+    ["JSON null", "null"],
+    ["a bare number", "0.8"],
+    ["a rate given as a string", '{"faithfulness":"0.8"}'],
+    ["a rate given as a percent", '{"faithfulness":80}'],
+    ["a negative rate", '{"faithfulness":-0.1}'],
+    ["a mode the suite does not have (typo)", '{"faithfullness":0.8}'],
+  ])("rejects %s — never reads it as no floor", (_label, raw) => {
+    expect(parseModeFloors(raw, known).isErr()).toBe(true)
+  })
+})
+
+describe("parseBaselinePassRate", () => {
+  it("unset means the 0.8 default", () => {
+    expect(parseBaselinePassRate()._unsafeUnwrap()).toBe(0.8)
+    expect(parseBaselinePassRate("")._unsafeUnwrap()).toBe(0.8)
+    expect(parseBaselinePassRate("0.9")._unsafeUnwrap()).toBe(0.9)
+  })
+
+  it.each(["80%", "abc", "80", "-1"])(
+    "rejects %s (NaN would make the gate unable to fail)",
+    (raw) => {
+      expect(parseBaselinePassRate(raw).isErr()).toBe(true)
+    },
+  )
 })
 
 describe("citationMetrics", () => {
