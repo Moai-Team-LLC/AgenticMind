@@ -7,6 +7,7 @@
  *
  *   bun run eval                 # uses BASELINE_PASS_RATE (default 0.8)
  *   BASELINE_MODE_FLOORS='{"faithfulness":0.8}' bun run eval   # + per-mode floors
+ *   EVAL_ONLY=faithfulness bun run eval   # only these modes; other modes' floors are skipped
  */
 
 import type { AskForEval, EvalCase, JudgeForEval } from "@agenticmind/shared/lib/eval/harness"
@@ -16,8 +17,10 @@ import {
   isRegression,
   modeFloorBreaches,
   parseBaselinePassRate,
+  parseEvalOnly,
   parseModeFloors,
   runEvalSuite,
+  scopeModeFloors,
 } from "@agenticmind/shared/lib/eval/harness"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { guardInput } from "@agenticmind/shared/lib/knowledge/guard"
@@ -34,31 +37,29 @@ import * as z from "zod"
 const allCases = JSON.parse(
   readFileSync(join(import.meta.dirname, "..", "eval", "cases.json"), "utf8"),
 ) as EvalCase[]
-// EVAL_ONLY=mode1,mode2 restricts the run to those failure modes (dev iteration).
-const only = process.env.EVAL_ONLY?.split(",")
-  .map((s) => s.trim())
-  .filter((s) => s.length > 0)
-const cases =
-  only !== undefined && only.length > 0
-    ? allCases.filter((c) => only.includes(c.failureMode))
-    : allCases
+const knownModes = [...new Set(allCases.map((c) => c.failureMode))]
 
 // Gate settings are checked before the first model call: a typo must not cost a
 // paid run, and must not quietly mean "no gate" either.
+// EVAL_ONLY=mode1,mode2 restricts the run to those failure modes.
+const onlyRes = parseEvalOnly(process.env.EVAL_ONLY, knownModes)
 const baselineRes = parseBaselinePassRate(process.env.BASELINE_PASS_RATE)
-const floorsRes = parseModeFloors(process.env.BASELINE_MODE_FLOORS, [
-  ...new Set(allCases.map((c) => c.failureMode)),
-])
-if (baselineRes.isErr() || floorsRes.isErr()) {
-  for (const r of [baselineRes, floorsRes]) {
+const floorsRes = parseModeFloors(process.env.BASELINE_MODE_FLOORS, knownModes)
+if (onlyRes.isErr() || baselineRes.isErr() || floorsRes.isErr()) {
+  for (const r of [onlyRes, baselineRes, floorsRes]) {
     if (r.isErr()) {
       console.error(`eval gate NOT RUN — ${r.error}`)
     }
   }
   process.exit(2)
 }
+const only = onlyRes.value
+const cases = only === null ? allCases : allCases.filter((c) => only.includes(c.failureMode))
 const baseline = baselineRes.value
-const floors = floorsRes.value
+// A restricted run applies only the floors of the modes it selects; the others are
+// reported as skipped below, not as a breach of a mode that was never run.
+const allFloors = floorsRes.value
+const { applied: floors, skipped: skippedFloors } = scopeModeFloors(allFloors, only)
 
 const db = createClient(databaseSettings.DATABASE_URL)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
@@ -143,6 +144,11 @@ for (const [mode, b] of Object.entries(report.byFailureMode)) {
   const floor = floors[mode]
   const floorNote = floor === undefined ? "" : ` · floor ${(floor * 100).toFixed(0)}%`
   console.log(`  ${mode}: ${b.passed}/${b.total} (${(b.passRate * 100).toFixed(0)}%)${floorNote}`)
+}
+for (const mode of skippedFloors) {
+  console.log(
+    `  ${mode}: floor ${((allFloors[mode] ?? 0) * 100).toFixed(0)}% not applied — mode not selected by EVAL_ONLY`,
+  )
 }
 if (report.citationPrecision !== undefined) {
   console.log(

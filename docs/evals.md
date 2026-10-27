@@ -52,7 +52,11 @@ minimum pass rate, e.g. `{"faithfulness":0.8}`. Floors are hard minimums and
 exist because the overall rate hides small buckets: the first weekly run was
 229/234 (97.9%) with `faithfulness` at 2/5. An invalid baseline or floor — not
 JSON, a rate outside [0, 1], a mode no case has — stops the run before the first
-model call (exit 2); it never reads as "no gate". Every run ends with its token
+model call (exit 2); it never reads as "no gate". A run restricted with
+`EVAL_ONLY` applies only the floors of the modes it selects and prints
+`<mode>: floor N% not applied — mode not selected by EVAL_ONLY` for each other
+floor; an `EVAL_ONLY` mode no case has stops the run the same way (exit 2), since
+zero cases would otherwise read as a pass. Every run ends with its token
 usage per model and a `Usage: … tokens` total; the `≈ $` figure uses OpenAI list
 prices for the default models and is an estimate, not a bill.
 

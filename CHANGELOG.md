@@ -22,6 +22,12 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A manual eval-gate run restricted with `only` no longer fails on floors it
+  never measured.** With `EVAL_ONLY` set, a floor on a mode the run does not select
+  is skipped and printed as `floor N% not applied — mode not selected by EVAL_ONLY`
+  instead of failing the gate as "no case of it ran". `EVAL_ONLY` is now validated
+  too: a mode no case has stops the run before any model call (exit 2) — before, a
+  typo ran zero cases and printed "Eval gate passed".
 - **The faithfulness abstain cases test what each configuration promises.**
   `faith-3/4/5` expected the engine to refuse out-of-corpus questions on a run
   without an answer policy — behaviour the default deployment deliberately does not
