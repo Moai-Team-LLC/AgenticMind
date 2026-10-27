@@ -50,6 +50,11 @@ export const aiSettings = createEnv({
     // breaker (Layer 9). Caps a single generation; the input side is bounded by
     // retrieval token-budgeting. Configurable per deployment.
     CHAT_MAX_OUTPUT_TOKENS: z.coerce.number().int().positive().default(4096),
+    // Send the JSON schema to the chat endpoint as a strict structured-output
+    // constraint ("true" / "false"). Unset or empty: on in the strict profile,
+    // off in standard. Without it an OpenAI-compatible endpoint is asked for
+    // "JSON" only, and an answer off the schema is retried and then lost.
+    CHAT_STRUCTURED_OUTPUTS: z.string().optional(),
 
     // ── Rerank (optional cross-encoder, off by default) ─────────────────
     // When off, retrieval falls back to the fused vector+BM25 order (no extra

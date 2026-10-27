@@ -128,7 +128,10 @@ or another writer's job (unless the caller has `knowledge:admin`), otherwise:
 
 `coverage` reports card extraction over the whole text (`processedChars`,
 `totalChars`, `windows`, `failedWindows`); `error` is `{ code, message }` with a
-safe message, never a stack trace. A job is retried with exponential backoff and
+safe message, never a stack trace. A job can end `ready` with an `error` of code
+`cards_partial` when some windows of the text still could not be read on the
+last attempt: the cards of the others are kept and `coverage` says what is
+missing. A job is retried with exponential backoff and
 jitter up to 5 attempts; a job that fails after `text_ready` keeps its passages
 searchable. A repeated `async` delivery of the same ingest (same title, text,
 language and trust fields) answers the existing job, and re-queues it if it had
