@@ -83,7 +83,8 @@ const bootServer = async (databaseUrl: string): Promise<BootResult> => {
       S3_BUCKET: "boot-test-bucket",
       S3_ACCESS_KEY_ID: "boot-test-key",
       S3_SECRET_ACCESS_KEY: "boot-test-secret",
-      PORT: String(39_000 + Math.floor(Math.random() * 900)),
+      // 0 = the OS picks a free port (a random fixed one collided in CI).
+      PORT: "0",
     },
   })
   let output = ""
