@@ -1,5 +1,9 @@
 import { tenantColumn } from "@agenticmind/shared/database/schema/knowledge/_tenant"
 import { materials } from "@agenticmind/shared/database/schema/knowledge/materials"
+import {
+  knowledgeSources,
+  sourceRevisions,
+} from "@agenticmind/shared/database/schema/knowledge/sources"
 import { sql } from "drizzle-orm"
 import {
   check,
@@ -45,6 +49,11 @@ const ingestionJobs = pgTable(
     /** Next stage to run — the checkpoint a resumed job continues from. */
     stage: text("stage").notNull().default("index"),
     materialId: uuid("material_id").references(() => materials.id, { onDelete: "cascade" }),
+    /** Set when the job indexes a source revision (kl_upsert_source). */
+    sourceId: uuid("source_id").references(() => knowledgeSources.id, { onDelete: "cascade" }),
+    revisionId: uuid("revision_id").references(() => sourceRevisions.id, {
+      onDelete: "cascade",
+    }),
     /** The principal that created the job (JWT subject); status reads are scoped to it. */
     createdBy: text("created_by"),
     /** Idempotency key: a repeated delivery finds the existing job instead of a new one. */
@@ -73,6 +82,7 @@ const ingestionJobs = pgTable(
   (table) => [
     index("ingestion_jobs_claim_idx").on(table.status, table.nextAttemptAt),
     index("ingestion_jobs_material_idx").on(table.materialId),
+    index("ingestion_jobs_revision_idx").on(table.revisionId),
     uniqueIndex("ingestion_jobs_tenant_dedupe_uidx")
       .on(table.tenantId, table.dedupeKey)
       .where(sql`${table.dedupeKey} IS NOT NULL`),

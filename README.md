@@ -141,6 +141,7 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `kl_get_material`    | `knowledge:read`   | fetch a material by id                                              |
 | `kl_graph_neighbors` | `knowledge:read`   | related materials via the knowledge graph                           |
 | `kl_ingest`          | `knowledge:write`  | add text (chunked, embedded, distilled into cards, graph-extracted) |
+| `kl_upsert_source`   | `knowledge:write`  | create/update a source by external ID with a new revision (idempotent: `unchanged`, `stale`) |
 | `kl_get_ingestion_status` | `knowledge:write` | status of a background indexing job (`text_ready`, coverage, safe error) |
 | `kl_forget`          | `knowledge:admin`  | delete a material + all derived chunks/cards/graph (inverse of ingest) |
 | `kl_signal`          | `knowledge:signal` | emit a programmatic compounding signal on a prior answer            |

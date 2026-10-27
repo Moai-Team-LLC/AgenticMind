@@ -8,6 +8,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Sources and revisions: `kl_upsert_source`.** A source is identified by
+  `(connectionId, sourceType, externalId)` within the tenant (migration 0019:
+  `knowledge_sources`, `source_revisions`, both under forced RLS). A delivery is
+  `unchanged` when its normalized content (server-computed sha256 — NFC, LF,
+  no trailing spaces) equals the current revision or one still indexing, `stale`
+  when its `externalVersion` is older than one received, otherwise `accepted`
+  as a new revision with its own material and background job. The source points
+  at a new revision only once its passages are searchable, and only forward; a
+  revision that finishes late ends `superseded`. Dialogue segments are stored
+  and indexed as "speaker: text" lines. The creator owns a source; another
+  writer needs `knowledge:admin`. Only `workspace` visibility is accepted.
+  `kl_ingest` with `source` runs the same path. `expectedRevisionId` and
+  `allowResurrect` are still refused as not yet supported.
+
 - **Background indexing; `kl_ingest` never answers empty.** A synchronous
   `kl_ingest` now stays inside the MCP request cap: a step that would run past
   40 s — typically card extraction of a long text, which could take up to 90 s

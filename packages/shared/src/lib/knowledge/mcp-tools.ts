@@ -16,7 +16,9 @@ import type { RetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieva
 import type {
   IngestionStatus,
   klGetIngestionStatusOutput,
+  klUpsertSourceOutput,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
+import type { UpsertSourceDeps } from "@agenticmind/shared/lib/knowledge/source-upsert"
 import type { CallerContext } from "@agenticmind/shared/lib/knowledge/synth"
 import type { CorpusChunk } from "@agenticmind/shared/lib/skill/compile-live"
 
@@ -40,6 +42,7 @@ import {
   insertSkillVersion,
   upsertSkill,
 } from "@agenticmind/shared/database/query/knowledge/skills"
+import { getSource } from "@agenticmind/shared/database/query/knowledge/sources"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { decayedConfidence, summarizeContested } from "@agenticmind/shared/lib/knowledge/belief"
@@ -68,6 +71,7 @@ import {
   retrievalScopeFields,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
+import { SourceInputError, upsertSource } from "@agenticmind/shared/lib/knowledge/source-upsert"
 import { compileSkillLive } from "@agenticmind/shared/lib/skill/compile-live"
 import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
 import { createHash, randomUUID } from "node:crypto"
@@ -590,6 +594,20 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
     throw new Error("kl_ingest: missing required scope 'knowledge:write'")
   }
   await enforceGuards(deps, "kl_ingest", `${args.title} ${args.text.slice(0, 2000)}`)
+  const identity = args.source
+  if (identity !== undefined) {
+    // Idempotent ingest: the kl_upsert_source path, with the text as the revision.
+    return withSourceErrors("kl_ingest", async () =>
+      upsertSource(
+        sourceDeps(deps),
+        {
+          source: { ...identity, title: args.title, language: args.language },
+          revision: { text: args.text },
+        },
+        { lifecycle: args.lifecycle, trustTier: args.trustTier },
+      ),
+    )
+  }
   if (deps.blobStore === undefined) {
     throw new Error("kl_ingest: blob store not configured")
   }
@@ -616,6 +634,55 @@ export const klIngest = async (deps: McpToolDeps, args: z.infer<typeof klIngestI
   return res.value
 }
 
+const sourceDeps = (deps: McpToolDeps): UpsertSourceDeps => {
+  return {
+    tx: deps.tx,
+    actorUuid: deps.actorUuid ?? null,
+    scopes: deps.scopes,
+    cardsEnabled: deps.cardsEnabled,
+    acceptanceEvaluator: deps.acceptanceEvaluator,
+    graphragEnabled: deps.graph !== undefined,
+  }
+}
+
+/** Runs a source operation, turning a refused delivery into `<tool>: <reason>`. */
+const withSourceErrors = async <T>(tool: string, run: () => Promise<T>): Promise<T> => {
+  try {
+    return await run()
+  } catch (error) {
+    if (error instanceof SourceInputError) {
+      throw new SourceInputError(`${tool}: ${error.message}`, { cause: error })
+    }
+    throw error
+  }
+}
+
+/**
+ * Kl_upsert_source -- record one delivery of a source (see source-upsert.ts):
+ * unchanged, stale, or accepted with a background indexing job. Requires
+ * knowledge:write; the source's owner or knowledge:admin may update it.
+ */
+export const klUpsertSource = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klUpsertSourceInput>,
+): Promise<z.infer<typeof klUpsertSourceOutput>> => {
+  if (!hasScope(deps.scopes, "knowledge:write")) {
+    throw new Error("kl_upsert_source: missing required scope 'knowledge:write'")
+  }
+  const sample =
+    args.revision.text ?? (args.revision.segments ?? []).map((seg) => seg.text).join("\n")
+  await enforceGuards(
+    deps,
+    "kl_upsert_source",
+    `${args.source.title ?? ""} ${sample.slice(0, 2000)}`,
+  )
+  const { materialId: _materialId, ...envelope } = await withSourceErrors(
+    "kl_upsert_source",
+    async () => upsertSource(sourceDeps(deps), args),
+  )
+  return envelope
+}
+
 /**
  * Kl_get_ingestion_status -- read a background indexing job by id. A job is
  * visible to the principal that created it, or with knowledge:admin; anything
@@ -639,15 +706,19 @@ export const klGetIngestionStatus = async (
   }
   type Found = Extract<z.infer<typeof klGetIngestionStatusOutput>, { found: true }>
   const coverage = job.coverage as Found["coverage"]
+  let isCurrent = true // a material ingested without a source is always current
+  if (job.sourceId !== null) {
+    const source = await getSource({ tx: deps.tx, id: job.sourceId })
+    isCurrent = source.isOk() && source.value?.currentRevisionId === job.revisionId
+  }
   return {
     found: true,
     jobId: job.id,
     status: job.status as IngestionStatus,
-    sourceId: null,
-    revisionId: null,
+    sourceId: job.sourceId,
+    revisionId: job.revisionId,
     materialId: job.materialId,
-    // A material ingested without a source is always current.
-    isCurrent: true,
+    isCurrent,
     attempts: job.attempts,
     coverage: coverage ?? null,
     error: job.errorCode !== null ? { code: job.errorCode, message: job.errorMessage ?? "" } : null,

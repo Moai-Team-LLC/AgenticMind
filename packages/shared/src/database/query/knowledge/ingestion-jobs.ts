@@ -13,7 +13,7 @@ import type { IngestionStatus } from "@agenticmind/shared/lib/knowledge/source-c
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
 import { ingestionJobs } from "@agenticmind/shared/database/schema"
-import { and, eq, isNotNull, sql } from "drizzle-orm"
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 export type IngestionStage = "index" | "cards" | "graph" | "done"
@@ -27,6 +27,9 @@ export type IngestionCoverage = {
 
 export type NewIngestionJob = {
   materialId: string
+  /** Set when the job indexes a source revision. */
+  sourceId?: string | null
+  revisionId?: string | null
   createdBy: string | null
   stage: IngestionStage
   status: IngestionStatus
@@ -42,6 +45,8 @@ export const insertIngestionJob = (props: { tx: Transaction; job: NewIngestionJo
         .insert(ingestionJobs)
         .values({
           materialId: props.job.materialId,
+          sourceId: props.job.sourceId ?? null,
+          revisionId: props.job.revisionId ?? null,
           createdBy: props.job.createdBy,
           stage: props.job.stage,
           status: props.job.status,
@@ -66,6 +71,21 @@ export const findIngestionJobByDedupeKey = (props: { tx: Transaction; dedupeKey:
         .select()
         .from(ingestionJobs)
         .where(eq(ingestionJobs.dedupeKey, props.dedupeKey))
+        .limit(1)
+      return row ?? null
+    })(),
+    mapDatabaseError,
+  )
+
+/** The (newest) job indexing a revision, or null. */
+export const findIngestionJobByRevision = (props: { tx: Transaction; revisionId: string }) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const [row] = await props.tx
+        .select()
+        .from(ingestionJobs)
+        .where(eq(ingestionJobs.revisionId, props.revisionId))
+        .orderBy(desc(ingestionJobs.createdAt))
         .limit(1)
       return row ?? null
     })(),

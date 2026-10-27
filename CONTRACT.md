@@ -96,8 +96,9 @@ The call answers one `outcome`, checked in this order:
 | `stale` | `externalVersion` is older than one already received | `sourceId`, `currentRevisionId` |
 | `accepted` | a new revision was stored and queued for indexing | `sourceId`, `revisionId`, `jobId`, `contentHash`, `created` |
 
-A job that finishes after a newer revision was accepted does not take over the
-current pointer; it ends `superseded`.
+The current pointer only moves forward: a job whose revision is older than the
+source's current revision when its passages are ready does not take it over; it
+ends `superseded` (indexed and kept for history, no cards built).
 
 **Visibility.** `workspace` (everyone in the tenant) is the only value accepted
 until per-document access control ships; `restricted` (owner, listed principals

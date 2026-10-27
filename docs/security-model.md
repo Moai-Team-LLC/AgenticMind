@@ -53,7 +53,7 @@ enforce their own scope inside the tool. Mint a token with only the scopes an ag
 | --- | --- | --- |
 | `kl_search`, `kl_ask_global`, `kl_get_material`, `kl_graph_neighbors` | `knowledge:read` | read |
 | `mem_recall` | `memory:read` | read |
-| `kl_ingest`, `kl_get_ingestion_status` | `knowledge:write` | write |
+| `kl_ingest`, `kl_upsert_source`, `kl_get_ingestion_status` | `knowledge:write` | write (a source is updated only by its owner or `knowledge:admin`) |
 | `mem_write` | `memory:write` | write |
 | `kl_signal` | `knowledge:signal` | feedback |
 | `kl_compile_skill` | `knowledge:write` | write |
