@@ -116,7 +116,25 @@ const sourceRevisions = pgTable(
   ],
 )
 
-export { knowledgeSources, sourceRevisions }
+/**
+ * The tenant's corpus revision: a counter that increases whenever what answers
+ * changes — a source switching its current revision (and, later, a retraction).
+ * Reported with each answer, so a caller can tell answers over different corpora
+ * apart. One row per tenant; the key is the tenant column itself.
+ */
+const knowledgeCorpus = pgTable(
+  "knowledge_corpus",
+  {
+    ...tenantColumn,
+    revision: bigint("revision", { mode: "number" }).notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .default(sql`now()`)
+      .notNull(),
+  },
+  (table) => [uniqueIndex("knowledge_corpus_tenant_uidx").on(table.tenantId)],
+)
+
+export { knowledgeCorpus, knowledgeSources, sourceRevisions }
 
 export type KnowledgeSourceSelect = typeof knowledgeSources.$inferSelect
 export type SourceRevisionSelect = typeof sourceRevisions.$inferSelect

@@ -9,9 +9,13 @@
 import type { Transaction } from "@agenticmind/shared/database/client"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
-import { knowledgeSources, sourceRevisions } from "@agenticmind/shared/database/schema"
+import {
+  knowledgeCorpus,
+  knowledgeSources,
+  sourceRevisions,
+} from "@agenticmind/shared/database/schema"
 import { currentTenantId } from "@agenticmind/shared/database/schema/knowledge/_tenant"
-import { and, desc, eq, gte, sql } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 export type SourceIdentity = { connectionId: string; sourceType: string; externalId: string }
@@ -207,6 +211,84 @@ export const switchCurrentRevision = (props: {
         returning s.id
       `)
       return res.rows.length > 0
+    })(),
+    mapDatabaseError,
+  )
+
+/** Increments the tenant's corpus revision (creating it at 1) and returns it. */
+export const bumpCorpusRevision = (props: { tx: Transaction }) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const [row] = await props.tx
+        .insert(knowledgeCorpus)
+        .values({ revision: 1 })
+        .onConflictDoUpdate({
+          target: knowledgeCorpus.tenantId,
+          set: { revision: sql`${knowledgeCorpus.revision} + 1`, updatedAt: sql`now()` },
+        })
+        .returning({ revision: knowledgeCorpus.revision })
+      return row?.revision ?? 0
+    })(),
+    mapDatabaseError,
+  )
+
+/** The tenant's corpus revision; 0 before anything changed it. */
+export const getCorpusRevision = (props: { tx: Transaction }) =>
+  ResultAsync.fromPromise(
+    (async () => {
+      const [row] = await props.tx
+        .select({ revision: knowledgeCorpus.revision })
+        .from(knowledgeCorpus)
+        // One row per tenant: name the tenant, RLS alone is bypassed by an owner.
+        .where(eq(knowledgeCorpus.tenantId, currentTenantId))
+        .limit(1)
+      return row?.revision ?? 0
+    })(),
+    mapDatabaseError,
+  )
+
+export type SourceRefRow = {
+  materialId: string
+  sourceId: string
+  revisionId: string
+  sourceType: string
+  isCurrent: boolean
+  knowledgeType: string
+  occurredAt: Date | null
+  sourceUrl: string | null
+  provenance: unknown
+  warnings: unknown
+}
+
+/** Source and revision facts for the given materials (those that belong to a revision). */
+export const sourceRefsForMaterials = (props: {
+  tx: Transaction
+  materialIds: readonly string[]
+}) =>
+  ResultAsync.fromPromise(
+    (async (): Promise<SourceRefRow[]> => {
+      if (props.materialIds.length === 0) {
+        return []
+      }
+      const rows = await props.tx
+        .select({
+          materialId: sourceRevisions.materialId,
+          sourceId: knowledgeSources.id,
+          revisionId: sourceRevisions.id,
+          sourceType: knowledgeSources.sourceType,
+          isCurrent: sql<boolean>`coalesce(${knowledgeSources.currentRevisionId} = ${sourceRevisions.id}, false)`,
+          knowledgeType: knowledgeSources.knowledgeType,
+          occurredAt: sourceRevisions.occurredAt,
+          sourceUrl: knowledgeSources.sourceUrl,
+          provenance: sourceRevisions.provenance,
+          warnings: sourceRevisions.warnings,
+        })
+        .from(sourceRevisions)
+        .innerJoin(knowledgeSources, eq(knowledgeSources.id, sourceRevisions.sourceId))
+        .where(inArray(sourceRevisions.materialId, [...props.materialIds]))
+      return rows.flatMap((r) =>
+        r.materialId === null ? [] : [{ ...r, materialId: r.materialId, isCurrent: r.isCurrent }],
+      )
     })(),
     mapDatabaseError,
   )

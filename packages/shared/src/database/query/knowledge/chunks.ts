@@ -10,10 +10,11 @@ import type { ScoredHit } from "@agenticmind/shared/lib/knowledge/blend"
 import type { AnyColumn, SQL } from "drizzle-orm"
 
 import { mapDatabaseError } from "@agenticmind/shared/database/database-error"
+import { retrievableMaterial } from "@agenticmind/shared/database/query/knowledge/retrievable"
 import { chunks } from "@agenticmind/shared/database/schema"
 import { SUPPORTED_LANGUAGES } from "@agenticmind/shared/database/schema/knowledge/_config"
 import { toVectorLiteral } from "@agenticmind/shared/lib/knowledge/vector"
-import { asc, eq, isNotNull, sql } from "drizzle-orm"
+import { and, asc, eq, isNotNull, sql } from "drizzle-orm"
 import { ResultAsync } from "neverthrow"
 
 /** A chunk to persist. embedding is null until the embedder fills it in. */
@@ -128,7 +129,7 @@ export const searchChunks = (props: {
         score: sql<number>`1 - (${chunks.embedding} <=> ${literal}::vector)`.as("score"),
       })
       .from(chunks)
-      .where(isNotNull(chunks.embedding))
+      .where(and(isNotNull(chunks.embedding), retrievableMaterial(chunks.materialId)))
       .orderBy(sql`${chunks.embedding} <=> ${literal}::vector`)
       .limit(limit)
       .offset(offset),
@@ -211,7 +212,7 @@ export const searchChunksBm25 = (props: {
         score: sql<number>`ts_rank_cd(${chunks.bodyTsv}, ${tsQuery})`.as("score"),
       })
       .from(chunks)
-      .where(whereClause)
+      .where(and(whereClause, retrievableMaterial(chunks.materialId)))
       .orderBy(sql`ts_rank_cd(${chunks.bodyTsv}, ${tsQuery}) DESC`)
       .limit(limit),
     mapDatabaseError,

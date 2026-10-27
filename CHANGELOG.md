@@ -8,6 +8,18 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Only a source's current revision answers.** Every retrieval path over
+  passages and cards — vector, BM25 and structured, counts included — applies
+  one predicate (`retrievable.ts`): a revision that is superseded or still
+  indexing never mixes into results. `kl_upsert_source` honours
+  `expectedRevisionId` (`conflict` unless it names the current revision; `null`
+  expects none; nothing is stored on a conflict). A per-tenant corpus revision
+  (migration 0020, `knowledge_corpus`) increases with each switch, atomically,
+  and `kl_ask_global` reports it as `corpusRevision`. Search hits and citations
+  now carry their source fields (`sourceId`, `revisionId`, `isCurrent`,
+  `knowledgeType`, `occurredAt`, `sourceUrl`, `provenance`, `warnings`; the
+  segment fields stay null until segment-aware passages land).
+
 - **Sources and revisions: `kl_upsert_source`.** A source is identified by
   `(connectionId, sourceType, externalId)` within the tenant (migration 0019:
   `knowledge_sources`, `source_revisions`, both under forced RLS). A delivery is
