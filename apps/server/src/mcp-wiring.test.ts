@@ -18,8 +18,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest"
 
 const SERVER_DIR = fileURLToPath(new URL("../", import.meta.url))
 const KEY = "wiring-test-key-0123456789abcdef"
-const PORT = 41_000 + Math.floor(Math.random() * 900)
-const URL_MCP = `http://127.0.0.1:${PORT}/mcp`
+// The OS picks the port (PORT=0); the server reports it in its listening line.
+let URL_MCP = ""
 
 let child: ChildProcess
 let output = ""
@@ -36,7 +36,7 @@ beforeAll(async () => {
       MCP_API_KEY: KEY,
       MCP_MAX_REQUEST_BODY_BYTES: "4096",
       MCP_MAX_TOOL_INPUT_ELEMENTS: "100",
-      PORT: String(PORT),
+      PORT: "0",
     },
   })
   const listening = new Promise<void>((resolve, reject) => {
@@ -45,7 +45,9 @@ beforeAll(async () => {
     }, 30_000)
     const onData = (chunk: Buffer): void => {
       output += chunk.toString()
-      if (output.includes("listening on")) {
+      const bound = /listening on :(\d+)/u.exec(output)
+      if (bound !== null) {
+        URL_MCP = `http://127.0.0.1:${bound[1]}/mcp`
         clearTimeout(timer)
         resolve()
       }

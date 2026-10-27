@@ -10,6 +10,7 @@ import type { Transaction } from "@agenticmind/shared/database/client"
 import type { sourceRef } from "@agenticmind/shared/lib/knowledge/source-contract"
 import type * as z from "zod"
 
+import { segmentsForChunks } from "@agenticmind/shared/database/query/knowledge/chunks"
 import { sourceRefsForMaterials } from "@agenticmind/shared/database/query/knowledge/sources"
 
 export type SourceRef = z.infer<typeof sourceRef>
@@ -105,4 +106,25 @@ export const annotateOrigins = async (
       s.originNote = note
     }
   }
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu
+
+/**
+ * The utterance fields of passages that cover part of a dialogue: segment
+ * range, speaker (when the passage has one), time span. Other passages — and
+ * card citations, whose id is not a passage — contribute nothing, so the
+ * source-level nulls stand.
+ */
+export const chunkSegmentsFor = async (
+  tx: Transaction,
+  chunkIds: readonly string[],
+): Promise<(chunkId: string) => Partial<SourceRef>> => {
+  const ids = [...new Set(chunkIds)].filter((id) => UUID.test(id))
+  const res = await segmentsForChunks({ tx, chunkIds: ids })
+  if (res.isErr()) {
+    throw new Error(`chunk segments: ${res.error.message}`)
+  }
+  const byChunk = res.value
+  return (chunkId) => byChunk.get(chunkId) ?? {}
 }

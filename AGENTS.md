@@ -47,6 +47,10 @@ Lint (`oxlint`) needs Node ≥22.18 (see `.nvmrc`); the rest run under Bun.
   without a test; don't add a tool without a contract entry.
 - **No secrets, PII, or domain-private data** in code, tests, or fixtures.
 - Functional style, `neverthrow` Result types, strict TypeScript.
+- **A test that starts the server uses `PORT=0`** and reads the bound port from
+  the `listening on :<port>` line — never a random fixed port: those land in
+  the runner's ephemeral range and collide (`Is port … in use?`), a red CI on
+  healthy code.
 
 ## Where things live
 

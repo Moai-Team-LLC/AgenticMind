@@ -24,6 +24,7 @@ import type {
 } from "@agenticmind/shared/database/query/knowledge/ingestion-jobs"
 import type { IngestionJobSelect } from "@agenticmind/shared/database/schema"
 import type { extractCards } from "@agenticmind/shared/lib/knowledge/cards-extractor"
+import type { DialogueSegment } from "@agenticmind/shared/lib/knowledge/chunker"
 import type { GraphStore } from "@agenticmind/shared/lib/knowledge/graph-store"
 import type { IngestionStatus } from "@agenticmind/shared/lib/knowledge/source-contract"
 
@@ -57,6 +58,7 @@ import {
   persistCardItems,
   persistChunkItems,
   prepareChunkItems,
+  prepareDialogueChunkItems,
 } from "@agenticmind/shared/lib/knowledge/indexer"
 import { embedKnowledgeBatch } from "@agenticmind/shared/lib/knowledge/llm"
 import { sanitizeForText } from "@agenticmind/shared/lib/knowledge/sanitize"
@@ -167,9 +169,9 @@ const loadText = async (
   deps: IngestionRunnerDeps,
   job: IngestionJobSelect,
   payload: IngestionPayload,
-): Promise<{ text: string; revisionNo: number | null }> => {
+): Promise<{ text: string; revisionNo: number | null; segments: DialogueSegment[] | null }> => {
   if (job.revisionId === null) {
-    return { text: payload.text, revisionNo: null }
+    return { text: payload.text, revisionNo: null, segments: null }
   }
   const revisionId = job.revisionId
   const found = await withTenant(deps.db, job.tenantId, async (tx) =>
@@ -181,7 +183,10 @@ const loadText = async (
   if (found.value === null) {
     throw new StageError("material_missing", false, `revision ${revisionId} not found`)
   }
-  return { text: found.value.contentText, revisionNo: found.value.revisionNo }
+  const segments = Array.isArray(found.value.segments)
+    ? (found.value.segments as DialogueSegment[])
+    : null
+  return { text: found.value.contentText, revisionNo: found.value.revisionNo, segments }
 }
 
 type StageOutcome = { coverage?: IngestionCoverage; superseded?: boolean; retracted?: boolean }
@@ -194,11 +199,15 @@ const runStage = async (
   payload: IngestionPayload,
   material: LoadedMaterial,
   revisionNo: number | null,
+  segments: DialogueSegment[] | null,
 ): Promise<StageOutcome> => {
   if (stage === "index") {
     let prepared: Awaited<ReturnType<typeof prepareChunkItems>>
     try {
-      prepared = await prepareChunkItems(payload.text, deps.embed ?? embedKnowledgeBatch)
+      prepared =
+        segments === null
+          ? await prepareChunkItems(payload.text, deps.embed ?? embedKnowledgeBatch)
+          : await prepareDialogueChunkItems(segments, deps.embed ?? embedKnowledgeBatch)
     } catch (error) {
       const message = String((error as { message?: unknown }).message ?? error)
       if (message.startsWith(EMPTY_BODY_PREFIX)) {
@@ -410,11 +419,11 @@ export const runClaimedJob = async (
     }
     const stored = readPayload(job)
     const material = await loadMaterial(deps, job)
-    const { text, revisionNo } = await loadText(deps, job, stored)
+    const { text, revisionNo, segments } = await loadText(deps, job, stored)
     const payload = { ...stored, text }
     let stage = job.stage as IngestionStage
     while (stage !== "done") {
-      const outcome = await runStage(deps, job, stage, payload, material, revisionNo)
+      const outcome = await runStage(deps, job, stage, payload, material, revisionNo, segments)
       if (leaseLost) {
         return
       }

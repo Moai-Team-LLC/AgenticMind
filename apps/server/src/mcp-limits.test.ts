@@ -1,5 +1,9 @@
 // oxlint-disable import/no-unassigned-import
 import "@agenticmind/shared/lib/knowledge/_test-env"
+import {
+  klUpsertSourceInput,
+  MAX_REVISION_SEGMENTS,
+} from "@agenticmind/shared/lib/knowledge/source-contract"
 import { createMcpHandler } from "mcp-handler"
 import { describe, expect, it } from "vitest"
 import * as z from "zod"
@@ -185,5 +189,77 @@ describe("maxToolInputElements through mcp-handler", () => {
       Array.from({ length: 500 }, () => "x"),
     )
     expect(unlimited.handlerRuns).toBe(1)
+  })
+})
+
+describe("the strict element cap admits the largest legitimate call", () => {
+  it("a kl_upsert_source dialogue with the maximum number of fully-specified segments", async () => {
+    let handlerRuns = 0
+    const handler = createMcpHandler(
+      (server) => {
+        server.registerTool(
+          "kl_upsert_source",
+          { description: "cap probe", inputSchema: klUpsertSourceInput as never },
+          (async () => {
+            handlerRuns += 1
+            return { content: [{ type: "text", text: "ran" }] }
+          }) as never,
+        )
+      },
+      {
+        serverInfo: { name: "limits-test", version: "0.0.0" },
+        capabilities: { tools: {} },
+        ...mcpServerLimitOptions({ maxToolInputElements: STRICT_MAX_TOOL_INPUT_ELEMENTS }),
+      },
+      { basePath: "", maxDuration: 10 },
+    )
+    const args = {
+      source: {
+        sourceType: "meeting",
+        externalId: "m-1",
+        connectionId: "conn",
+        title: "Synthetic interview",
+        sourceUrl: "https://example.com/m/1",
+        knowledgeType: "evidence",
+        language: "english",
+        visibility: "workspace",
+        recipients: [],
+      },
+      revision: {
+        segments: Array.from({ length: MAX_REVISION_SEGMENTS }, (_v, i) => {
+          return { speaker: "S", speakerId: "s1", text: "ok", startMs: i, endMs: i + 1 }
+        }),
+        externalVersion: 1,
+        occurredAt: "2026-10-01T09:00:00Z",
+        provenance: {
+          repo: "r",
+          path: "p",
+          commitSha: "abc1234",
+          ref: "main",
+          environment: "prod",
+        },
+        warnings: Array.from({ length: 20 }, () => "w"),
+      },
+      expectedRevisionId: null,
+      allowResurrect: false,
+    }
+    const res = await handler(
+      new Request("http://localhost/mcp", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "kl_upsert_source", arguments: args },
+        }),
+      }),
+    )
+    const text = await res.text()
+    expect(text, text.slice(0, 300)).not.toContain("maximum of")
+    expect(handlerRuns).toBe(1)
   })
 })

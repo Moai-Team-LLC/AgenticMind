@@ -88,11 +88,26 @@ const fetchHandler = (req: Request): Response | Promise<Response> => {
 // byte-for-byte identical across both — only the listener differs.
 // Bind 0.0.0.0 so the port is reachable from outside the container (Bun.serve
 // otherwise defaults to loopback, which a Docker/host port map can't reach).
+// PORT=0 lets the OS pick a free port; the line below reports the one bound.
+let boundPort: number = PORT
 if ((globalThis as { Bun?: unknown }).Bun !== undefined) {
-  Bun.serve({ port: PORT, hostname: "0.0.0.0", idleTimeout: 120, fetch: fetchHandler })
+  const server = Bun.serve({
+    port: PORT,
+    hostname: "0.0.0.0",
+    idleTimeout: 120,
+    fetch: fetchHandler,
+  })
+  boundPort = server.port ?? PORT
 } else {
   const { serve } = await import("@hono/node-server")
-  serve({ port: PORT, hostname: "0.0.0.0", fetch: fetchHandler })
+  const server = serve({ port: PORT, hostname: "0.0.0.0", fetch: fetchHandler })
+  await new Promise<void>((resolve) => {
+    server.once("listening", () => {
+      resolve()
+    })
+  })
+  const address = server.address()
+  boundPort = typeof address === "object" && address !== null ? address.port : PORT
 }
 
-console.log(`[SERVER] AgenticMind MCP server listening on :${PORT} (MCP at /mcp)`)
+console.log(`[SERVER] AgenticMind MCP server listening on :${boundPort} (MCP at /mcp)`)

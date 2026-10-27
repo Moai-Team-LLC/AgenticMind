@@ -37,6 +37,13 @@ const chunks = pgTable(
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
     embeddingModel: text("embedding_model"),
+    /** For a passage of a dialogue: the utterances it covers (inclusive), their
+     * time span, and the speaker when all of them share one. Null otherwise. */
+    segmentFrom: integer("segment_from"),
+    segmentTo: integer("segment_to"),
+    startMs: integer("start_ms"),
+    endMs: integer("end_ms"),
+    speaker: text("speaker"),
     ftsConfig: text("fts_config").notNull().default("simple"),
     // Computed at insert-time in database/query/knowledge/chunks.ts (invariant moved to repo layer)
     bodyTsv: tsvector("body_tsv").notNull(),

@@ -199,3 +199,84 @@ export const approxTokens = (s: string): number => {
   const tokens = Math.floor((n + 3) / 4)
   return Math.max(1, tokens)
 }
+
+export type DialogueSegment = {
+  speaker?: string | null
+  text: string
+  startMs?: number | null
+  endMs?: number | null
+}
+
+export type DialoguePiece = {
+  body: string
+  /** Utterances the passage covers, inclusive. */
+  segmentFrom: number
+  segmentTo: number
+  startMs: number | null
+  endMs: number | null
+  /** The speaker when every utterance in the passage has the same one. */
+  speaker: string | null
+}
+
+const renderLine = (s: DialogueSegment): string =>
+  s.speaker !== undefined && s.speaker !== null && s.speaker !== ""
+    ? `${s.speaker}: ${s.text}`
+    : s.text
+
+/**
+ * Splits a dialogue into passages along utterance boundaries, so every passage
+ * knows which utterances (and which time span) it holds: consecutive
+ * "speaker: text" lines up to `maxRunes`, the last utterance of a passage
+ * repeated at the start of the next for context. An utterance longer than
+ * `maxRunes` is split on its own; each piece keeps that utterance's range.
+ */
+export const splitSegments = (
+  segments: readonly DialogueSegment[],
+  options: ChunkOptions = {},
+): DialoguePiece[] => {
+  const maxRunes =
+    options.maxRunes !== undefined && options.maxRunes > 0 ? options.maxRunes : DEFAULT_MAX_RUNES
+  const lines = segments.map((s) => renderLine(s))
+  const sizes = lines.map((l) => Array.from(l).length)
+  const piece = (body: string, from: number, to: number): DialoguePiece => {
+    const covered = segments.slice(from, to + 1)
+    const speakers = new Set(covered.map((s) => s.speaker ?? null))
+    const only = speakers.size === 1 ? [...speakers][0] : null
+    return {
+      body,
+      segmentFrom: from,
+      segmentTo: to,
+      startMs: segments[from]?.startMs ?? null,
+      endMs: segments[to]?.endMs ?? null,
+      speaker: only === undefined || only === "" ? null : only,
+    }
+  }
+  const out: DialoguePiece[] = []
+  let i = 0
+  while (i < lines.length) {
+    if ((sizes[i] ?? 0) > maxRunes) {
+      for (const part of splitText(lines[i] ?? "", options)) {
+        out.push(piece(part, i, i))
+      }
+      i += 1
+      continue
+    }
+    let j = i
+    let size = sizes[i] ?? 0
+    while (
+      j + 1 < lines.length &&
+      (sizes[j + 1] ?? 0) <= maxRunes &&
+      size + 1 + (sizes[j + 1] ?? 0) <= maxRunes
+    ) {
+      j += 1
+      size += 1 + (sizes[j] ?? 0)
+    }
+    out.push(piece(lines.slice(i, j + 1).join("\n"), i, j))
+    if (j + 1 >= lines.length) {
+      break
+    }
+    // Overlap one utterance when the passage held more than one.
+    i = j > i ? j : j + 1
+  }
+  return out
+}
