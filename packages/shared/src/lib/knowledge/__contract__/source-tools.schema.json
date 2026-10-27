@@ -1,0 +1,1292 @@
+{
+  "kl_upsert_source.input": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "object",
+        "properties": {
+          "sourceType": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+          },
+          "externalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "connectionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "knowledgeType": {
+            "type": "string",
+            "enum": ["canonical", "evidence", "inference"]
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "simple",
+              "arabic",
+              "danish",
+              "dutch",
+              "english",
+              "finnish",
+              "french",
+              "german",
+              "indonesian",
+              "italian",
+              "norwegian",
+              "portuguese",
+              "russian",
+              "spanish",
+              "swedish",
+              "turkish"
+            ]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["workspace", "restricted", "personal"]
+          },
+          "recipients": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "required": ["sourceType", "externalId"],
+        "additionalProperties": false
+      },
+      "revision": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200000
+          },
+          "segments": {
+            "maxItems": 5000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "speaker": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "speakerId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000
+                },
+                "startMs": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "endMs": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": ["text"],
+              "additionalProperties": false
+            }
+          },
+          "externalVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "provenance": {
+            "type": "object",
+            "properties": {
+              "repo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "commitSha": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{7,64}$"
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "environment": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          "warnings": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "expectedRevisionId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "allowResurrect": {
+        "type": "boolean"
+      }
+    },
+    "required": ["source", "revision"],
+    "additionalProperties": false
+  },
+  "kl_upsert_source.output": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "accepted"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "created": {
+            "type": "boolean"
+          }
+        },
+        "required": ["outcome", "sourceId", "revisionId", "jobId", "contentHash", "created"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "unchanged"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "jobId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "contentHash": {
+            "type": "string"
+          }
+        },
+        "required": ["outcome", "sourceId", "revisionId", "jobId", "contentHash"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "stale"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currentRevisionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["outcome", "sourceId", "currentRevisionId"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "conflict"
+          },
+          "sourceId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "currentRevisionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["outcome", "sourceId", "currentRevisionId"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "retracted"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["outcome", "sourceId"],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "kl_get_ingestion_status.input": {
+    "type": "object",
+    "properties": {
+      "jobId": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "required": ["jobId"],
+    "additionalProperties": false
+  },
+  "kl_get_ingestion_status.output": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "required": ["found"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "const": true
+          },
+          "jobId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "indexing",
+              "text_ready",
+              "ready",
+              "retry_wait",
+              "failed",
+              "superseded",
+              "retracted"
+            ]
+          },
+          "sourceId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revisionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "materialId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "processedChars": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "totalChars": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "windows": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "failedWindows": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["processedChars", "totalChars", "windows", "failedWindows"],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                },
+                "required": ["code", "message"],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "found",
+          "jobId",
+          "status",
+          "sourceId",
+          "revisionId",
+          "materialId",
+          "isCurrent",
+          "attempts",
+          "coverage",
+          "error",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "kl_read_source.input": {
+    "type": "object",
+    "properties": {
+      "sourceId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "revisionId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "range": {
+        "type": "object",
+        "properties": {
+          "fromSegment": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "toSegment": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["fromSegment", "toSegment"],
+        "additionalProperties": false
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "maxChars": {
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 100000
+      }
+    },
+    "required": ["sourceId"],
+    "additionalProperties": false
+  },
+  "kl_read_source.output": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "const": false
+          }
+        },
+        "required": ["found"],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "found": {
+            "type": "boolean",
+            "const": true
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revisionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "isCurrent": {
+            "type": "boolean"
+          },
+          "sourceType": {
+            "type": "string"
+          },
+          "externalId": {
+            "type": "string"
+          },
+          "connectionId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": ["string", "null"]
+          },
+          "knowledgeType": {
+            "type": "string",
+            "enum": ["canonical", "evidence", "inference"]
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["workspace", "restricted", "personal"]
+          },
+          "occurredAt": {
+            "type": ["string", "null"]
+          },
+          "capturedAt": {
+            "type": "string"
+          },
+          "contentHash": {
+            "type": "string"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "repo": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "commitSha": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{7,64}$"
+                  },
+                  "ref": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "environment": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  }
+                },
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "totalChars": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "totalSegments": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "type": ["string", "null"]
+          },
+          "segments": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "index": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "speaker": {
+                      "type": ["string", "null"]
+                    },
+                    "speakerId": {
+                      "type": ["string", "null"]
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "startMs": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "endMs": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": ["index", "speaker", "speakerId", "text", "startMs", "endMs"],
+                  "additionalProperties": false
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "range": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "fromSegment": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "toSegment": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["fromSegment", "toSegment"],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextOffset": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "truncated": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "found",
+          "sourceId",
+          "revisionId",
+          "isCurrent",
+          "sourceType",
+          "externalId",
+          "connectionId",
+          "title",
+          "sourceUrl",
+          "knowledgeType",
+          "visibility",
+          "occurredAt",
+          "capturedAt",
+          "contentHash",
+          "provenance",
+          "warnings",
+          "totalChars",
+          "totalSegments",
+          "text",
+          "segments",
+          "range",
+          "offset",
+          "nextOffset",
+          "truncated"
+        ],
+        "additionalProperties": false
+      }
+    ]
+  },
+  "kl_set_source_availability.input": {
+    "type": "object",
+    "properties": {
+      "sourceType": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+      },
+      "externalId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      },
+      "connectionId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "available": {
+        "type": "boolean"
+      },
+      "reason": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      }
+    },
+    "required": ["sourceType", "externalId", "available", "reason"],
+    "additionalProperties": false
+  },
+  "kl_set_source_availability.output": {
+    "type": "object",
+    "properties": {
+      "outcome": {
+        "type": "string",
+        "enum": ["updated", "unchanged", "not_found"]
+      }
+    },
+    "required": ["outcome"],
+    "additionalProperties": false
+  },
+  "kl_search.input": {
+    "type": "object",
+    "properties": {
+      "q": {
+        "type": "string",
+        "minLength": 1
+      },
+      "queries": {
+        "maxItems": 8,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "limit": {
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 50
+      },
+      "tokenBudget": {
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 32000
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["current", "research", "history"]
+      },
+      "sourceTypes": {
+        "maxItems": 20,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        }
+      },
+      "period": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "required": ["q"],
+    "additionalProperties": false
+  },
+  "kl_ask_global.input": {
+    "type": "object",
+    "properties": {
+      "question": {
+        "type": "string",
+        "minLength": 1
+      },
+      "intent": {
+        "type": "string",
+        "maxLength": 500
+      },
+      "facts": {
+        "maxItems": 20,
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": ["label", "value"],
+          "additionalProperties": false
+        }
+      },
+      "mode": {
+        "type": "string",
+        "enum": ["current", "research", "history"]
+      },
+      "sourceTypes": {
+        "maxItems": 20,
+        "type": "array",
+        "items": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+        }
+      },
+      "period": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "required": ["question"],
+    "additionalProperties": false
+  },
+  "kl_ingest.input": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      },
+      "text": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200000
+      },
+      "language": {
+        "type": "string",
+        "enum": [
+          "simple",
+          "arabic",
+          "danish",
+          "dutch",
+          "english",
+          "finnish",
+          "french",
+          "german",
+          "indonesian",
+          "italian",
+          "norwegian",
+          "portuguese",
+          "russian",
+          "spanish",
+          "swedish",
+          "turkish"
+        ]
+      },
+      "lifecycle": {
+        "type": "string",
+        "enum": ["active", "deprecated", "superseded", "archived"]
+      },
+      "trustTier": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "source": {
+        "type": "object",
+        "properties": {
+          "sourceType": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+          },
+          "externalId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "connectionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "knowledgeType": {
+            "type": "string",
+            "enum": ["canonical", "evidence", "inference"]
+          }
+        },
+        "required": ["sourceType", "externalId"],
+        "additionalProperties": false
+      },
+      "async": {
+        "type": "boolean"
+      }
+    },
+    "required": ["title", "text"],
+    "additionalProperties": false
+  },
+  "kl_ingest.output.fields": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "queued",
+          "indexing",
+          "text_ready",
+          "ready",
+          "retry_wait",
+          "failed",
+          "superseded",
+          "retracted"
+        ]
+      },
+      "jobId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": ["status", "jobId"],
+    "additionalProperties": false
+  },
+  "kl_forget.input": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string",
+        "minLength": 1
+      },
+      "sourceType": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9._-]{0,63}$"
+      },
+      "connectionId": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      },
+      "reason": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500
+      }
+    },
+    "required": ["id"],
+    "additionalProperties": false
+  },
+  "kl_forget.output.source": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "string"
+      },
+      "retracted": {
+        "type": "boolean"
+      },
+      "sourceId": {
+        "type": "string",
+        "format": "uuid"
+      },
+      "tombstonedAt": {
+        "type": "string"
+      },
+      "purgeJobId": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "required": ["id", "retracted"],
+    "additionalProperties": false
+  },
+  "hit_and_citation.source_fields": {
+    "type": "object",
+    "properties": {
+      "sourceId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "revisionId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "uuid"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "sourceType": {
+        "type": ["string", "null"]
+      },
+      "isCurrent": {
+        "type": "boolean"
+      },
+      "knowledgeType": {
+        "type": "string",
+        "enum": ["canonical", "evidence", "inference"]
+      },
+      "occurredAt": {
+        "type": ["string", "null"]
+      },
+      "sourceUrl": {
+        "type": ["string", "null"]
+      },
+      "segmentRange": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "to": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": ["from", "to"],
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "speaker": {
+        "type": ["string", "null"]
+      },
+      "startMs": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "endMs": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "provenance": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "repo": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 1000
+              },
+              "commitSha": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{7,64}$"
+              },
+              "ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "environment": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "warnings": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": [
+      "sourceId",
+      "revisionId",
+      "sourceType",
+      "isCurrent",
+      "knowledgeType",
+      "occurredAt",
+      "sourceUrl",
+      "segmentRange",
+      "speaker",
+      "startMs",
+      "endMs",
+      "provenance",
+      "warnings"
+    ],
+    "additionalProperties": false
+  }
+}

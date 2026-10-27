@@ -5,21 +5,25 @@ the set of MCP **tool names**, their **input schemas**, and the **scopes** they
 require. It is surfaced to clients as `serverInfo.version` and guarded in CI by a
 snapshot test (`packages/shared/src/lib/knowledge/mcp-contract.test.ts`).
 
-**Current version: `1.10.0`** (see `MCP_CONTRACT_VERSION` in
+**Current version: `1.11.0`** (see `MCP_CONTRACT_VERSION` in
 `packages/shared/src/lib/knowledge/mcp-tools.ts`).
 
 ## Tools
 
 | Tool | Scope | Required input | Optional input |
 | --- | --- | --- | --- |
-| `kl_search` | `knowledge:read` | `q` | `queries`, `limit`, `tokenBudget` |
-| `kl_ask_global` | `knowledge:read` | `question` | `intent`, `facts` |
+| `kl_search` | `knowledge:read` | `q` | `queries`, `limit`, `tokenBudget`, `mode`, `sourceTypes`, `period` |
+| `kl_ask_global` | `knowledge:read` | `question` | `intent`, `facts`, `mode`, `sourceTypes`, `period` |
 | `kl_get_material` | `knowledge:read` | `id` | — |
 | `kl_graph_neighbors` | `knowledge:read` | `materialId` | `limit` |
 | `kl_signal` | `knowledge:signal` | `askId`, `signal` | `strength`, `note` |
-| `kl_ingest` | `knowledge:write` | `title`, `text` | `language`, `lifecycle`, `trustTier` |
+| `kl_ingest` | `knowledge:write` | `title`, `text` | `language`, `lifecycle`, `trustTier`, `source`, `async` |
 | `kl_compile_skill` | `knowledge:write` | `target` | `name`, `query`, `limit`, `version` |
-| `kl_forget` | `knowledge:admin` | `id` | — |
+| `kl_forget` | `knowledge:admin` | `id` | `sourceType`, `connectionId`, `reason` |
+| `kl_upsert_source` | `knowledge:write` | `source`, `revision` | `expectedRevisionId`, `allowResurrect` |
+| `kl_get_ingestion_status` | `knowledge:write` | `jobId` | — |
+| `kl_read_source` | `knowledge:read` | `sourceId` | `revisionId`, `range`, `offset`, `maxChars` |
+| `kl_set_source_availability` | `knowledge:write` | `sourceType`, `externalId`, `available`, `reason` | `connectionId` |
 | `mem_recall` | `memory:read` | — | `subject`, `query`, `asOf`, `includeShared`, `limit` |
 | `mem_write` | `memory:write` | `subject`, `predicate`, `object` | `confidence`, `embed` |
 | `mem_forget` | `memory:admin` | `id` | — |
@@ -38,6 +42,155 @@ carry. The non-MCP `POST /hooks/audit` endpoint requires `audit:write`.
 Every input collection is bounded (array `maxItems`, map `maxProperties`), and the
 request body and per-call element count can be capped — see
 [configuration knobs](docs/knobs.md#mcp-input-limits).
+
+## Sources and revisions (1.11.0)
+
+Contract 1.11.0 adds sources: a thing at a provider — a meeting, a document, a
+chat thread, a file in a repository — that is delivered again and again and
+changes over time. Every 1.11.0 field is optional and has no default, so a call
+written for 1.10 behaves exactly as before. The full shapes, including outputs,
+are frozen in `packages/shared/src/lib/knowledge/source-contract.ts` and its JSON
+Schema snapshot (`__contract__/source-tools.schema.json`).
+
+> **Being implemented.** Until each part ships, the server does not list the four
+> new tools and refuses a call that sets a new field with
+> `<tool>: '<field>' is in contract 1.11.0 but not supported by this server yet`
+> — it never accepts a field only to ignore it. A release cannot ship with any of
+> them pending (`contract-pending.test.ts`).
+
+### Identity and revisions
+
+- A source is identified within the tenant by `connectionId` (the integration
+  instance; omitted = `default`) + `sourceType` (lower-case, e.g. `meeting`,
+  `repo_file`) + `externalId` (the provider's id). Equal content under two
+  identities stays two sources: authorship and access are never merged by hash.
+- Each changed delivery becomes a **revision**. The server computes `contentHash`
+  (sha256 of the normalized content); the caller does not supply it.
+- A source has at most one **current** revision. A new revision becomes current
+  only once its passages are searchable (`text_ready`); until then the previous
+  one keeps answering. Each switch increments the tenant's corpus revision,
+  reported by `kl_ask_global` as `corpusRevision`.
+- The principal that creates a source owns it. Another writer may not update or
+  hide it; `knowledge:admin` may.
+- Materials ingested without a source stay as they are: no source is assigned to
+  them after the fact, and they count as `canonical` and always current.
+
+### `kl_upsert_source`
+
+`source` carries the identity plus `title`, `sourceUrl`, `knowledgeType`
+(default `canonical`), `language`, `visibility` and `recipients`. `revision`
+carries exactly one of `text` (≤ 200 000 characters) or `segments` (≤ 5 000
+utterances `{speaker, speakerId, text, startMs, endMs}`, ≤ 200 000 characters in
+total; the array order is the segment index), plus `externalVersion` (the
+provider's ordering), `occurredAt` (when the event happened), `provenance`
+(`repo`, `path`, `commitSha`, `ref`, `environment`) and `warnings` (known limits
+of this content, e.g. "no timecodes", shown wherever it is cited).
+
+The call answers one `outcome`, checked in this order:
+
+| `outcome` | When | Fields |
+| --- | --- | --- |
+| `retracted` | the source was retracted; nothing is stored (unless `allowResurrect`, which needs `knowledge:admin`) | `sourceId` |
+| `conflict` | `expectedRevisionId` is set and is not the current revision (`null` expects no current revision) | `sourceId`, `currentRevisionId` |
+| `unchanged` | the content hash equals the current revision, or a revision still being indexed | `sourceId`, `revisionId`, `jobId` (null when indexed), `contentHash` |
+| `stale` | `externalVersion` is older than one already received | `sourceId`, `currentRevisionId` |
+| `accepted` | a new revision was stored and queued for indexing | `sourceId`, `revisionId`, `jobId`, `contentHash`, `created` |
+
+A job that finishes after a newer revision was accepted does not take over the
+current pointer; it ends `superseded`.
+
+**Visibility.** `workspace` (everyone in the tenant) is the only value accepted
+until per-document access control ships; `restricted` (owner, listed principals
+and `group:<name>` groups) and `personal` (owner and listed principals only;
+groups grant nothing, admins have no implicit access) are reserved and refused
+with an explicit error until then. Visibility is fixed when a source is created:
+a later upsert with a different value is refused. Changing it is a separate
+operation, not part of this contract.
+
+### Background indexing — `kl_get_ingestion_status`
+
+`kl_upsert_source`, and `kl_ingest` with `source` or `async: true`, return a
+`jobId` at once; indexing runs in a durable job outside the request.
+`kl_get_ingestion_status({ jobId })` answers `{ found: false }` for an unknown job
+or another writer's job (unless the caller has `knowledge:admin`), otherwise:
+
+| `status` | Meaning |
+| --- | --- |
+| `queued` | stored, waiting for a worker |
+| `indexing` | passages and embeddings in progress |
+| `text_ready` | passages are searchable; cards are still being built |
+| `ready` | done |
+| `retry_wait` | a retryable failure; another attempt is scheduled |
+| `failed` | attempts exhausted or a permanent error; `error` says why |
+| `superseded` | finished after a newer revision of the source was accepted |
+| `retracted` | the source was retracted while the job ran |
+
+`coverage` reports card extraction over the whole text (`processedChars`,
+`totalChars`, `windows`, `failedWindows`); `error` is `{ code, message }` with a
+safe message, never a stack trace.
+
+### `kl_read_source`
+
+Reads the stored content of the current revision, or of `revisionId` (e.g. the
+one an old citation names) while it is still stored. A dialogue revision is read
+by `range` (`fromSegment`..`toSegment`, inclusive), a text revision by `offset`;
+both are capped by `maxChars` (default 20 000, at most 100 000) and page with
+`nextOffset` / `truncated`. The result carries `contentHash`, so a quote can be
+checked against the revision it came from. An unknown, retracted, unavailable or
+not permitted source all answer `{ found: false }`.
+
+### Retraction — `kl_forget`
+
+`kl_forget({ id })` with a material UUID deletes that material as before. To
+retract a source, pass its source UUID as `id`, or pass `sourceType` (+
+`connectionId`) with the external ID as `id`; `reason` goes to the audit trail. A
+retracted source leaves search, answers, reads and counts at once; its revisions,
+passages, cards, graph mentions and cached answers are purged by a background job
+within 24 hours (`purgeJobId`). Delivering the same source again answers
+`retracted` and does not bring it back. A material that belongs to a source
+revision is not forgotten on its own: retract the source.
+
+### `kl_set_source_availability`
+
+For content that disappeared at the provider (a file removed from a repository)
+but must not be erased: `available: false` keeps the source and leaves it out of
+search (every mode), answers, reads and counts; `available: true` brings it back,
+and so does an upsert that stores a new revision (an `unchanged` upsert does not).
+Repeating the current state answers `unchanged`. The source's owner with
+`knowledge:write`, or `knowledge:admin`, may call it; any other caller, an unknown
+source and a retracted one all answer `not_found`.
+
+### Retrieval modes and knowledge types
+
+Every source has a `knowledgeType`: `canonical` (authoritative — approved
+decisions, maintained documentation), `evidence` (a record of what was said or
+observed; saying it does not make it true) or `inference` (produced by a model).
+Cards extracted from a source are typed too: a verbatim quote from evidence is
+`evidence`, a model's restatement is `inference`.
+
+| `mode` | Revisions | Knowledge types | Lifecycle |
+| --- | --- | --- | --- |
+| omitted | current | all, as before 1.11 | as before (stale sources down-weighted) |
+| `current` | current | `canonical` only | `active` only |
+| `research` | current | all, each labelled | all, labelled |
+| `history` | current and superseded (`isCurrent`) | all, each labelled | all, labelled |
+
+`sourceTypes` keeps only sources of those types (materials without a source never
+match). `period` (`from`, `to`) filters on a revision's `occurredAt`, falling back
+to when it was captured. The filters apply to passages, cards and graph context
+alike, before ranking. Search hits and citations gain the source fields
+`sourceId`, `revisionId`, `sourceType`, `isCurrent`, `knowledgeType`,
+`occurredAt`, `sourceUrl`, `segmentRange`, `speaker`, `startMs`, `endMs`,
+`provenance` and `warnings` (null for a material without a source).
+
+### `kl_ingest` with `source` or `async`
+
+`source` (`sourceType`, `externalId`, `connectionId`, `sourceUrl`,
+`knowledgeType`) makes an ingest idempotent: it runs the `kl_upsert_source` path
+with the text as a revision and answers that envelope plus `materialId`.
+`async: true` returns at once with `materialId`, `jobId` and `status: "queued"`.
+Without either, `kl_ingest` works as before; its result gains `status` (`ready`,
+or `text_ready` when cards are still running) and `jobId`.
 
 ## Versioning policy (SemVer)
 

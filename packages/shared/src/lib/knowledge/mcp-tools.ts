@@ -53,6 +53,15 @@ import { resolveJudgeModel } from "@agenticmind/shared/lib/knowledge/judge-model
 import { embedKnowledgeText } from "@agenticmind/shared/lib/knowledge/llm"
 import { hasScope } from "@agenticmind/shared/lib/knowledge/mcp-scopes"
 import { createGraphContextProvider } from "@agenticmind/shared/lib/knowledge/qaplan"
+import {
+  forgetSourceFields,
+  ingestSourceField,
+  klGetIngestionStatusInput,
+  klReadSourceInput,
+  klSetSourceAvailabilityInput,
+  klUpsertSourceInput,
+  retrievalScopeFields,
+} from "@agenticmind/shared/lib/knowledge/source-contract"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { compileSkillLive } from "@agenticmind/shared/lib/skill/compile-live"
 import { aiSettings } from "@agenticmind/shared/settings/ai-settings"
@@ -155,6 +164,7 @@ export const klSearchInput = z.object({
   limit: z.number().int().positive().max(50).optional(),
   /** Return the best ~N tokens of context instead of a fixed count of passages. */
   tokenBudget: z.number().int().positive().max(32_000).optional(),
+  ...retrievalScopeFields,
 })
 
 /** Fan out sub-queries concurrently, merge hits by chunk (keep the best score). */
@@ -236,6 +246,7 @@ export const klAskGlobalInput = z.object({
     .array(z.object({ label: z.string().min(1), value: z.string().min(1) }))
     .max(20)
     .optional(),
+  ...retrievalScopeFields,
 })
 
 /** Kl_ask_global — RAG synthesis with citations (reuses the ask pipeline). */
@@ -558,6 +569,11 @@ export const klIngestInput = z.object({
   lifecycle: z.enum(LIFECYCLES).optional(),
   /** Source trust tier (higher wins on conflict; default 0). */
   trustTier: z.number().int().min(0).max(100).optional(),
+  /** Make the ingest idempotent: the same source + content is a no-op, changed
+   * content becomes a new revision (the kl_upsert_source path). */
+  source: ingestSourceField.optional(),
+  /** Return at once with a job id; read progress with kl_get_ingestion_status. */
+  async: z.boolean().optional(),
 })
 
 /**
@@ -702,7 +718,7 @@ export const klCompileSkill = async (
   }
 }
 
-export const klForgetInput = z.object({ id: z.string().min(1) })
+export const klForgetInput = z.object({ id: z.string().min(1), ...forgetSourceFields })
 
 /**
  * Kl_forget -- the inverse of kl_ingest: permanently delete a material by its
@@ -870,20 +886,20 @@ export const hitlGet = async (
  * a newly-required field). The contract snapshot test (mcp-contract.test.ts)
  * guards against silent drift. See CONTRACT.md for the policy.
  */
-export const MCP_CONTRACT_VERSION = "1.10.0"
+export const MCP_CONTRACT_VERSION = "1.11.0"
 
 /** Tool metadata (name + description + input schema) for MCP registration. */
 export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "kl_search",
     description:
-      "Search the knowledge base by keyword/semantic similarity. Returns matching passages with material titles and similarity scores. Pass `queries` (a batch of sub-questions) to retrieve for several angles in one round-trip — results are merged and deduped. Pass `tokenBudget` to get the best ~N tokens of context instead of a fixed count (agents on a context budget). Prefer for exploratory lookups; use kl_ask_global for a synthesised answer with citations.",
+      "Search the knowledge base by keyword/semantic similarity. Returns matching passages with material titles and similarity scores. Pass `queries` (a batch of sub-questions) to retrieve for several angles in one round-trip — results are merged and deduped. Pass `tokenBudget` to get the best ~N tokens of context instead of a fixed count (agents on a context budget). Pass `mode` — current (canonical knowledge only), research (every knowledge type, labelled) or history (also superseded revisions) — and `sourceTypes` / `period` to narrow by source. Prefer for exploratory lookups; use kl_ask_global for a synthesised answer with citations.",
     inputSchema: klSearchInput,
   },
   {
     name: "kl_ask_global",
     description:
-      "Ask a natural-language question about the knowledge base. Retrieves the most relevant passages, synthesises an answer, and returns citation markers ([1], [2], …) keyed to source materials.",
+      "Ask a natural-language question about the knowledge base. Retrieves the most relevant passages, synthesises an answer, and returns citation markers ([1], [2], …) keyed to source materials. Pass `mode` (current | research | history) and `sourceTypes` / `period` with the same meaning as kl_search.",
     inputSchema: klAskGlobalInput,
   },
   {
@@ -924,7 +940,7 @@ export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "kl_ingest",
     description:
-      "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Later kl_ask_global / kl_search retrieve and cite it.",
+      "Add text to the knowledge base (chunked, embedded, distilled into fact cards, graph-extracted). Requires knowledge:write. Later kl_ask_global / kl_search retrieve and cite it. Pass `source` (sourceType + externalId) to make it idempotent — the same content is a no-op, changed content a new revision — and `async: true` to return at once with a jobId for kl_get_ingestion_status.",
     inputSchema: klIngestInput,
   },
   {
@@ -936,8 +952,32 @@ export const KNOWLEDGE_MCP_TOOLS = [
   {
     name: "kl_forget",
     description:
-      "Forget (permanently delete) a single material by its UUID and everything derived from it — chunks, embeddings, fact cards, and graph mentions. The inverse of kl_ingest, for retraction or right-to-erasure. Requires the elevated knowledge:admin scope.",
+      "Forget (permanently delete) a single material by its UUID and everything derived from it — chunks, embeddings, fact cards, and graph mentions. The inverse of kl_ingest, for retraction or right-to-erasure. To retract a source, pass its source UUID as `id`, or pass `sourceType` (+ `connectionId`) and its external ID as `id`: the source leaves search, answers and reads at once, its revisions and derived data are purged in the background, and a later delivery of the same source does not bring it back. Requires the elevated knowledge:admin scope.",
     inputSchema: klForgetInput,
+  },
+  {
+    name: "kl_upsert_source",
+    description:
+      "Create or update a source by its external identity (sourceType + externalId within a connection) with a new revision — plain text or dialogue segments with speaker and timecodes. Idempotent: the same content answers 'unchanged', an older externalVersion 'stale', a mismatched expectedRevisionId 'conflict', a retracted source 'retracted'. An accepted revision is indexed in the background (poll kl_get_ingestion_status with the returned jobId) and replaces the current one only once it is searchable. Requires knowledge:write.",
+    inputSchema: klUpsertSourceInput,
+  },
+  {
+    name: "kl_get_ingestion_status",
+    description:
+      "Read a background indexing job by the jobId kl_upsert_source or kl_ingest returned: status (queued, indexing, text_ready, ready, retry_wait, failed, superseded, retracted), attempts, card-extraction coverage and a safe error description. text_ready means the passages are searchable while cards are still being built. A job of another writer reads as not found. Requires knowledge:write.",
+    inputSchema: klGetIngestionStatusInput,
+  },
+  {
+    name: "kl_read_source",
+    description:
+      "Read the stored content of a source revision — the current one, or the exact revision an earlier citation names — whole or by segment range / character offset, with a size cap and paging. Returns the content hash so a quote can be checked against it. Not found and not permitted look the same. Requires knowledge:read.",
+    inputSchema: klReadSourceInput,
+  },
+  {
+    name: "kl_set_source_availability",
+    description:
+      "Mark a source unavailable when its content disappeared at the provider (e.g. a file removed from a repository) without retracting it: it is kept but left out of search, answers, reads and counts until marked available again (or a changed revision is upserted). Allowed for the source's owner with knowledge:write, or with knowledge:admin; anything else answers not_found.",
+    inputSchema: klSetSourceAvailabilityInput,
   },
   {
     name: "hitl_request",

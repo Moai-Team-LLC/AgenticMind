@@ -49,4 +49,8 @@ export const TOOL_SCOPE: Record<string, KnowledgeScope> = {
   hitl_respond: "hitl:respond",
   hitl_get: "hitl:request",
   kl_compile_skill: "knowledge:write",
+  kl_upsert_source: "knowledge:write",
+  kl_get_ingestion_status: "knowledge:write",
+  kl_read_source: "knowledge:read",
+  kl_set_source_availability: "knowledge:write",
 }

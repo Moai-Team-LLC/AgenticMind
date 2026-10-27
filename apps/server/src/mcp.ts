@@ -25,6 +25,10 @@ import {
   withProfileDefaults,
 } from "@agenticmind/shared/lib/knowledge/answer-policy"
 import {
+  pendingFieldsIn,
+  pendingFieldsMessage,
+} from "@agenticmind/shared/lib/knowledge/contract-pending"
+import {
   klAskGlobal,
   klAskGlobalInput,
   klGetMaterial,
@@ -167,6 +171,10 @@ const registerKlTool = <S extends z.ZodType>(
     const parsed = schema.safeParse(raw)
     if (!parsed.success) {
       return errorContent(`${name}: invalid arguments`)
+    }
+    const pending = pendingFieldsIn(name, parsed.data as Record<string, unknown>)
+    if (pending.length > 0) {
+      return errorContent(pendingFieldsMessage(name, pending))
     }
     return handle(parsed.data as z.infer<S>, extra)
   }) as never)

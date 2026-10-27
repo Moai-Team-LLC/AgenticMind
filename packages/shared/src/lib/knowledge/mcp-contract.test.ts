@@ -17,20 +17,39 @@ import * as z from "zod"
 
 /** The frozen public contract: tool → its input fields and required subset. */
 const CONTRACT: Record<string, { fields: string[]; required: string[] }> = {
-  kl_ask_global: { fields: ["facts", "intent", "question"], required: ["question"] },
+  kl_ask_global: {
+    fields: ["facts", "intent", "mode", "period", "question", "sourceTypes"],
+    required: ["question"],
+  },
   kl_compile_skill: {
     fields: ["limit", "name", "query", "target", "version"],
     required: ["target"],
   },
-  kl_forget: { fields: ["id"], required: ["id"] },
+  kl_forget: { fields: ["connectionId", "id", "reason", "sourceType"], required: ["id"] },
   kl_get_material: { fields: ["id"], required: ["id"] },
   kl_graph_neighbors: { fields: ["limit", "materialId"], required: ["materialId"] },
   kl_ingest: {
-    fields: ["language", "lifecycle", "text", "title", "trustTier"],
+    fields: ["async", "language", "lifecycle", "source", "text", "title", "trustTier"],
     required: ["text", "title"],
   },
-  kl_search: { fields: ["limit", "q", "queries", "tokenBudget"], required: ["q"] },
+  kl_search: {
+    fields: ["limit", "mode", "period", "q", "queries", "sourceTypes", "tokenBudget"],
+    required: ["q"],
+  },
   kl_signal: { fields: ["askId", "note", "signal", "strength"], required: ["askId", "signal"] },
+  kl_upsert_source: {
+    fields: ["allowResurrect", "expectedRevisionId", "revision", "source"],
+    required: ["revision", "source"],
+  },
+  kl_get_ingestion_status: { fields: ["jobId"], required: ["jobId"] },
+  kl_read_source: {
+    fields: ["maxChars", "offset", "range", "revisionId", "sourceId"],
+    required: ["sourceId"],
+  },
+  kl_set_source_availability: {
+    fields: ["available", "connectionId", "externalId", "reason", "sourceType"],
+    required: ["available", "externalId", "reason", "sourceType"],
+  },
   mem_recall: { fields: ["asOf", "includeShared", "limit", "query", "subject"], required: [] },
   mem_write: {
     fields: ["confidence", "embed", "object", "predicate", "subject"],
