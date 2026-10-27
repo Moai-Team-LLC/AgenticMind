@@ -118,16 +118,21 @@ or another writer's job (unless the caller has `knowledge:admin`), otherwise:
 | --- | --- |
 | `queued` | stored, waiting for a worker |
 | `indexing` | passages and embeddings in progress |
-| `text_ready` | passages are searchable; cards are still being built |
+| `text_ready` | passages are searchable; cards are still being built (with `error` set, a card step failed and will be retried) |
 | `ready` | done |
-| `retry_wait` | a retryable failure; another attempt is scheduled |
+| `retry_wait` | a retryable failure before the passages exist; another attempt is scheduled |
 | `failed` | attempts exhausted or a permanent error; `error` says why |
 | `superseded` | finished after a newer revision of the source was accepted |
 | `retracted` | the source was retracted while the job ran |
 
 `coverage` reports card extraction over the whole text (`processedChars`,
 `totalChars`, `windows`, `failedWindows`); `error` is `{ code, message }` with a
-safe message, never a stack trace.
+safe message, never a stack trace. A job is retried with exponential backoff and
+jitter up to 5 attempts; a job that fails after `text_ready` keeps its passages
+searchable. A repeated `async` delivery of the same ingest (same title, text,
+language and trust fields) answers the existing job, and re-queues it if it had
+failed. Jobs are run by the worker process (`apps/worker`); a deployment without
+it keeps `async` ingests queued.
 
 ### `kl_read_source`
 
@@ -189,8 +194,11 @@ alike, before ranking. Search hits and citations gain the source fields
 `knowledgeType`) makes an ingest idempotent: it runs the `kl_upsert_source` path
 with the text as a revision and answers that envelope plus `materialId`.
 `async: true` returns at once with `materialId`, `jobId` and `status: "queued"`.
-Without either, `kl_ingest` works as before; its result gains `status` (`ready`,
-or `text_ready` when cards are still running) and `jobId`.
+Without either, `kl_ingest` works as before; its result gains `status` and
+`jobId`. It answers within the request's time cap: a step that would run past it
+(typically card extraction of a long text) is handed to a background job and the
+result says `text_ready` (or `queued`) with that `jobId` — never an empty
+response.
 
 ## Versioning policy (SemVer)
 

@@ -34,6 +34,13 @@ export const STRICT_MAX_REQUEST_BODY_BYTES = 2 * 1024 * 1024
  * bounded collections are 20 facts and 8 queries). */
 export const STRICT_MAX_TOOL_INPUT_ELEMENTS = 10_000
 
+/**
+ * How long mcp-handler lets one request run before it ends the response. A
+ * synchronous kl_ingest stays inside it (SYNC_INGEST_BUDGET_MS) and hands the
+ * rest to a background job; mcp-duration.test.ts keeps the two apart.
+ */
+export const MCP_MAX_DURATION_SECONDS = 60
+
 export type McpLimits = {
   maxRequestBodyBytes?: number
   maxToolInputElements?: number

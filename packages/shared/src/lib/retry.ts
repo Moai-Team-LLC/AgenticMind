@@ -28,4 +28,10 @@ const buildRetryOptions = (purpose: string) => {
   }
 }
 
-export { retryOptions, buildRetryOptions }
+/** Adds an abort signal: an aborted call stops retrying at once. */
+const withAbort = <T extends object>(
+  options: T,
+  signal?: AbortSignal,
+): T & { signal?: AbortSignal } => (signal === undefined ? options : { ...options, signal })
+
+export { retryOptions, buildRetryOptions, withAbort }

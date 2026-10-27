@@ -16,7 +16,6 @@ export const PENDING_RELEASE = "0.15.0"
 /** Tools in the contract that the server does not register yet. */
 export const PENDING_TOOLS: readonly string[] = [
   "kl_upsert_source",
-  "kl_get_ingestion_status",
   "kl_read_source",
   "kl_set_source_availability",
 ]
@@ -25,7 +24,7 @@ export const PENDING_TOOLS: readonly string[] = [
 export const PENDING_FIELDS: Readonly<Record<string, readonly string[]>> = {
   kl_search: ["mode", "sourceTypes", "period"],
   kl_ask_global: ["mode", "sourceTypes", "period"],
-  kl_ingest: ["source", "async"],
+  kl_ingest: ["source"],
   kl_forget: ["sourceType", "connectionId", "reason"],
 }
 

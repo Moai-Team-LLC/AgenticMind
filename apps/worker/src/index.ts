@@ -1,8 +1,9 @@
 /**
- * AgenticMind worker — Postgres-only, no broker. The single background task is
- * the Tier-4 compounding sweep, scheduled daily via a Postgres advisory lock
- * (see jobs/knowledge-feedback/worker.ts). Durable scheduling lives in Postgres
- * itself — there is no separate queue or message broker to run.
+ * AgenticMind worker — Postgres-only, no broker. It runs the Tier-4
+ * compounding sweep (daily, under a Postgres advisory lock — see
+ * jobs/knowledge-feedback/worker.ts), the drift and HITL sweeps, and the
+ * background ingestion jobs (jobs/ingestion/worker.ts). Durable scheduling lives
+ * in Postgres itself — there is no separate queue or message broker to run.
  */
 
 import { resolveActiveProfile } from "@agenticmind/shared/lib/profile"
@@ -29,6 +30,7 @@ const loadJobs = async () =>
     import("@/jobs/assurance-drift/worker"),
     import("@/jobs/hitl-expiry/worker"),
     import("@/jobs/hitl-resume/worker"),
+    import("@/jobs/ingestion/worker"),
   ])
 let jobs: Awaited<ReturnType<typeof loadJobs>>
 try {
@@ -44,12 +46,14 @@ const [
   { startAssuranceDriftScheduler },
   { startHitlExpiryScheduler },
   { startHitlResumeScheduler },
+  { startIngestionScheduler },
 ] = jobs
 
 const scheduler = startKnowledgeFeedbackScheduler()
 const driftScheduler = startAssuranceDriftScheduler()
 const hitlExpiryScheduler = startHitlExpiryScheduler()
 const hitlResumeScheduler = startHitlResumeScheduler()
+const ingestionScheduler = startIngestionScheduler()
 
 const shutdown = (): void => {
   console.log(`[WORKER] ${new Date().toISOString()}: shutting down…`)
@@ -57,11 +61,12 @@ const shutdown = (): void => {
   driftScheduler.stop()
   hitlExpiryScheduler.stop()
   hitlResumeScheduler.stop()
+  ingestionScheduler.stop()
   process.exit(0)
 }
 process.on("SIGINT", shutdown)
 process.on("SIGTERM", shutdown)
 
 console.log(
-  `[WORKER] ${new Date().toISOString()}: AgenticMind worker ready (Postgres-scheduled feedback + assurance-drift + hitl-expiry + hitl-resume sweeps).`,
+  `[WORKER] ${new Date().toISOString()}: AgenticMind worker ready (Postgres-scheduled feedback + assurance-drift + hitl-expiry + hitl-resume sweeps + ingestion jobs).`,
 )
