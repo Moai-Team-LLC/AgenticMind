@@ -223,6 +223,8 @@ export const advanceIngestionJob = (props: {
   stage: IngestionStage
   status: IngestionStatus
   coverage?: IngestionCoverage
+  /** Recorded on the job (e.g. a partial result); cleared when omitted. */
+  error?: { code: string; message: string }
 }) =>
   ResultAsync.fromPromise(
     (async () => {
@@ -233,8 +235,8 @@ export const advanceIngestionJob = (props: {
           stage: props.stage,
           status: props.status,
           ...(props.coverage !== undefined ? { coverage: props.coverage } : {}),
-          errorCode: null,
-          errorMessage: null,
+          errorCode: props.error?.code ?? null,
+          errorMessage: props.error?.message ?? null,
           updatedAt: sql`now()`,
           ...(done
             ? {

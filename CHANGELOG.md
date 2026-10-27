@@ -8,6 +8,21 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Cards from the whole document.** Card extraction no longer reads only
+  the first 16 000 characters: the text is cut into line-aligned windows
+  (14 000 characters, 1 000 shared with the next), every window is extracted,
+  spans are moved to whole-text offsets, and a card found in two windows is
+  kept once (highest confidence; at most 300 per document). The job records
+  coverage (`processedChars`, `totalChars`, `windows`, `failedWindows`). A
+  window that fails retries the card step; on the last attempt the other
+  windows' cards are kept and the job ends `ready` with
+  `error.code: "cards_partial"` naming how many parts are missing.
+- **Strict structured output for extraction.** `CHAT_STRUCTURED_OUTPUTS`
+  (`true` / `false`; unset: on in `strict`, off in `standard`) sends the JSON
+  schema to the OpenAI-compatible endpoint as a strict structured-output
+  constraint. Without it the endpoint was asked for "JSON" only, and an
+  answer off the schema was retried and then lost.
+
 - **Dialogue passages along utterances; citations name the utterance.** A
   dialogue revision is cut into passages at utterance boundaries (consecutive
   "speaker: text" lines up to the passage size, the last utterance repeated in

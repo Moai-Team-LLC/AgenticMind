@@ -68,7 +68,91 @@ const markFailed = async (tx: Transaction, id: string, reason: string): Promise<
 /** A card ready to store; CardInput already carries the optional embedding. */
 export type CardItem = CardInput
 
-export type CardItemsResult = { ok: true; items: CardItem[] } | { ok: false; reason: string }
+export type CardCoverage = {
+  processedChars: number
+  totalChars: number
+  windows: number
+  failedWindows: number
+}
+
+export type CardItemsResult =
+  | { ok: true; items: CardItem[]; coverage?: CardCoverage }
+  | { ok: false; reason: string; coverage?: CardCoverage }
+
+/** Largest window the extractor reads in one call (below CARDS_MAX_BODY_CHARS). */
+export const CARD_WINDOW_CHARS = 14_000
+/** Characters each window shares with the next, so a fact on a seam is seen whole. */
+export const CARD_WINDOW_OVERLAP = 1000
+/** Upper bound on cards kept for one document, across all windows. */
+export const MAX_CARDS_PER_DOCUMENT = 300
+
+export type CardWindow = { start: number; end: number; text: string }
+
+/**
+ * Line-aligned windows over the whole body: each at most `size` characters
+ * (a single longer line is cut), consecutive windows sharing about `overlap`
+ * characters. Offsets are string indices into `body`.
+ */
+export const cardWindows = (
+  body: string,
+  size: number = CARD_WINDOW_CHARS,
+  overlap: number = CARD_WINDOW_OVERLAP,
+): CardWindow[] => {
+  if (body.length <= size) {
+    return body === "" ? [] : [{ start: 0, end: body.length, text: body }]
+  }
+  const out: CardWindow[] = []
+  let start = 0
+  while (start < body.length) {
+    let end = Math.min(body.length, start + size)
+    if (end < body.length) {
+      const cut = body.lastIndexOf("\n", end)
+      if (cut > start + overlap) {
+        end = cut + 1
+      }
+    }
+    out.push({ start, end, text: body.slice(start, end) })
+    if (end >= body.length) {
+      break
+    }
+    let next = Math.max(start + 1, end - overlap)
+    const line = body.indexOf("\n", next)
+    if (line !== -1 && line + 1 < end) {
+      next = line + 1
+    }
+    start = next
+  }
+  return out
+}
+
+const cardKey = (c: CardInput): string => {
+  const structured = c.predicate !== null && c.predicate !== undefined && c.predicate !== ""
+  return [
+    c.kind,
+    c.subjectType,
+    c.subjectValue,
+    c.predicate ?? "",
+    c.value ?? "",
+    structured ? "" : c.body,
+  ]
+    .map((part) => part.trim().toLowerCase())
+    .join("\u0000")
+}
+
+/** Length of the union of [start, end) intervals. */
+const coveredChars = (intervals: { start: number; end: number }[]): number => {
+  const sorted = intervals.toSorted((a, b) => a.start - b.start)
+  let total = 0
+  let reach = -1
+  for (const iv of sorted) {
+    if (iv.end <= reach) {
+      continue
+    }
+    total += iv.end - Math.max(iv.start, reach)
+    reach = iv.end
+  }
+  return total
+}
 
 export type ComputeCardItemsProps = {
   material: { id: string; title: string }
@@ -83,6 +167,8 @@ export type ComputeCardItemsProps = {
   embed?: typeof embedKnowledgeBatch
   /** Aborts the extraction (e.g. a request deadline). */
   abortSignal?: AbortSignal
+  /** Keep the cards of the windows that succeeded when others failed. */
+  acceptPartial?: boolean
 }
 
 /**
@@ -93,31 +179,19 @@ export type ComputeCardItemsProps = {
 export const computeCardItems = async (props: ComputeCardItemsProps): Promise<CardItemsResult> => {
   const { material, extras, cardsEnabled, body } = props
   let items: CardInput[] = []
+  let coverage: CardCoverage | undefined
   if (extras?.schema !== undefined && extras.tables !== undefined && extras.tables.length > 0) {
     items = extractFromTables(extras.tables, extras.schema)
   } else if (cardsEnabled === true) {
-    const extract = props.extract ?? extractCards
-    const extracted = await extract({
-      materialTitle: material.title,
-      body,
-      abortSignal: props.abortSignal,
-    })
-    if (extracted.isErr()) {
-      return { ok: false, reason: extracted.error.message }
+    const windowed = await extractWindows(props, body)
+    coverage = windowed.coverage
+    if (!windowed.ok) {
+      return { ok: false, reason: windowed.reason, coverage }
     }
-    // Deterministic grounding filter: drop LLM-extracted cards asserting a figure
-    // absent from the source text (a fabricated/garbled number would otherwise be
-    // stored and later surface as a card-backed answer). Tabular cards skip this.
-    const grounded = dropUngroundedCards(extracted.value, body)
-    if (grounded.dropped.length > 0) {
-      console.warn(
-        `index: dropped ${grounded.dropped.length} ungrounded card(s) for ${material.id}: ${grounded.dropped.join(", ")}`,
-      )
-    }
-    items = grounded.kept
+    items = windowed.items
   }
   if (items.length === 0) {
-    return { ok: true, items: [] }
+    return { ok: true, items: [], coverage }
   }
 
   // Acceptance gate (KU contract, 2nd stage): drop rejected noise + status-tag
@@ -134,7 +208,7 @@ export const computeCardItems = async (props: ComputeCardItemsProps): Promise<Ca
     }
     items = admitCards(items, judged, { failClosed })
     if (items.length === 0) {
-      return { ok: true, items: [] }
+      return { ok: true, items: [], coverage }
     }
   }
 
@@ -146,12 +220,89 @@ export const computeCardItems = async (props: ComputeCardItemsProps): Promise<Ca
   }
   return {
     ok: true,
+    coverage,
     items: items.map((c, k) =>
       vectors !== null && vectors[k] !== undefined
         ? { ...c, embedding: vectors[k], embeddingModel: KNOWLEDGE_EMBEDDING_MODEL }
         : c,
     ),
   }
+}
+
+type WindowedCards =
+  | { ok: true; items: CardInput[]; coverage: CardCoverage }
+  | { ok: false; reason: string; coverage: CardCoverage }
+
+const shiftSpan = (v: number | null | undefined, by: number): number | null | undefined =>
+  v === null || v === undefined ? v : v + by
+
+/**
+ * Card extraction over the whole body, window by window (cardWindows): each
+ * window's cards are grounded against that window, their spans moved to body
+ * offsets, and duplicates across windows merged (highest confidence wins).
+ * A failed window fails the whole extraction unless `acceptPartial` — then the
+ * other windows' cards are kept and `coverage.failedWindows` says what is
+ * missing.
+ */
+const extractWindows = async (
+  props: ComputeCardItemsProps,
+  body: string,
+): Promise<WindowedCards> => {
+  const extract = props.extract ?? extractCards
+  const windows = cardWindows(body)
+  const merged = new Map<string, CardInput>()
+  const done: CardWindow[] = []
+  const failures: string[] = []
+  for (const w of windows) {
+    const extracted = await extract({
+      materialTitle: props.material.title,
+      body: w.text,
+      abortSignal: props.abortSignal,
+    })
+    if (extracted.isErr()) {
+      failures.push(extracted.error.message)
+      continue
+    }
+    done.push(w)
+    // Deterministic grounding filter: drop LLM-extracted cards asserting a figure
+    // absent from the source text (a fabricated/garbled number would otherwise be
+    // stored and later surface as a card-backed answer). Tabular cards skip this.
+    const grounded = dropUngroundedCards(extracted.value, w.text)
+    if (grounded.dropped.length > 0) {
+      console.warn(
+        `index: dropped ${grounded.dropped.length} ungrounded card(s) for ${props.material.id}: ${grounded.dropped.join(", ")}`,
+      )
+    }
+    for (const card of grounded.kept) {
+      const shifted = {
+        ...card,
+        spanStart: shiftSpan(card.spanStart, w.start),
+        spanEnd: shiftSpan(card.spanEnd, w.start),
+      }
+      const key = cardKey(card)
+      const prior = merged.get(key)
+      if (prior === undefined || shifted.confidence > prior.confidence) {
+        merged.set(key, shifted)
+      }
+    }
+  }
+  const coverage: CardCoverage = {
+    processedChars: coveredChars(done),
+    totalChars: body.length,
+    windows: windows.length,
+    failedWindows: failures.length,
+  }
+  if (failures.length > 0 && (props.acceptPartial !== true || done.length === 0)) {
+    return {
+      ok: false,
+      reason: `${failures.length} of ${windows.length} window(s) failed: ${failures[0] ?? ""}`,
+      coverage,
+    }
+  }
+  const items = [...merged.values()]
+    .toSorted((a, b) => b.confidence - a.confidence)
+    .slice(0, MAX_CARDS_PER_DOCUMENT)
+  return { ok: true, items, coverage }
 }
 
 /** Replaces a material's cards with `items` (idempotent per material). */
@@ -181,7 +332,7 @@ export const persistCardItems = async (
 const runCardExtraction = async (props: IndexMaterialProps, body: string): Promise<void> => {
   const { tx, material } = props
   try {
-    const computed = await computeCardItems({ ...props, body })
+    const computed = await computeCardItems({ ...props, body, acceptPartial: true })
     if (!computed.ok) {
       console.warn(`index: cards extract failed for ${material.id}: ${computed.reason}`)
       return

@@ -49,7 +49,6 @@ import {
   scrubRetractedSource,
   switchCurrentRevision,
 } from "@agenticmind/shared/database/query/knowledge/sources"
-import { CARDS_MAX_BODY_CHARS } from "@agenticmind/shared/lib/knowledge/card"
 import { extractGraph } from "@agenticmind/shared/lib/knowledge/graphrag-extractor"
 import { createPostgresGraphStore } from "@agenticmind/shared/lib/knowledge/graphrag-postgres"
 import {
@@ -189,7 +188,13 @@ const loadText = async (
   return { text: found.value.contentText, revisionNo: found.value.revisionNo, segments }
 }
 
-type StageOutcome = { coverage?: IngestionCoverage; superseded?: boolean; retracted?: boolean }
+type StageOutcome = {
+  coverage?: IngestionCoverage
+  superseded?: boolean
+  retracted?: boolean
+  /** A stage that finished with part of its work missing (said on the job). */
+  partial?: { code: string; message: string }
+}
 
 /** Runs one stage. */
 const runStage = async (
@@ -261,6 +266,8 @@ const runStage = async (
   if (stage === "cards") {
     const body = sanitizeForText(payload.text).trim()
     const totalChars = Array.from(body).length
+    // The last attempt keeps what the other windows found; earlier ones retry.
+    const lastAttempt = job.attempts >= job.maxAttempts
     const computed = await computeCardItems({
       material,
       body,
@@ -268,6 +275,7 @@ const runStage = async (
       acceptanceEvaluator: payload.acceptanceEvaluator,
       extract: deps.extractCards,
       embed: deps.embed,
+      acceptPartial: lastAttempt,
     })
     if (!computed.ok) {
       throw new StageError("cards_failed", true, computed.reason)
@@ -275,16 +283,21 @@ const runStage = async (
     await withTenant(deps.db, job.tenantId, async (tx) =>
       persistCardItems(tx, material, computed.items),
     )
-    // The extractor reads the first CARDS_MAX_BODY_CHARS characters; coverage
-    // says so instead of implying the whole text was read.
-    return {
-      coverage: {
-        processedChars: Math.min(totalChars, CARDS_MAX_BODY_CHARS),
-        totalChars,
-        windows: 1,
-        failedWindows: 0,
-      },
+    const coverage = computed.coverage ?? {
+      processedChars: totalChars,
+      totalChars,
+      windows: 0,
+      failedWindows: 0,
     }
+    return coverage.failedWindows > 0
+      ? {
+          coverage,
+          partial: {
+            code: "cards_partial",
+            message: `${coverage.failedWindows} of ${coverage.windows} part(s) of the text could not be read for cards; the passages are searchable.`,
+          },
+        }
+      : { coverage }
   }
 
   if (stage === "graph") {
@@ -439,6 +452,7 @@ export const runClaimedJob = async (
         stage: next,
         status: final ?? statusAfter(next),
         coverage: outcome.coverage,
+        error: outcome.partial,
       })
       if (advanced.isErr() || advanced.value === null) {
         return
