@@ -96,8 +96,24 @@ const checkAnswerPolicy = (profile: Profile): string[] => {
   return []
 }
 
+/**
+ * The blob store keeps every ingested original. Without S3_BUCKET the engine
+ * falls back to a no-op store that drops the bytes; strict refuses that, since
+ * a source could then never be read back from its original.
+ */
+const checkBlobStore = (profile: Profile): string[] => {
+  const bucket = knowledgeFeatureSettings.S3_BUCKET
+  if (!isStrict(profile) || (bucket !== undefined && bucket.trim() !== "")) {
+    return []
+  }
+  return [
+    "strict: no blob store — S3_BUCKET is unset, so ingested originals would be dropped; set S3_BUCKET and its credentials",
+  ]
+}
+
 /** Runs every boot check for the profile; returns all refusals (empty = start). */
 export const bootRefusals = async (profile: Profile): Promise<string[]> => {
+  const storage = checkBlobStore(profile)
   const refusals = [
     ...checkMcpLimits(profile),
     ...checkDatabaseTls(profile),
@@ -105,11 +121,11 @@ export const bootRefusals = async (profile: Profile): Promise<string[]> => {
   ]
   if (refusals.length > 0) {
     // The role check opens a connection, which an invalid TLS setting forbids.
-    return refusals
+    return [...refusals, ...storage]
   }
   if (isStrict(profile)) {
     const roleRefusals = await checkDatabaseRole()
     refusals.push(...roleRefusals.map((reason) => `strict: ${reason}`))
   }
-  return refusals
+  return [...refusals, ...storage]
 }

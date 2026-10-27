@@ -141,7 +141,8 @@ Reads the stored content of the current revision, or of `revisionId` (e.g. the
 one an old citation names) while it is still stored. A dialogue revision is read
 by `range` (`fromSegment`..`toSegment`, inclusive), a text revision by `offset`;
 both are capped by `maxChars` (default 20 000, at most 100 000) and page with
-`nextOffset` / `truncated`. The result carries `contentHash`, so a quote can be
+`nextOffset` / `truncated` — the next character offset for text, the next
+segment index for a dialogue (at least one segment is always returned). The result carries `contentHash`, so a quote can be
 checked against the revision it came from. An unknown, retracted, unavailable or
 not permitted source all answer `{ found: false }`.
 

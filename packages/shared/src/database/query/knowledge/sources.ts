@@ -81,7 +81,10 @@ export const getSource = (props: { tx: Transaction; id: string }) =>
       const [row] = await props.tx
         .select()
         .from(knowledgeSources)
-        .where(eq(knowledgeSources.id, props.id))
+        // Tenant named too: a source is read by id from outside (kl_read_source).
+        .where(
+          and(eq(knowledgeSources.tenantId, currentTenantId), eq(knowledgeSources.id, props.id)),
+        )
         .limit(1)
       return row ?? null
     })(),
@@ -94,7 +97,7 @@ export const getRevision = (props: { tx: Transaction; id: string }) =>
       const [row] = await props.tx
         .select()
         .from(sourceRevisions)
-        .where(eq(sourceRevisions.id, props.id))
+        .where(and(eq(sourceRevisions.tenantId, currentTenantId), eq(sourceRevisions.id, props.id)))
         .limit(1)
       return row ?? null
     })(),

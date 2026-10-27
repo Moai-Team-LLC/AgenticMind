@@ -79,6 +79,10 @@ const bootServer = async (databaseUrl: string): Promise<BootResult> => {
       DATABASE_URL: databaseUrl,
       AGENTICMIND_PROFILE: "strict",
       SKIP_VALIDATION: "true",
+      // Strict needs a blob store; it is configured, never contacted at boot.
+      S3_BUCKET: "boot-test-bucket",
+      S3_ACCESS_KEY_ID: "boot-test-key",
+      S3_SECRET_ACCESS_KEY: "boot-test-secret",
       PORT: String(39_000 + Math.floor(Math.random() * 900)),
     },
   })

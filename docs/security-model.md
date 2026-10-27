@@ -51,7 +51,7 @@ enforce their own scope inside the tool. Mint a token with only the scopes an ag
 
 | Tool | Scope required | Risk class |
 | --- | --- | --- |
-| `kl_search`, `kl_ask_global`, `kl_get_material`, `kl_graph_neighbors` | `knowledge:read` | read |
+| `kl_search`, `kl_ask_global`, `kl_get_material`, `kl_read_source`, `kl_graph_neighbors` | `knowledge:read` | read |
 | `mem_recall` | `memory:read` | read |
 | `kl_ingest`, `kl_upsert_source`, `kl_get_ingestion_status`, `kl_set_source_availability` | `knowledge:write` | write (a source is updated or hidden only by its owner or `knowledge:admin`) |
 | `mem_write` | `memory:write` | write |
@@ -107,6 +107,7 @@ that is meant to harden a deployment must not quietly fall back to `standard`.
 | MCP tool input elements | no limit unless `MCP_MAX_TOOL_INPUT_ELEMENTS` | 10 000 array elements + object keys per call, checked before schema validation |
 | Database TLS (`DATABASE_SSL=true`) | encrypted, certificate **not** verified — logs a warning; `DATABASE_SSL_CA` turns verification on | certificate verified (system CAs or `DATABASE_SSL_CA`); unverified TLS — including `sslmode=no-verify` or `ssl=no-verify` in `DATABASE_URL` — refuses to start |
 | `KNOWLEDGE_ANSWER_POLICY` malformed | ignored (no policy) | refuses to start |
+| Blob store (`S3_BUCKET`) | unset ⇒ no-op store, ingested originals are dropped | unset ⇒ refuses to start |
 | Missing Tier-A groundedness vs `minGroundedness` | passes (`missingGroundedness: pass`) | blocks (`missingGroundedness: block` unless the policy says otherwise) |
 | Acceptance evaluator: missing verdict / judge failure | card admitted `approved` | card stays `candidate`, reason recorded |
 | Database login role | not checked | refuses to start if the role in `DATABASE_URL` (or `DATABASE_APP_ROLE`) is a superuser or `BYPASSRLS`, or if the check cannot run |

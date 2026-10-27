@@ -16,6 +16,7 @@ import type { RetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieva
 import type {
   IngestionStatus,
   klGetIngestionStatusOutput,
+  klReadSourceOutput,
   klUpsertSourceOutput,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
 import type { SourceRef } from "@agenticmind/shared/lib/knowledge/source-refs"
@@ -79,6 +80,7 @@ import {
   retractSource,
   setSourceAvailability,
 } from "@agenticmind/shared/lib/knowledge/source-lifecycle"
+import { ReadSourceError, readSource } from "@agenticmind/shared/lib/knowledge/source-read"
 import { sourceRefsFor } from "@agenticmind/shared/lib/knowledge/source-refs"
 import { LIFECYCLES } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { SourceInputError, upsertSource } from "@agenticmind/shared/lib/knowledge/source-upsert"
@@ -922,6 +924,28 @@ export const klForget = async (deps: McpToolDeps, args: z.infer<typeof klForgetI
 const omitFound = <T extends { found: true }>(r: T): Omit<T, "found"> => {
   const { found: _found, ...rest } = r
   return rest
+}
+
+/**
+ * Kl_read_source -- the stored content of a source revision, current or cited,
+ * whole or in pages (source-read.ts). Requires knowledge:read; a retracted,
+ * unavailable or unknown source reads as not found.
+ */
+export const klReadSource = async (
+  deps: McpToolDeps,
+  args: z.infer<typeof klReadSourceInput>,
+): Promise<z.infer<typeof klReadSourceOutput>> => {
+  if (!hasScope(deps.scopes, "knowledge:read")) {
+    throw new Error("kl_read_source: missing required scope 'knowledge:read'")
+  }
+  try {
+    return await readSource(deps.tx, args)
+  } catch (error) {
+    if (error instanceof ReadSourceError) {
+      throw new ReadSourceError(`kl_read_source: ${error.message}`, { cause: error })
+    }
+    throw error
+  }
 }
 
 /**

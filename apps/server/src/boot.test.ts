@@ -78,6 +78,35 @@ describe("server boot — answer policy (A6)", () => {
   }, 60_000)
 })
 
+describe("server boot — blob store (strict)", () => {
+  const REFUSAL =
+    "[SERVER] strict: no blob store — S3_BUCKET is unset, so ingested originals would be dropped; set S3_BUCKET and its credentials"
+
+  it("strict refuses to start without a blob store", async () => {
+    const r = await boot({ AGENTICMIND_PROFILE: "strict", S3_BUCKET: "" })
+    expect(r.served, r.output).toBe(false)
+    expect(r.code, r.output).toBe(1)
+    expect(r.output).toContain(REFUSAL)
+  }, 60_000)
+
+  it("control: with a bucket the refusal is gone (other strict checks still apply)", async () => {
+    const r = await boot({
+      AGENTICMIND_PROFILE: "strict",
+      S3_BUCKET: "boot-test-bucket",
+      S3_ACCESS_KEY_ID: "boot-test-key",
+      S3_SECRET_ACCESS_KEY: "boot-test-secret",
+    })
+    expect(r.output).toContain("refusing to start")
+    expect(r.output).not.toContain("no blob store")
+  }, 60_000)
+
+  it("control: standard still starts without a bucket", async () => {
+    const r = await boot({ AGENTICMIND_PROFILE: "standard", S3_BUCKET: "" })
+    expect(r.served, r.output).toBe(true)
+    expect(r.output).not.toContain("no blob store")
+  }, 60_000)
+})
+
 describe("server boot — database TLS warning (standard)", () => {
   it("reports unverified TLS at boot, before serving — not on the first query", async () => {
     const r = await boot({ AGENTICMIND_PROFILE: "standard", DATABASE_SSL: "true" })

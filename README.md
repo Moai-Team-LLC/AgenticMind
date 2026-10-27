@@ -139,6 +139,7 @@ streamable HTTP, with fail-closed per-token bearer auth (scoped, least-privilege
 | `kl_search`          | `knowledge:read`   | semantic / keyword passage search                                   |
 | `kl_ask_global`      | `knowledge:read`   | synthesised answer + citations + a gate-able `status` (optional `intent`/`facts`) |
 | `kl_get_material`    | `knowledge:read`   | fetch a material by id                                              |
+| `kl_read_source`     | `knowledge:read`   | read a source revision (current or cited) by range/offset, with its content hash |
 | `kl_graph_neighbors` | `knowledge:read`   | related materials via the knowledge graph                           |
 | `kl_ingest`          | `knowledge:write`  | add text (chunked, embedded, distilled into cards, graph-extracted) |
 | `kl_upsert_source`   | `knowledge:write`  | create/update a source by external ID with a new revision (idempotent: `unchanged`, `stale`) |
