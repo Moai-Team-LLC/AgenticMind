@@ -144,15 +144,15 @@ describe("the served tool set follows the contract", () => {
     expect(served).toEqual(expected)
   })
 
-  it("refuses a pending field instead of ignoring it", async () => {
+  it("serves every field of contract 1.11.0: none is refused as pending", async () => {
     const res = await rpc(
       call(6, "tools/call", { name: "kl_search", arguments: { q: "x", mode: "history" } }),
       true,
     )
     const result = await resultOf(res)
-    expect(result.isError).toBe(true)
-    expect(result.content?.[0]?.text).toBe(
-      "kl_search: 'mode' is in contract 1.11.0 but not supported by this server yet",
-    )
+    // No embedder or database here, so the call fails further in — but not as pending.
+    const text = result.content?.[0]?.text ?? ""
+    expect(text.length, "the call produced an answer").toBeGreaterThan(0)
+    expect(text).not.toContain("not supported by this server yet")
   })
 })

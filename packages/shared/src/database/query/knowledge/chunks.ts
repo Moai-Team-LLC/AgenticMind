@@ -6,6 +6,7 @@
  */
 
 import type { Transaction } from "@agenticmind/shared/database/client"
+import type { RetrievalScope } from "@agenticmind/shared/database/query/knowledge/retrievable"
 import type { ScoredHit } from "@agenticmind/shared/lib/knowledge/blend"
 import type { AnyColumn, SQL } from "drizzle-orm"
 
@@ -124,6 +125,7 @@ export const searchChunks = (props: {
   queryEmbedding: number[]
   limit?: number
   offset?: number
+  scope?: RetrievalScope
 }): ResultAsync<KnowledgeHit[], ReturnType<typeof mapDatabaseError>> => {
   const limit =
     props.limit !== undefined && props.limit > 0 && props.limit <= 100 ? props.limit : 10
@@ -139,7 +141,7 @@ export const searchChunks = (props: {
         score: sql<number>`1 - (${chunks.embedding} <=> ${literal}::vector)`.as("score"),
       })
       .from(chunks)
-      .where(and(isNotNull(chunks.embedding), retrievableMaterial(chunks.materialId)))
+      .where(and(isNotNull(chunks.embedding), retrievableMaterial(chunks.materialId, props.scope)))
       .orderBy(sql`${chunks.embedding} <=> ${literal}::vector`)
       .limit(limit)
       .offset(offset),
@@ -197,6 +199,7 @@ export const searchChunksBm25 = (props: {
   query: string
   variants?: string[]
   limit?: number
+  scope?: RetrievalScope
 }): ResultAsync<KnowledgeHit[], ReturnType<typeof mapDatabaseError>> => {
   const variants = dedupeVariants(props.query, props.variants)
   if (variants.length === 0) {
@@ -222,7 +225,7 @@ export const searchChunksBm25 = (props: {
         score: sql<number>`ts_rank_cd(${chunks.bodyTsv}, ${tsQuery})`.as("score"),
       })
       .from(chunks)
-      .where(and(whereClause, retrievableMaterial(chunks.materialId)))
+      .where(and(whereClause, retrievableMaterial(chunks.materialId, props.scope)))
       .orderBy(sql`ts_rank_cd(${chunks.bodyTsv}, ${tsQuery}) DESC`)
       .limit(limit),
     mapDatabaseError,

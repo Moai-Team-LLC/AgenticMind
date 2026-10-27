@@ -73,13 +73,14 @@ describe("pending contract items", () => {
   })
 
   it("flag only the fields a call actually sets", () => {
-    expect(pendingFieldsIn("kl_search", { q: "x" })).toEqual([])
-    expect(pendingFieldsIn("kl_search", { q: "x", mode: undefined })).toEqual([])
-    expect(pendingFieldsIn("kl_search", { q: "x", mode: "history", period: {} })).toEqual([
+    const pending = { kl_search: ["mode", "period"] }
+    expect(pendingFieldsIn("kl_search", { q: "x" }, pending)).toEqual([])
+    expect(pendingFieldsIn("kl_search", { q: "x", mode: undefined }, pending)).toEqual([])
+    expect(pendingFieldsIn("kl_search", { q: "x", mode: "history", period: {} }, pending)).toEqual([
       "mode",
       "period",
     ])
-    expect(pendingFieldsIn("kl_get_material", { id: "x" })).toEqual([])
+    expect(pendingFieldsIn("kl_get_material", { id: "x" }, pending)).toEqual([])
   })
 
   it("explain the refusal", () => {

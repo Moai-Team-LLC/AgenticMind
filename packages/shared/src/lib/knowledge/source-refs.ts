@@ -66,6 +66,14 @@ export const sourceRefsFor = async (
  */
 export const formatOriginNote = (ref: SourceRef): string => {
   const parts: string[] = []
+  // What the content stands for, unless it is the canonical default.
+  if (ref.knowledgeType !== "canonical") {
+    parts.push(
+      ref.knowledgeType === "evidence"
+        ? "evidence: what was said, not established fact"
+        : "inference: produced by a model",
+    )
+  }
   const p = ref.provenance
   if (p !== null) {
     const where = [
@@ -128,3 +136,17 @@ export const chunkSegmentsFor = async (
   const byChunk = res.value
   return (chunkId) => byChunk.get(chunkId) ?? {}
 }
+
+/**
+ * The knowledge type a citation carries: its source's, except that a card
+ * drawn from evidence without a verbatim span is the model's restatement of
+ * what was said — an inference, not the evidence itself.
+ */
+export const citationKnowledgeType = (
+  origin: string | undefined,
+  sourceType: SourceRef["knowledgeType"],
+  spanStart: number | null | undefined,
+): SourceRef["knowledgeType"] =>
+  origin === "card" && sourceType === "evidence" && (spanStart ?? null) === null
+    ? "inference"
+    : sourceType
