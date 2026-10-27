@@ -8,6 +8,14 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Answers see where a source's content comes from.** The synthesis prompt
+  shows each source revision's origin next to its title — repository, path,
+  commit, environment, date and known limits — and, only when some source
+  states one, tells the model to rest a claim about a running system on the
+  environment and commit it names (or say the deployment is not confirmed) and
+  to respect stated limits. A prompt over materials without a source is
+  byte-identical to before.
+
 - **Retracting a source, and hiding an unavailable one.** `kl_forget` retracts
   a source by its UUID or by `sourceType` (+ `connectionId`) with its external
   ID as `id`, with a `reason`: the tombstone is set and the source leaves every

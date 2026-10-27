@@ -87,6 +87,7 @@ import {
 } from "@agenticmind/shared/lib/knowledge/ontology"
 import { boost, defaultRecencyConfig } from "@agenticmind/shared/lib/knowledge/recency"
 import { rerankPairs } from "@agenticmind/shared/lib/knowledge/rerank"
+import { annotateOrigins } from "@agenticmind/shared/lib/knowledge/source-refs"
 import { applyTrust } from "@agenticmind/shared/lib/knowledge/source-trust"
 import { queryVariants } from "@agenticmind/shared/lib/knowledge/stopwords"
 import {
@@ -454,6 +455,13 @@ const runAsk = async (props: AskProps): Promise<Answer> => {
   }
   for (const [i, s] of sources.entries()) {
     s.number = i + 1
+  }
+  // Where each source's content comes from (repo, commit, environment, date, limits).
+  // Best-effort: without it the answer is built as before.
+  try {
+    await annotateOrigins(props.tx, sources)
+  } catch (error) {
+    console.warn(`ask: source origins unavailable: ${String(error)}`)
   }
   mark("rerank", ts)
   recordChildSpan("retrieve", SpanKind.RETRIEVER, retrieveStartMs, Date.now(), {

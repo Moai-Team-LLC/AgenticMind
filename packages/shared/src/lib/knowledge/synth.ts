@@ -59,6 +59,10 @@ export type Source = {
   lifecycle?: string
   /** Material trust tier (higher = more trusted; 0 = default). */
   trustTier?: number
+  /** Where the source's content comes from (repository, commit, environment,
+   * date, known limits), shown to the model next to the title. Unset for a
+   * material ingested without a source. */
+  originNote?: string
 }
 
 export type Citation = {
@@ -216,6 +220,15 @@ const truncate = (s: string, max: number): string => {
   return runes.length <= max ? s : `${runes.slice(0, max).join("")}…`
 }
 
+/**
+ * Told to the model only when some source states its origin, so a prompt over
+ * materials without a source is unchanged. A claim about a running system
+ * rests on the environment and commit its source names — not on whatever code
+ * exists somewhere.
+ */
+export const ORIGIN_INSTRUCTION =
+  "Some sources state their origin in braces after the title (repository, path, commit, environment, date, known limits). For a claim about how a system behaves, say which environment and commit it rests on; if no source names that environment, say the deployment is not confirmed. Respect stated limits (e.g. no timecodes, partial document) instead of guessing past them."
+
 /** Builds the user prompt: optional graph-context prelude + numbered sources + question. */
 export const buildPromptWithGraphContext = (
   question: string,
@@ -235,10 +248,18 @@ export const buildPromptWithGraphContext = (
   if (sources.length === 0) {
     parts.push("Sources: (none — answer that you don't know)", "")
   } else {
+    if (sources.some((s) => s.originNote !== undefined && s.originNote !== "")) {
+      parts.push(ORIGIN_INSTRUCTION, "")
+    }
     parts.push("Sources:")
     for (const s of sources) {
       const title = s.title === "" ? "Untitled" : s.title
-      parts.push(`[${s.number}] ${title}${formatUpdatedAnnotation(s.updatedAt)}`, s.body, "")
+      const origin = s.originNote === undefined || s.originNote === "" ? "" : ` ${s.originNote}`
+      parts.push(
+        `[${s.number}] ${title}${formatUpdatedAnnotation(s.updatedAt)}${origin}`,
+        s.body,
+        "",
+      )
     }
   }
   parts.push(`Question: ${question}`, "", "Answer:")

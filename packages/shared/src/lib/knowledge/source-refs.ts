@@ -56,3 +56,53 @@ export const sourceRefsFor = async (
   }
   return (materialId) => byMaterial.get(materialId) ?? NO_SOURCE_REF
 }
+
+/**
+ * The origin note the synthesis prompt shows next to a source's title, e.g.
+ * `{repo example/repo, path README.md, commit abc1234, environment production;
+ * occurred 2026-10-01; limits: partial document}`. Empty for a material
+ * without a source, and for a source that states nothing.
+ */
+export const formatOriginNote = (ref: SourceRef): string => {
+  const parts: string[] = []
+  const p = ref.provenance
+  if (p !== null) {
+    const where = [
+      p.repo !== undefined ? `repo ${p.repo}` : "",
+      p.path !== undefined ? `path ${p.path}` : "",
+      p.commitSha !== undefined ? `commit ${p.commitSha}` : "",
+      p.ref !== undefined ? `ref ${p.ref}` : "",
+      p.environment !== undefined ? `environment ${p.environment}` : "",
+    ].filter((x) => x !== "")
+    if (where.length > 0) {
+      parts.push(where.join(", "))
+    }
+  }
+  if (ref.occurredAt !== null) {
+    parts.push(`occurred ${ref.occurredAt.slice(0, 10)}`)
+  }
+  if (ref.warnings.length > 0) {
+    parts.push(`limits: ${ref.warnings.join("; ")}`)
+  }
+  return parts.length === 0 ? "" : `{${parts.join("; ")}}`
+}
+
+/** Sets each source's origin note from its source revision (in place). */
+export const annotateOrigins = async (
+  tx: Transaction,
+  sources: { materialId: string; originNote?: string }[],
+): Promise<void> => {
+  if (sources.length === 0) {
+    return
+  }
+  const refOf = await sourceRefsFor(
+    tx,
+    sources.map((s) => s.materialId),
+  )
+  for (const s of sources) {
+    const note = formatOriginNote(refOf(s.materialId))
+    if (note !== "") {
+      s.originNote = note
+    }
+  }
+}
