@@ -67,7 +67,7 @@ describe.skipIf(DB_URL === "")("source retraction and availability (real Postgre
   const materialsOf = async (sourceId: string) =>
     (
       await rows<{ id: string }>(
-        sql`select material_id::text as id from source_revisions where source_id = ${sourceId}::uuid and material_id is not null`,
+        sql`select material_id::text as id from source_revisions where source_id = ${sourceId}::uuid and material_id is not null order by revision_no`,
       )
     ).map((r) => r.id)
 
