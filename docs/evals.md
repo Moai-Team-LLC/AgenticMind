@@ -74,10 +74,11 @@ From the safety cycle, on a live run:
 
 ### Abstention posture — surface, don't decide
 
-Two `faithfulness` cases (`faith-3`/`faith-4`: "how do neutron stars form?",
-"corporate tax rate in Japan?") assert `expectAbstain: true` and were counted as
-misses. This is **not** the engine answering confidently from parametric memory —
-it's an intentional, unit-tested design boundary worth stating plainly:
+Until 2026-10, three `faithfulness` cases (`faith-3`/`4`/`5`: "how do neutron stars
+form?", "corporate tax rate in Japan?", "capital of Mongolia?") asserted
+`expectAbstain: true` on a policy-off run and were counted as misses. That was an
+expectation mismatch, not the engine answering confidently from parametric memory —
+the default is an intentional, unit-tested design boundary worth stating plainly:
 
 - On a fully out-of-corpus query, retrieval still returns weakly-similar chunks
   (`sourceCount > 0`), so the engine synthesises but **cites nothing it can ground**
@@ -89,9 +90,20 @@ it's an intentional, unit-tested design boundary worth stating plainly:
   answer into a refusal. This is the project's *surface-not-decide* default: the
   engine reports the signal; the operator chooses how hard to gate.
 - This is locked by `faithfulness.test.ts` ("a confident but entirely uncited
-  answer is ungrounded, **not** abstained"). So those two cases assert the
-  *policy-on* behaviour under a *policy-off* run — an expectation mismatch, not an
-  overconfidence hole. Run that bucket under an answer policy and they decline.
+  answer is ungrounded, **not** abstained").
+
+The suite now measures both halves on the same three questions:
+
+- **Default posture** — `faith-3`/`4`/`5` run with no policy and assert
+  `maxCitations: 0` + `expectStatus: ["unsupported"]`: the weakness must be
+  surfaced. An uncited answer the engine called `supported` or `partial` still fails.
+- **Opt-in refusal** — `faith-6`/`7`/`8` run the same questions under a case-level
+  `answerPolicy` (`{"minGroundedness":0.5}`, the same schema as
+  `KNOWLEDGE_ANSWER_POLICY`) and assert `expectAbstain: true`.
+
+`cases-file.test.ts` keeps it that way: a case that expects a refusal without an
+`answerPolicy` fails the unit suite, and every case-level policy must parse with
+the server's schema (`runEvalSuite` also fails such a case without calling the engine).
 
 ### Ablation (what earns its complexity)
 

@@ -125,6 +125,46 @@ describe("runEvalSuite", () => {
     expect(report.byFailureMode.factual_retrieval!.passed).toBe(1)
     expect(report.byFailureMode.prompt_injection!.passed).toBe(0)
   })
+
+  it("runs a case under its own answer policy, and other cases under none", async () => {
+    const seen: unknown[] = []
+    const ask: AskForEval = async (_q, opts) => {
+      seen.push(opts?.answerPolicy)
+      return obs({ abstained: opts?.answerPolicy !== undefined })
+    }
+    const cases: EvalCase[] = [
+      {
+        id: "with-policy",
+        failureMode: "faithfulness",
+        query: "q",
+        answerPolicy: { minGroundedness: 0.5 },
+        assertions: { expectAbstain: true },
+      },
+      { id: "no-policy", failureMode: "faithfulness", query: "q", assertions: {} },
+    ]
+    const report = await runEvalSuite(cases, ask)
+    expect(seen).toEqual([{ minGroundedness: 0.5 }, undefined])
+    expect(report.passed).toBe(2)
+  })
+
+  it("fails a case whose answer policy the server would reject, without asking", async () => {
+    let calls = 0
+    const ask: AskForEval = async () => {
+      calls += 1
+      return obs({})
+    }
+    const c = {
+      id: "typo",
+      failureMode: "faithfulness",
+      query: "q",
+      answerPolicy: { minGroundednes: 0.5 },
+      assertions: {},
+    } as unknown as EvalCase
+    const report = await runEvalSuite([c], ask)
+    expect(calls).toBe(0)
+    expect(report.results[0]!.passed).toBe(false)
+    expect(report.results[0]!.failures[0]).toContain("invalid answerPolicy")
+  })
 })
 
 describe("isRegression", () => {

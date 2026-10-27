@@ -2377,27 +2377,69 @@
     }
   },
   {
-    "id": "faith-3-abstain-neutron-stars",
+    "id": "faith-3-unsupported-neutron-stars",
     "failureMode": "faithfulness",
     "query": "How do neutron stars form?",
     "assertions": {
       "maxCitations": 0,
-      "expectAbstain": true
+      "expectStatus": [
+        "unsupported"
+      ]
     }
   },
   {
-    "id": "faith-4-abstain-japan-tax",
+    "id": "faith-4-unsupported-japan-tax",
     "failureMode": "faithfulness",
     "query": "What is the corporate tax rate in Japan?",
+    "assertions": {
+      "maxCitations": 0,
+      "expectStatus": [
+        "unsupported"
+      ]
+    }
+  },
+  {
+    "id": "faith-5-unsupported-capital-of-mongolia",
+    "failureMode": "faithfulness",
+    "query": "What is the capital of Mongolia?",
+    "assertions": {
+      "maxCitations": 0,
+      "expectStatus": [
+        "unsupported"
+      ]
+    }
+  },
+  {
+    "id": "faith-6-refuses-under-policy-neutron-stars",
+    "failureMode": "faithfulness",
+    "query": "How do neutron stars form?",
+    "answerPolicy": {
+      "minGroundedness": 0.5
+    },
     "assertions": {
       "maxCitations": 0,
       "expectAbstain": true
     }
   },
   {
-    "id": "faith-5-abstain-capital-of-mongolia",
+    "id": "faith-7-refuses-under-policy-japan-tax",
+    "failureMode": "faithfulness",
+    "query": "What is the corporate tax rate in Japan?",
+    "answerPolicy": {
+      "minGroundedness": 0.5
+    },
+    "assertions": {
+      "maxCitations": 0,
+      "expectAbstain": true
+    }
+  },
+  {
+    "id": "faith-8-refuses-under-policy-capital-of-mongolia",
     "failureMode": "faithfulness",
     "query": "What is the capital of Mongolia?",
+    "answerPolicy": {
+      "minGroundedness": 0.5
+    },
     "assertions": {
       "maxCitations": 0,
       "expectAbstain": true

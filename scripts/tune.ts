@@ -59,7 +59,7 @@ const cacheEnabled = process.env.KNOWLEDGE_CACHE_ENABLED === "true"
 /** An AskForEval that runs the engine under a given retrieval profile. */
 const askWith =
   (params: RetrievalParams): AskForEval =>
-  async (query) => {
+  async (query, opts) => {
     const guard = guardInput(query)
     if (!guard.ok) {
       return { blocked: true, answer: "", citations: [] }
@@ -73,6 +73,7 @@ const askWith =
       recencyConfig: params.recencyConfig,
       topK: params.topK,
       rerankTopN: params.rerankTopN,
+      answerPolicy: opts?.answerPolicy,
     })
     if (res.isErr()) {
       return { blocked: false, answer: "", citations: [] }
