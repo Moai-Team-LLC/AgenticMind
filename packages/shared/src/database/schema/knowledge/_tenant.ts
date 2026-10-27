@@ -21,6 +21,15 @@ export const DEFAULT_TENANT_ID = "00000000-0000-0000-0000-000000000000"
  * falling back to the default tenant when it is unset — so inserts never have to
  * pass `tenant_id` and single-tenant just works.
  */
+/**
+ * The tenant of the current transaction (the `app.current_tenant` GUC that
+ * withTenant sets; the default tenant when unset). Row-level security applies
+ * it for the app role, but a superuser or table owner bypasses RLS — so a
+ * lookup by a key that is unique only per tenant (an idempotency key, an
+ * external identity) states the tenant explicitly too.
+ */
+export const currentTenantId = sql`coalesce(current_setting('app.current_tenant', true), '00000000-0000-0000-0000-000000000000')::uuid`
+
 export const tenantColumn = {
   tenantId: uuid("tenant_id")
     .notNull()
