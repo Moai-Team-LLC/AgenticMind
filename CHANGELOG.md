@@ -8,6 +8,19 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **`kl_read_source`: read back any cited revision.** The current revision of
+  a source, or the exact revision an old citation names while it is stored,
+  whole or in pages — by character offset for text, by segment range for a
+  dialogue (speaker, speaker id, timecodes) — capped by `maxChars` (default
+  20 000, at most 100 000). The answer carries the revision's content hash
+  (re-hashing what was read reproduces it), provenance and known limits. A
+  retracted, unavailable, unknown or other tenant's source all answer
+  `{ found: false }`. All contract 1.11.0 tools are now served.
+- **Strict refuses to start without a blob store.** With
+  `AGENTICMIND_PROFILE=strict` and no `S3_BUCKET`, the server stops at boot
+  (`strict: no blob store …`) instead of silently dropping ingested originals.
+  The standard profile is unchanged.
+
 - **Answers see where a source's content comes from.** The synthesis prompt
   shows each source revision's origin next to its title — repository, path,
   commit, environment, date and known limits — and, only when some source

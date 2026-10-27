@@ -52,6 +52,7 @@ import {
   klForget,
   klForgetInput,
   klGetIngestionStatus,
+  klReadSource,
   klSetSourceAvailability,
   klUpsertSource,
   hitlGet,
@@ -65,6 +66,7 @@ import {
 import { resolveRetrievalParams } from "@agenticmind/shared/lib/knowledge/retrieval-params"
 import {
   klGetIngestionStatusInput,
+  klReadSourceInput,
   klSetSourceAvailabilityInput,
   klUpsertSourceInput,
 } from "@agenticmind/shared/lib/knowledge/source-contract"
@@ -373,6 +375,21 @@ const buildHandler = (limits: McpLimits) =>
             return jsonContent(await runTenantScoped(extra, async (d) => klUpsertSource(d, args)))
           } catch (error) {
             return errorContent(error instanceof Error ? error.message : "kl_upsert_source failed")
+          }
+        },
+      )
+
+      registerKlTool(
+        server,
+        "kl_read_source",
+        "Read a source",
+        "Read the stored content of a source revision — the current one, or the exact revision an earlier citation names — whole or by segment range (dialogue) / character offset (text), capped by maxChars (default 20 000, at most 100 000) and paged with nextOffset. Returns the content hash so a quote can be checked against its revision, plus provenance and known limits. Not found and not permitted look the same. Requires knowledge:read.",
+        klReadSourceInput,
+        async (args, extra) => {
+          try {
+            return jsonContent(await runTenantScoped(extra, async (d) => klReadSource(d, args)))
+          } catch (error) {
+            return errorContent(error instanceof Error ? error.message : "kl_read_source failed")
           }
         },
       )

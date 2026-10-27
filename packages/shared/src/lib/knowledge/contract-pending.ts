@@ -14,7 +14,7 @@
 export const PENDING_RELEASE = "0.15.0"
 
 /** Tools in the contract that the server does not register yet. */
-export const PENDING_TOOLS: readonly string[] = ["kl_read_source"]
+export const PENDING_TOOLS: readonly string[] = []
 
 /** Optional input fields of served tools that the server does not honour yet. */
 export const PENDING_FIELDS: Readonly<Record<string, readonly string[]>> = {
