@@ -1,20 +1,33 @@
 /**
  * Integration eval runner — wires the harness (lib/eval) to the real engine
- * (guard + ask). Needs DATABASE_URL + CHAT_API_KEY. Exits non-zero when
- * the run regresses below the baseline pass rate (the CI gate).
+ * (guard + ask). Needs DATABASE_URL + CHAT_API_KEY. Exits 1 when the run
+ * regresses below the baseline pass rate or a failure mode falls under its floor
+ * (the CI gate), 2 when the gate's own settings are invalid (nothing was run).
+ * Ends with the run's token usage per model.
  *
  *   bun run eval                 # uses BASELINE_PASS_RATE (default 0.8)
+ *   BASELINE_MODE_FLOORS='{"faithfulness":0.8}' bun run eval   # + per-mode floors
  */
 
 import type { AskForEval, EvalCase, JudgeForEval } from "@agenticmind/shared/lib/eval/harness"
 
 import { createClient } from "@agenticmind/shared/database/client"
-import { isRegression, runEvalSuite } from "@agenticmind/shared/lib/eval/harness"
+import {
+  isRegression,
+  modeFloorBreaches,
+  parseBaselinePassRate,
+  parseModeFloors,
+  runEvalSuite,
+} from "@agenticmind/shared/lib/eval/harness"
 import { ask } from "@agenticmind/shared/lib/knowledge/ask"
 import { guardInput } from "@agenticmind/shared/lib/knowledge/guard"
 import { completeKnowledgeJson } from "@agenticmind/shared/lib/knowledge/llm"
+import {
+  formatLlmUsageReport,
+  llmUsageSnapshot,
+} from "@agenticmind/shared/lib/observability/llm-usage"
 import { databaseSettings } from "@agenticmind/shared/settings/database-settings"
-import { readFileSync } from "node:fs"
+import { appendFileSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import * as z from "zod"
 
@@ -29,6 +42,23 @@ const cases =
   only !== undefined && only.length > 0
     ? allCases.filter((c) => only.includes(c.failureMode))
     : allCases
+
+// Gate settings are checked before the first model call: a typo must not cost a
+// paid run, and must not quietly mean "no gate" either.
+const baselineRes = parseBaselinePassRate(process.env.BASELINE_PASS_RATE)
+const floorsRes = parseModeFloors(process.env.BASELINE_MODE_FLOORS, [
+  ...new Set(allCases.map((c) => c.failureMode)),
+])
+if (baselineRes.isErr() || floorsRes.isErr()) {
+  for (const r of [baselineRes, floorsRes]) {
+    if (r.isErr()) {
+      console.error(`eval gate NOT RUN — ${r.error}`)
+    }
+  }
+  process.exit(2)
+}
+const baseline = baselineRes.value
+const floors = floorsRes.value
 
 const db = createClient(databaseSettings.DATABASE_URL)
 const cardsEnabled = process.env.KNOWLEDGE_CARDS_ENABLED === "true"
@@ -81,15 +111,36 @@ const judge: JudgeForEval = async (question, observation) => {
   return res.isOk() ? res.value.verdict : false
 }
 
-const baseline = Number(process.env.BASELINE_PASS_RATE ?? "0.8")
+// The run's token usage, printed last on every outcome (pass, regression, crash) so
+// its cost is readable from the CI log; on GitHub Actions the total also lands in
+// the job summary.
+const printUsage = (): void => {
+  const usageLines = formatLlmUsageReport(llmUsageSnapshot())
+  console.log("\nToken usage (provider-reported, calls that returned):")
+  for (const line of usageLines) {
+    console.log(line)
+  }
+  const summary = process.env.GITHUB_STEP_SUMMARY
+  if (summary !== undefined && summary !== "") {
+    appendFileSync(summary, `eval-gate ${usageLines.at(-1) ?? ""}\n\n`)
+  }
+}
 
-const report = await runEvalSuite(cases, askForEval, judge)
+let report: Awaited<ReturnType<typeof runEvalSuite>>
+try {
+  report = await runEvalSuite(cases, askForEval, judge)
+} catch (error) {
+  printUsage()
+  throw error
+}
 
 console.log(
   `\nEval: ${report.passed}/${report.total} passed (${(report.passRate * 100).toFixed(1)}%)`,
 )
 for (const [mode, b] of Object.entries(report.byFailureMode)) {
-  console.log(`  ${mode}: ${b.passed}/${b.total} (${(b.passRate * 100).toFixed(0)}%)`)
+  const floor = floors[mode]
+  const floorNote = floor === undefined ? "" : ` · floor ${(floor * 100).toFixed(0)}%`
+  console.log(`  ${mode}: ${b.passed}/${b.total} (${(b.passRate * 100).toFixed(0)}%)${floorNote}`)
 }
 if (report.citationPrecision !== undefined) {
   console.log(
@@ -103,11 +154,22 @@ for (const r of report.results.filter((x) => !x.passed)) {
   }
 }
 
-if (isRegression(report, baseline)) {
-  console.error(
-    `\nREGRESSION: pass rate ${(report.passRate * 100).toFixed(1)}% < baseline ${(baseline * 100).toFixed(0)}%`,
-  )
-  process.exit(1)
+const regressed = isRegression(report, baseline, undefined, floors)
+if (regressed) {
+  if (isRegression(report, baseline)) {
+    console.error(
+      `\nREGRESSION: pass rate ${(report.passRate * 100).toFixed(1)}% < baseline ${(baseline * 100).toFixed(0)}%`,
+    )
+  }
+  for (const b of modeFloorBreaches(report, floors)) {
+    console.error(
+      b.total === 0
+        ? `\nREGRESSION: ${b.mode} has a floor of ${(b.floor * 100).toFixed(0)}% but no case of it ran`
+        : `\nREGRESSION: ${b.mode} ${b.passed}/${b.total} (${(b.passRate * 100).toFixed(0)}%) < floor ${(b.floor * 100).toFixed(0)}%`,
+    )
+  }
+} else {
+  console.log("\nEval gate passed.")
 }
-console.log("\nEval gate passed.")
-process.exit(0)
+printUsage()
+process.exit(regressed ? 1 : 0)

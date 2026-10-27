@@ -54,6 +54,7 @@ assertion can be told from a wrong answer without re-running the case.
 ```bash
 dotenvx run -f .env.local -- bun scripts/seed-eval-corpus.ts   # once, on a clean DB
 bun run eval                                                   # exits non-zero on regression
+BASELINE_MODE_FLOORS='{"faithfulness":0.8}' bun run eval       # + per-failure-mode floors
 ```
 
 Needs `DATABASE_URL` (embeddings are local by default; a chat key is only needed

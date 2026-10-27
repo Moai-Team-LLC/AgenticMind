@@ -6,6 +6,20 @@ to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **The eval gate reports what a run cost.** Token usage is now also totalled
+  per process and per model, fed from the same point as the per-call usage span;
+  `bun run eval` (and the weekly eval-gate log and job summary) ends with one
+  line per model and a `Usage: … tokens` total, with a `≈ $` estimate at OpenAI
+  list prices for the default models. Nothing in an MCP response changes.
+- **Per-failure-mode floors for the eval gate.** `BASELINE_MODE_FLOORS`
+  (`{"faithfulness":0.8}` in the weekly workflow) fails the gate when one mode
+  falls under its floor, so a weak bucket cannot hide behind the overall rate —
+  the first live run passed at 229/234 with faithfulness at 2/5. An invalid floor
+  or `BASELINE_PASS_RATE` (e.g. `80%`, which used to mean "never fail") stops the
+  run before any model call.
+
 ### Fixed
 
 - **The eval-gate can actually run.** Its seed and eval steps (and `bun run
